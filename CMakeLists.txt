@@ -12,10 +12,11 @@ set(CMAKE_MODULE_PATH
     ${CMAKE_SOURCE_DIR}/cmake
     ${CMAKE_MODULE_PATH})
 
+find_package(Threads REQUIRED)
 include (Findliburing)
 include(GNUInstallDirs)
 
-option(URING OFF "Enable support for io_uring (requires liburing and Linux kernel >= 5.8)")
+option(URING ON "Enable support for io_uring (requires liburing and Linux kernel >= 5.8)")
 mark_as_advanced(URING)
 
 #---Check for liburing----------------------------------------------------------------
@@ -45,11 +46,16 @@ add_subdirectory(thirdparty)
 
 include_directories(
   ${CMAKE_CURRENT_SOURCE_DIR}/src/
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/include)
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/include
+  ${TIFF_INCLUDE_DIRNAME})
   
 set(LIBRARY_SRCS
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/main.cpp)
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/BufferPool.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/FileUringIO.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/Serializer.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/TIFFFormat.cpp
+  )
   
-add_executable(uring_mt_test ${CMAKE_CURRENT_SOURCE_DIR}/src/uring_mt_test.cpp )
+add_executable(uring_mt_test ${CMAKE_CURRENT_SOURCE_DIR}/src/uring_mt_test.cpp  ${LIBRARY_SRCS} )
 
-
+target_link_libraries(uring_mt_test ${TIFF_LIBNAME} uring ${CMAKE_THREAD_LIBS_INIT} )
