@@ -39,15 +39,29 @@ static void run(uint32_t concurrency, bool doStore, bool doAsynch){
 		exec.run(taskflow).wait();
 		timer.finish("");
 }
-
-int main(int argc, char** argv)
-{
-	for (uint8_t i = 2; i <= std::thread::hardware_concurrency(); i+=2){
+static void run(uint8_t i){
 	   run(i,false,false);
 	   run(i,true,false);
 	   run(i,true,true);
 	   printf("\\\\\\\\\\\\\\\\\\\\\\\\\\\n");
-   }
+}
+
+int main(int argc, char** argv)
+{
+	if (argc == 1) {
+		for (uint8_t i = 2; i <= std::thread::hardware_concurrency(); i+=2){
+		   run(i);
+	   }
+	} else {
+		uint8_t i = atoi(argv[1]);
+		uint8_t j = 1;
+		if (argc >= 3)
+			j = atoi(argv[2]);
+		if (i > 0)
+			run(i, true, j != 0);
+		else
+			run(48,true,j != 0);
+	}
 
    return 0;
 }
