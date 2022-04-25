@@ -149,7 +149,7 @@ size_t Serializer::write(uint8_t* buf, size_t bytes_total)
 			break;
 	}
 
-	if(scheduled_.pooled)
+	if(!asynchActive_ && scheduled_.pooled)
 	   ++numPooledRequests_;
 
 	return (size_t)count;

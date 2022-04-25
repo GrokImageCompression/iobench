@@ -67,6 +67,8 @@ TIFFFormat::TIFFFormat() : tif_(nullptr), encodeState_(IMAGE_FORMAT_UNENCODED){
 }
 
 TIFFFormat::~TIFFFormat() {
+	if(tif_)
+		TIFFClose(tif_);
 }
 
 void TIFFFormat::serializeRegisterClientCallback(serialize_callback reclaim_callback,
