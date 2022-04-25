@@ -112,9 +112,7 @@ TIFF* TIFFFormat::MyTIFFOpen(const char* name, const char* mode, bool asynch)
 		return ((TIFF*)0);
 	auto tif = TIFFClientOpen(name, mode, &serializer_, TiffRead, TiffWrite, TiffSeek, TiffClose,
 							  TiffSize, nullptr, nullptr);
-	if(tif)
-		tif->tif_fd = serializer_.getFd();
-	else
+	if(!tif)
 		serializer_.close();
 
 	return tif;

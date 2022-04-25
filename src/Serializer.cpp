@@ -51,10 +51,10 @@ int Serializer::getMode(std::string mode)
 				m = O_RDWR;
 			break;
 		case 'w':
+			m = O_WRONLY | O_CREAT | O_TRUNC;
+			break;
 		case 'a':
-			m = O_RDWR | O_CREAT;
-			if(mode[0] == 'w')
-				m |= O_TRUNC;
+			m = O_WRONLY | O_CREAT;
 			break;
 		default:
 			printf("Bad mode %s", mode.c_str());
@@ -82,17 +82,24 @@ bool Serializer::open(std::string name, std::string mode, bool asynch)
 		return false;
 	}
 
-	if(!uring.attach(name, mode, fd))
-		return false;
-	asynchActive_ = asynch;
+	if (asynch) {
+		if(!uring.attach(name, mode, fd))
+			return false;
+		asynchActive_ = true;
+	}
 	fd_ = fd;
 
 	return true;
 }
 bool Serializer::close(void)
 {
-	asynchActive_ = false;
-	return uring.close();
+	if(fd_ < 0)
+		return true;
+
+	int rc = ::close(fd_);
+	fd_ = -1;
+
+	return rc == 0;
 }
 uint64_t Serializer::seek(int64_t off, int32_t whence)
 {
@@ -120,8 +127,10 @@ size_t Serializer::write(uint8_t* buf, size_t bytes_total)
 		scheduled_.offset = off_;
 		uring.write(scheduled_);
 		off_ += scheduled_.dataLen;
-		if(scheduled_.pooled && (++numPooledRequests_ == maxPooledRequests_))
-			close();
+		if(scheduled_.pooled && (++numPooledRequests_ == maxPooledRequests_)){
+			asynchActive_ = false;
+			bool rc = uring.close();
+		}
 		// clear
 		scheduled_ = SerializeBuf();
 
@@ -140,8 +149,10 @@ size_t Serializer::write(uint8_t* buf, size_t bytes_total)
 			break;
 	}
 
-	if(scheduled_.pooled && (++numPooledRequests_ == maxPooledRequests_))
-		close();
+	if(scheduled_.pooled && (++numPooledRequests_ == maxPooledRequests_)){
+		asynchActive_ = false;
+		bool rc = uring.close();
+	}
 
 	return (size_t)count;
 }
