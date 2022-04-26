@@ -2,6 +2,14 @@
 
 #include <string>
 #include "library.h"
+#include <cstdlib>
+
+#define K 1024
+#define ALIGNMENT (4*K)
+#define RDSIZE (16*K)
+#define WRTSIZE (16*K)
+#define BLOCKSIZE (512*K)
+
 
 struct SerializeBuf : public serialize_buf
 {
@@ -27,7 +35,7 @@ struct SerializeBuf : public serialize_buf
 	bool alloc(uint64_t len)
 	{
 		dealloc();
-		data = new uint8_t[len];
+		data = (uint8_t*)aligned_alloc(BLOCKSIZE,len);
 		if(data)
 		{
 			dataLen = len;
@@ -39,7 +47,7 @@ struct SerializeBuf : public serialize_buf
 	}
 	void dealloc()
 	{
-		delete[] data;
+		free(data);
 		data = nullptr;
 	}
 };

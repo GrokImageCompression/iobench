@@ -1,6 +1,7 @@
 #include <taskflow/taskflow.hpp>
 #include "TIFFFormat.h"
 #include "timer.h"
+#include <cstdlib>
 
 static void run(uint32_t concurrency, bool doStore, bool doAsynch){
 	   TIFFFormat tiffFormat;
@@ -26,12 +27,11 @@ static void run(uint32_t concurrency, bool doStore, bool doAsynch){
 		{
 			uint16_t tileIndex = j;
 			tasks[j].work([&tiffFormat, tileIndex,len,doStore,img] {
-				auto b = new uint8_t[len];
+			    uint8_t b[len] __attribute__((__aligned__(ALIGNMENT)));
 				for (uint64_t k = 0; k < img.rowsPerStrip_ * 16 * 1024; ++k)
 					b[k%len] = k;
 				if (doStore)
 					tiffFormat.encodePixels(b, len, tileIndex);
-				delete[] b;
 			});
 		}
 		ChronoTimer timer;
