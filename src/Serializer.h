@@ -34,4 +34,6 @@ struct Serializer
 	uint64_t off_;
 	serialize_callback reclaim_callback_;
 	void* reclaim_user_data_;
+	std::string filename_;
+	std::string mode_;
 };

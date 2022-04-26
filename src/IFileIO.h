@@ -10,7 +10,6 @@
 #define WRTSIZE (16*K)
 #define BLOCKSIZE (512*K)
 
-
 struct SerializeBuf : public serialize_buf
 {
   public:
@@ -43,7 +42,6 @@ struct SerializeBuf : public serialize_buf
 		}
 
 		return data != nullptr;
-		;
 	}
 	void dealloc()
 	{

@@ -88,6 +88,8 @@ bool Serializer::open(std::string name, std::string mode, bool asynch)
 		asynchActive_ = true;
 	}
 	fd_ = fd;
+	filename_ = name;
+	mode_ = mode;
 
 	return true;
 }
@@ -130,6 +132,9 @@ size_t Serializer::write(uint8_t* buf, size_t bytes_total)
 		if(scheduled_.pooled && (++numPooledRequests_ == maxPooledRequests_)){
 			asynchActive_ = false;
 			bool rc = uring.close();
+			::close(fd_);
+			fd_ = -1;
+			rc = open(filename_,"a",false);
 		}
 		// clear
 		scheduled_ = SerializeBuf();
