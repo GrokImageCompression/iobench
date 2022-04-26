@@ -54,6 +54,7 @@ set(LIBRARY_SRCS
   ${CMAKE_CURRENT_SOURCE_DIR}/src/FileUringIO.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/src/Serializer.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/src/TIFFFormat.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/SeamCache.cpp
   )
   
 add_executable(uring_mt_test ${CMAKE_CURRENT_SOURCE_DIR}/src/uring_mt_test.cpp  ${LIBRARY_SRCS} )

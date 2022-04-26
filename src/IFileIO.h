@@ -6,7 +6,6 @@
 
 #define K 1024
 #define ALIGNMENT (4*K)
-#define RDSIZE (16*K)
 #define WRTSIZE (16*K)
 #define BLOCKSIZE (512*K)
 
