@@ -52,6 +52,8 @@ int Serializer::getMode(std::string mode)
 			break;
 		case 'w':
 			m = O_WRONLY | O_CREAT | O_TRUNC;
+			if (mode[1] == 'd')
+				m |= O_DIRECT;
 			break;
 		case 'a':
 			m = O_WRONLY | O_CREAT;
