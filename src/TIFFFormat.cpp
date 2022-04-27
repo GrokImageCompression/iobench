@@ -90,9 +90,7 @@ void TIFFFormat::serializeReclaimBuffer(serialize_buf buffer)
 bool TIFFFormat::encodeInit(Image image, std::string filename, bool asynch){
 	image_ = image;
 	filename_ = filename;
-
 	tif_ = asynch ? MyTIFFOpen(filename.c_str(), "w", asynch) : TIFFOpen(filename.c_str(), "w");
-
 	auto maxRequests = (image_.height_ + image_.rowsPerStrip_ - 1) / image_.rowsPerStrip_;
 	serializer_.setMaxPooledRequests(maxRequests);
 	serializeRegisterApplicationClient();
@@ -107,7 +105,6 @@ bool TIFFFormat::encodePixels(uint8_t *pix, uint64_t len, uint32_t index){
 
 	return encodePixels(b);
 }
-
 TIFF* TIFFFormat::MyTIFFOpen(const char* name, const char* mode, bool asynch)
 {
 	if(!serializer_.open(name, mode,asynch))
@@ -119,11 +116,11 @@ TIFF* TIFFFormat::MyTIFFOpen(const char* name, const char* mode, bool asynch)
 
 	return tif;
 }
-
 bool TIFFFormat::encodePixelsCoreWrite(serialize_buf pixels)
 {
 	tmsize_t written =
 		TIFFWriteEncodedStrip(tif_, pixels.index, pixels.data, (tmsize_t)pixels.dataLen);
+
 	return written != -1;
 }
 bool TIFFFormat::encodeHeader(void){

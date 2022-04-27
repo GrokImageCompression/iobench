@@ -11,11 +11,11 @@ const uint32_t IMAGE_FORMAT_ENCODED_HEADER = 2;
 const uint32_t IMAGE_FORMAT_ENCODED_PIXELS = 4;
 const uint32_t IMAGE_FORMAT_ERROR = 8;
 
-typedef struct {
+struct TIFFFormatHeaderClassic {
 	uint16_t tiff_magic;      /* magic number (defines byte order) */
 	uint16_t tiff_version;    /* TIFF version number */
 	uint32_t tiff_diroff;     /* byte offset to first directory */
-} TIFFFormatHeaderClassic;
+};
 
 class TIFFFormat {
 public:
