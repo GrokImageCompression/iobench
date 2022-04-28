@@ -19,6 +19,7 @@ class FileUringIO : public IFileIO
 	virtual ~FileUringIO() override;
 	void serializeRegisterClientCallback(serialize_callback reclaim_callback, void* user_data);
 	bool attach(std::string fileName, std::string mode, int fd);
+	bool attach(FileUringIO *parent);
 	bool close(void) override;
 	uint64_t write(SerializeBuf buffer) override;
 	io_data* retrieveCompletion(bool peek, bool& success);
@@ -28,6 +29,7 @@ class FileUringIO : public IFileIO
 	int fd_;
 	bool ownsDescriptor;
 	std::string fileName_;
+	std::string mode_;
 	size_t requestsSubmitted;
 	size_t requestsCompleted;
 	int getMode(const char* mode);

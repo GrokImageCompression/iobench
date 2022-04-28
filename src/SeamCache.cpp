@@ -29,7 +29,8 @@ SeamInfo SeamCache::getSeamInfo(uint32_t strip){
 	SeamInfo ret;
 	ret.writeSize_ = init_.writeSize_;
 	ret.upperBegin_ = upperBegin(strip);
-	assert(ret.upperBegin_% init_.writeSize_ == 0);
+	assert(strip ==  (numStrips_- 1) ||
+				ret.upperBegin_% init_.writeSize_ == 0);
 	ret.upperEnd_   = stripEnd(strip);
 	ret.lowerBegin_ = stripOffset(strip);
 	// no lower seam
@@ -39,7 +40,8 @@ SeamInfo SeamCache::getSeamInfo(uint32_t strip){
 	else
 		ret.lowerEnd_ = upperBegin(strip-1) + init_.writeSize_;
 	assert(ret.lowerEnd_% init_.writeSize_ == 0);
-	assert((ret.upperBegin_ - ret.lowerEnd_) % init_.writeSize_ == 0);
+	assert((strip ==  (numStrips_- 1)) ||
+			(ret.upperBegin_ - ret.lowerEnd_) % init_.writeSize_ == 0);
 	ret.numWriteBlocks_ = (ret.upperBegin_ - ret.lowerEnd_) / init_.writeSize_;
 
 	return ret;

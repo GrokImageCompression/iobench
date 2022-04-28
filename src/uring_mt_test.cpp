@@ -38,16 +38,18 @@ static void run(uint32_t concurrency, bool doStore, bool doAsynch){
 		for(uint16_t j = 0; j < numStrips; ++j)
 		{
 			uint16_t strip = j;
-			tasks[j].work([&tiffFormat, strip,len,doStore,img] {
+			tasks[j].work([&tiffFormat, strip,len,doStore,img, &seamCache] {
 			    uint8_t b[len] __attribute__((__aligned__(ALIGNMENT)));
 				for (uint64_t k = 0; k < img.rowsPerStrip_ * 16 * 1024; ++k)
 					b[k%len] = k;
 				if (strip == 0){
-					auto inf = tiffFormat.getHeaderInfo();
-					memcpy(b,inf.header_,inf.length_);
+					auto headerInfo = tiffFormat.getHeaderInfo();
+					memcpy(b,headerInfo.header_,headerInfo.length_);
 				}
-				if (doStore)
-					tiffFormat.encodePixels(b, len, strip);
+				if (doStore) {
+					auto seamInfo = seamCache.getSeamInfo(strip);
+					tiffFormat.encodePixels(b, seamInfo.lowerBegin_, len, strip);
+				}
 			});
 		}
 		ChronoTimer timer;

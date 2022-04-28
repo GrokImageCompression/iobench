@@ -92,7 +92,10 @@ void TIFFFormat::serializeReclaimBuffer(serialize_buf buffer)
 		cb(buffer, serializer_.getSerializerReclaimUserData());
 }
 
-bool TIFFFormat::encodeInit(Image image, std::string filename, bool asynch, uint32_t concurrency){
+bool TIFFFormat::encodeInit(Image image,
+							std::string filename,
+							bool asynch,
+							uint32_t concurrency){
 	image_ = image;
 	filename_ = filename;
 	concurrency_ = concurrency;
@@ -100,10 +103,14 @@ bool TIFFFormat::encodeInit(Image image, std::string filename, bool asynch, uint
 	auto maxRequests = (image_.height_ + image_.rowsPerStrip_ - 1) / image_.rowsPerStrip_;
 	serializer_.setMaxPooledRequests(maxRequests);
 	serializeRegisterApplicationClient();
+	if (asynch){
+		// create one serializer per thread and attach to parent serializer
+
+	}
 
 	return tif_ != nullptr;
 }
-bool TIFFFormat::encodePixels(uint8_t *pix, uint64_t len, uint32_t index){
+bool TIFFFormat::encodePixels(uint8_t *pix, uint64_t offset, uint64_t len, uint32_t index){
 	auto b = pool_.get(len);
 	b.pooled = true;
 	b.index = index;

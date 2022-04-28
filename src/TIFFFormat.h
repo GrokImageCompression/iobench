@@ -35,7 +35,7 @@ public:
 										 void* user_data);
 	void serializeReclaimBuffer(serialize_buf buffer);
 	void serializeRegisterApplicationClient(void);
-	bool encodePixels(uint8_t *pix, uint64_t len, uint32_t index);
+	bool encodePixels(uint8_t *pix, uint64_t  offset, uint64_t len, uint32_t index);
 	HeaderInfo getHeaderInfo(void);
 private:
 	bool encodePixels(serialize_buf pixels);

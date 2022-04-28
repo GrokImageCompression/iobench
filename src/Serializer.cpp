@@ -1,4 +1,5 @@
 #include "Serializer.h"
+
 #define IO_MAX 2147483647U
 
 #include <unistd.h>
@@ -7,6 +8,15 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <cstring>
+
+static bool applicationReclaimCallback(serialize_buf buffer, void* serialize_user_data)
+{
+	auto pool = (BufferPool*)serialize_user_data;
+	if(pool)
+		pool->put(SerializeBuf(buffer));
+
+	return true;
+}
 
 Serializer::Serializer(void)
 	:
@@ -18,6 +28,10 @@ Serializer::Serializer(void)
 void Serializer::setMaxPooledRequests(uint32_t maxRequests)
 {
 	maxPooledRequests_ = maxRequests;
+}
+void Serializer::serializeRegisterApplicationClient(void)
+{
+	serializeRegisterClientCallback(applicationReclaimCallback, &pool_);
 }
 
 void Serializer::serializeRegisterClientCallback(serialize_callback reclaim_callback,
@@ -38,6 +52,10 @@ void* Serializer::getSerializerReclaimUserData(void)
 int Serializer::getFd(void)
 {
 	return fd_;
+}
+bool Serializer::attach(Serializer *parent){
+	fd_ = parent->fd_;
+	return uring.attach(&parent->uring);
 }
 int Serializer::getMode(std::string mode)
 {

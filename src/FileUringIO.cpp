@@ -33,11 +33,17 @@ void FileUringIO::serializeRegisterClientCallback(serialize_callback reclaim_cal
 bool FileUringIO::attach(std::string fileName, std::string mode, int fd)
 {
 	fileName_ = fileName;
+	mode_ = mode;
 	bool doRead = mode[0] == -'r';
 	fd_ = fd;
 	ownsDescriptor = false;
 
 	return (doRead ? true : initQueue());
+}
+
+bool FileUringIO::attach(FileUringIO *parent){
+
+	return attach(parent->fileName_, parent->mode_, parent->fd_);
 }
 
 bool FileUringIO::initQueue(void)

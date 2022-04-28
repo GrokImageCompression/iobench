@@ -2,6 +2,7 @@
 
 #include "IFileIO.h"
 #include "FileUringIO.h"
+#include "BufferPool.h"
 
 #include <cstdint>
 
@@ -16,10 +17,12 @@ struct Serializer
 {
 	Serializer(void);
 	void setMaxPooledRequests(uint32_t maxRequests);
+	void serializeRegisterApplicationClient(void);
 	void serializeRegisterClientCallback(serialize_callback reclaim_callback, void* user_data);
 	serialize_callback getSerializerReclaimCallback(void);
 	void* getSerializerReclaimUserData(void);
 	int getFd(void);
+	bool attach(Serializer *parent);
 	bool open(std::string name, std::string mode, bool asynch);
 	bool close(void);
 	size_t write(uint8_t* buf, uint64_t size);
@@ -43,4 +46,5 @@ struct Serializer
 	void* reclaim_user_data_;
 	std::string filename_;
 	std::string mode_;
+	BufferPool pool_;
 };
