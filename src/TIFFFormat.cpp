@@ -70,6 +70,12 @@ TIFFFormat::~TIFFFormat() {
 	if(tif_)
 		TIFFClose(tif_);
 }
+void TIFFFormat::getHeader(uint8_t **header, uint32_t *headerLength){
+	assert(header);
+	assert(headerLength);
+	*header = (uint8_t*)&header_;
+	*headerLength = sizeof(TIFFFormatHeaderClassic);
+}
 
 void TIFFFormat::serializeRegisterClientCallback(serialize_callback reclaim_callback,
 												  void* user_data)

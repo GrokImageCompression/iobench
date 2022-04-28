@@ -12,6 +12,8 @@ const uint32_t IMAGE_FORMAT_ENCODED_PIXELS = 4;
 const uint32_t IMAGE_FORMAT_ERROR = 8;
 
 struct TIFFFormatHeaderClassic {
+	TIFFFormatHeaderClassic() : tiff_magic(0x4949), tiff_version(42),tiff_diroff(0)
+	{}
 	uint16_t tiff_magic;      /* magic number (defines byte order) */
 	uint16_t tiff_version;    /* TIFF version number */
 	uint32_t tiff_diroff;     /* byte offset to first directory */
@@ -27,6 +29,7 @@ public:
 	void serializeReclaimBuffer(serialize_buf buffer);
 	void serializeRegisterApplicationClient(void);
 	bool encodePixels(uint8_t *pix, uint64_t len, uint32_t index);
+	void getHeader(uint8_t **header, uint32_t *headerLength);
 private:
 	bool encodePixels(serialize_buf pixels);
 	TIFF* MyTIFFOpen(const char* name, const char* mode, bool asynch);
@@ -42,4 +45,5 @@ private:
 	Serializer serializer_;
 	Image image_;
 	std::string filename_;
+	TIFFFormatHeaderClassic header_;
 };

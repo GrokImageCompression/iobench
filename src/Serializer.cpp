@@ -126,6 +126,19 @@ size_t Serializer::write(uint8_t* buf, size_t bytes_total)
 	// asynch
 	if(asynchActive_)
 	{
+#if 0
+		struct TIFFFormatHeaderClassic {
+			uint16_t tiff_magic;      /* magic number (defines byte order) */
+			uint16_t tiff_version;    /* TIFF version number */
+			uint32_t tiff_diroff;     /* byte offset to first directory */
+		};
+		if (off_ == 0 && bytes_total == 8){
+			auto hdr = (TIFFFormatHeaderClassic*)buf;
+
+			int k = 0 ;
+		}
+#endif
+
 		scheduled_.data = buf;
 		scheduled_.dataLen = bytes_total;
 		scheduled_.offset = off_;

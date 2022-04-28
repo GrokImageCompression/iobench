@@ -31,15 +31,15 @@ class SeamCache {
 public:
 	SeamCache(SeamCacheInitInfo initInfo);
 	virtual ~SeamCache();
-	SeamInfo getSeamInfo(uint32_t stripIndex);
-	uint8_t* getSeamBuffer(uint32_t stripIndex);
+	SeamInfo getSeamInfo(uint32_t strip);
+	uint8_t* getSeamBuffer(uint32_t strip);
 private:
-	uint32_t stripHeight(uint32_t stripIndex);
+	uint32_t stripHeight(uint32_t strip);
 	uint32_t nominalStripHeight(void);
-	uint64_t stripOffset(uint32_t stripIndex);
-	uint64_t stripLen(uint32_t stripIndex);
-	uint64_t stripEnd(uint32_t stripIndex);
-	uint64_t upperBegin(uint32_t stripIndex);
+	uint64_t stripOffset(uint32_t strip);
+	uint64_t stripLen(uint32_t strip);
+	uint64_t stripEnd(uint32_t strip);
+	uint64_t upperBegin(uint32_t strip);
 	SerializeBuf **seamBuffers_;
 	SeamCacheInitInfo init_;
 };

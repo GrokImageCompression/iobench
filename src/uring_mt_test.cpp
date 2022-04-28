@@ -60,7 +60,7 @@ int main(int argc, char** argv)
 		if (i > 0)
 			run(i, true, j != 0);
 		else
-			run(48,true,j != 0);
+			run(std::thread::hardware_concurrency(),true,j != 0);
 	}
 
    return 0;
