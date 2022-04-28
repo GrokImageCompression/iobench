@@ -30,7 +30,7 @@ class TIFFFormat {
 public:
 	TIFFFormat();
 	virtual ~TIFFFormat();
-	bool encodeInit(Image image, std::string filename, bool asynch);
+	bool encodeInit(Image image, std::string filename, bool asynch, uint32_t concurrency);
 	void serializeRegisterClientCallback(serialize_callback reclaim_callback,
 										 void* user_data);
 	void serializeReclaimBuffer(serialize_buf buffer);
@@ -53,4 +53,5 @@ private:
 	Image image_;
 	std::string filename_;
 	TIFFFormatHeaderClassic header_;
+	uint32_t concurrency_;
 };

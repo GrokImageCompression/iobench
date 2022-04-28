@@ -24,7 +24,7 @@ static void run(uint32_t concurrency, bool doStore, bool doAsynch){
 	   img.rowsPerStrip_ = seamInit.nominalStripHeight_;
 
 	   if (doStore)
-		   tiffFormat.encodeInit(img, "dump.tif", doAsynch);
+		   tiffFormat.encodeInit(img, "dump.tif", doAsynch,concurrency);
 
 	   printf("Run with concurrency = %d, store to disk = %d, use uring = %d\n",concurrency,doStore,doAsynch);
 

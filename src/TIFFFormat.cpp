@@ -92,9 +92,10 @@ void TIFFFormat::serializeReclaimBuffer(serialize_buf buffer)
 		cb(buffer, serializer_.getSerializerReclaimUserData());
 }
 
-bool TIFFFormat::encodeInit(Image image, std::string filename, bool asynch){
+bool TIFFFormat::encodeInit(Image image, std::string filename, bool asynch, uint32_t concurrency){
 	image_ = image;
 	filename_ = filename;
+	concurrency_ = concurrency;
 	tif_ =  MyTIFFOpen(filename.c_str(), "w", asynch);
 	auto maxRequests = (image_.height_ + image_.rowsPerStrip_ - 1) / image_.rowsPerStrip_;
 	serializer_.setMaxPooledRequests(maxRequests);

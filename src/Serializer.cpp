@@ -11,7 +11,7 @@
 Serializer::Serializer(void)
 	:
 	  fd_(-1),
-	  numPooledRequests_(0), maxPooledRequests_(0), asynchActive_(false), off_(0),
+	  numPooledRequests_(0), maxPooledRequests_(0), state_(SERIALIZE_STATE_NONE), off_(0),
 	  reclaim_callback_(nullptr), reclaim_user_data_(nullptr)
 {}
 
@@ -87,7 +87,9 @@ bool Serializer::open(std::string name, std::string mode, bool asynch)
 	if (asynch) {
 		if(!uring.attach(name, mode, fd))
 			return false;
-		asynchActive_ = true;
+		state_ = SERIALIZE_STATE_ASYNCH;
+	} else {
+		state_ = SERIALIZE_STATE_SYNCH;
 	}
 	fd_ = fd;
 	filename_ = name;
@@ -107,7 +109,7 @@ bool Serializer::close(void)
 }
 uint64_t Serializer::seek(int64_t off, int32_t whence)
 {
-	if(asynchActive_)
+	if(state_ != SERIALIZE_STATE_SYNCH)
 		return off_;
 	off_t rc = lseek(getFd(), off, whence);
 	if(rc == (off_t)-1)
@@ -121,10 +123,10 @@ uint64_t Serializer::seek(int64_t off, int32_t whence)
 
 	return (uint64_t)rc;
 }
-size_t Serializer::write(uint8_t* buf, size_t bytes_total)
+size_t Serializer::write(uint8_t* buf, uint64_t bytes_total)
 {
 	// asynch
-	if(asynchActive_)
+	if(state_ != SERIALIZE_STATE_SYNCH)
 	{
 #if 0
 		struct TIFFFormatHeaderClassic {
@@ -145,7 +147,7 @@ size_t Serializer::write(uint8_t* buf, size_t bytes_total)
 		uring.write(scheduled_);
 		off_ += scheduled_.dataLen;
 		if(scheduled_.pooled && (++numPooledRequests_ == maxPooledRequests_)){
-			asynchActive_ = false;
+			state_ = SERIALIZE_STATE_ASYNCH;
 			bool rc = uring.close();
 			::close(fd_);
 			fd_ = -1;
@@ -169,7 +171,7 @@ size_t Serializer::write(uint8_t* buf, size_t bytes_total)
 			break;
 	}
 
-	if(!asynchActive_ && scheduled_.pooled)
+	if(!state_ != SERIALIZE_STATE_SYNCH && scheduled_.pooled)
 	   ++numPooledRequests_;
 
 	return (size_t)count;

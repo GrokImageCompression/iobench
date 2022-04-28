@@ -5,6 +5,13 @@
 
 #include <cstdint>
 
+enum SerializeState{
+	SERIALIZE_STATE_NONE,
+	SERIALIZE_STATE_ASYNCH,
+	SERIALIZE_STATE_SIM_ASYNCH,
+	SERIALIZE_STATE_SYNCH
+};
+
 struct Serializer
 {
 	Serializer(void);
@@ -15,7 +22,7 @@ struct Serializer
 	int getFd(void);
 	bool open(std::string name, std::string mode, bool asynch);
 	bool close(void);
-	size_t write(uint8_t* buf, size_t size);
+	size_t write(uint8_t* buf, uint64_t size);
 	uint64_t seek(int64_t off, int32_t whence);
 	uint32_t getNumPooledRequests(void);
 	uint64_t getOffset(void);
@@ -30,7 +37,7 @@ struct Serializer
 	uint32_t numPooledRequests_;
 	// used to detect when library-orchestrated encode is complete
 	uint32_t maxPooledRequests_;
-	bool asynchActive_;
+	SerializeState state_;
 	uint64_t off_;
 	serialize_callback reclaim_callback_;
 	void* reclaim_user_data_;
