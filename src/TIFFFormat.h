@@ -31,10 +31,6 @@ public:
 	TIFFFormat();
 	virtual ~TIFFFormat();
 	bool encodeInit(Image image, std::string filename, bool asynch, uint32_t concurrency);
-	void serializeRegisterClientCallback(serialize_callback reclaim_callback,
-										 void* user_data);
-	void serializeReclaimBuffer(serialize_buf buffer);
-	void serializeRegisterApplicationClient(void);
 	bool encodePixels(uint8_t *pix, uint64_t  offset, uint64_t len, uint32_t index);
 	HeaderInfo getHeaderInfo(void);
 private:
@@ -48,10 +44,10 @@ private:
 	TIFF* tif_;
 	mutable std::mutex encodePixelmutex_;
 	uint32_t encodeState_;
-	BufferPool pool_;
 	Serializer serializer_;
 	Image image_;
 	std::string filename_;
 	TIFFFormatHeaderClassic header_;
 	uint32_t concurrency_;
+	Serializer **asynchSerializers_;
 };

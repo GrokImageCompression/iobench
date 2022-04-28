@@ -2,15 +2,6 @@
 #include "tiffiop.h"
 #define IO_MAX 2147483647U
 
-static bool applicationReclaimCallback(serialize_buf buffer, void* serialize_user_data)
-{
-	auto pool = (BufferPool*)serialize_user_data;
-	if(pool)
-		pool->put(SerializeBuf(buffer));
-
-	return true;
-}
-
 static tmsize_t TiffRead(thandle_t handle, void* buf, tmsize_t size)
 {
 	(void)(handle);
@@ -62,36 +53,23 @@ static uint64_t TiffSize(thandle_t handle)
 	return 0U;
 }
 
-TIFFFormat::TIFFFormat() : tif_(nullptr), encodeState_(IMAGE_FORMAT_UNENCODED){
+TIFFFormat::TIFFFormat() : tif_(nullptr), encodeState_(IMAGE_FORMAT_UNENCODED),
+							concurrency_(0), asynchSerializers_(nullptr){
 
 }
 
 TIFFFormat::~TIFFFormat() {
 	if(tif_)
 		TIFFClose(tif_);
+	if (asynchSerializers_){
+		for (uint32_t i = 0; i < concurrency_; ++i)
+			delete asynchSerializers_[i];
+		delete[] asynchSerializers_;
+	}
 }
 HeaderInfo TIFFFormat::getHeaderInfo(){
-	HeaderInfo ret((uint8_t*)&header_,sizeof(TIFFFormatHeaderClassic) );
-
-	return ret;
+	return  HeaderInfo((uint8_t*)&header_,sizeof(TIFFFormatHeaderClassic) );
 }
-
-void TIFFFormat::serializeRegisterClientCallback(serialize_callback reclaim_callback,
-												  void* user_data)
-{
-	serializer_.serializeRegisterClientCallback(reclaim_callback, user_data);
-}
-void TIFFFormat::serializeRegisterApplicationClient(void)
-{
-	serializeRegisterClientCallback(applicationReclaimCallback, &pool_);
-}
-void TIFFFormat::serializeReclaimBuffer(serialize_buf buffer)
-{
-	auto cb = serializer_.getSerializerReclaimCallback();
-	if(cb)
-		cb(buffer, serializer_.getSerializerReclaimUserData());
-}
-
 bool TIFFFormat::encodeInit(Image image,
 							std::string filename,
 							bool asynch,
@@ -99,19 +77,23 @@ bool TIFFFormat::encodeInit(Image image,
 	image_ = image;
 	filename_ = filename;
 	concurrency_ = concurrency;
-	tif_ =  MyTIFFOpen(filename.c_str(), "w", asynch);
 	auto maxRequests = (image_.height_ + image_.rowsPerStrip_ - 1) / image_.rowsPerStrip_;
 	serializer_.setMaxPooledRequests(maxRequests);
-	serializeRegisterApplicationClient();
+	serializer_.registerApplicationClient();
 	if (asynch){
 		// create one serializer per thread and attach to parent serializer
-
+		asynchSerializers_ = new Serializer*[concurrency];
+		for (uint32_t i = 0; i < concurrency_; ++i){
+			asynchSerializers_[i] = new Serializer();
+			asynchSerializers_[i]->attach(&serializer_);
+		}
 	}
+	tif_ =  MyTIFFOpen(filename.c_str(), "w", asynch);
 
 	return tif_ != nullptr;
 }
 bool TIFFFormat::encodePixels(uint8_t *pix, uint64_t offset, uint64_t len, uint32_t index){
-	auto b = pool_.get(len);
+	auto b = serializer_.getPoolBuffer(len);
 	b.pooled = true;
 	b.index = index;
 	memcpy(b.data, pix,len);

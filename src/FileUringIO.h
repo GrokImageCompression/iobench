@@ -17,7 +17,7 @@ class FileUringIO : public IFileIO
   public:
 	FileUringIO();
 	virtual ~FileUringIO() override;
-	void serializeRegisterClientCallback(serialize_callback reclaim_callback, void* user_data);
+	void registerClientCallback(serialize_callback reclaim_callback, void* user_data);
 	bool attach(std::string fileName, std::string mode, int fd);
 	bool attach(FileUringIO *parent);
 	bool close(void) override;

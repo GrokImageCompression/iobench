@@ -24,7 +24,7 @@ FileUringIO::~FileUringIO()
 {
 	close();
 }
-void FileUringIO::serializeRegisterClientCallback(serialize_callback reclaim_callback,
+void FileUringIO::registerClientCallback(serialize_callback reclaim_callback,
 												  void* user_data)
 {
 	reclaim_callback_ = reclaim_callback;

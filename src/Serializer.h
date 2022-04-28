@@ -8,8 +8,8 @@
 
 enum SerializeState{
 	SERIALIZE_STATE_NONE,
-	SERIALIZE_STATE_ASYNCH,
-	SERIALIZE_STATE_SIM_ASYNCH,
+	SERIALIZE_STATE_ASYNCH_WRITE,
+	SERIALIZE_STATE_SIM_WRITE,
 	SERIALIZE_STATE_SYNCH
 };
 
@@ -17,11 +17,9 @@ struct Serializer
 {
 	Serializer(void);
 	void setMaxPooledRequests(uint32_t maxRequests);
-	void serializeRegisterApplicationClient(void);
-	void serializeRegisterClientCallback(serialize_callback reclaim_callback, void* user_data);
-	serialize_callback getSerializerReclaimCallback(void);
-	void* getSerializerReclaimUserData(void);
-	int getFd(void);
+	void registerApplicationClient(void);
+	void registerClientCallback(serialize_callback reclaim_callback, void* user_data);
+	void reclaimBuffer(serialize_buf buffer);
 	bool attach(Serializer *parent);
 	bool open(std::string name, std::string mode, bool asynch);
 	bool close(void);
@@ -31,7 +29,8 @@ struct Serializer
 	uint64_t getOffset(void);
 	void initPooledRequest(void);
 	bool allPooledRequestsComplete(void);
-
+	SerializeBuf getPoolBuffer(uint64_t len);
+	void putPoolBuffer(SerializeBuf buf);
   private:
 	FileUringIO uring;
 	SerializeBuf scheduled_;

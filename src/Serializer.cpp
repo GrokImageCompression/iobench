@@ -29,29 +29,28 @@ void Serializer::setMaxPooledRequests(uint32_t maxRequests)
 {
 	maxPooledRequests_ = maxRequests;
 }
-void Serializer::serializeRegisterApplicationClient(void)
+void Serializer::registerApplicationClient(void)
 {
-	serializeRegisterClientCallback(applicationReclaimCallback, &pool_);
+	registerClientCallback(applicationReclaimCallback, &pool_);
+}
+void Serializer::reclaimBuffer(serialize_buf buffer)
+{
+	if(reclaim_callback_)
+		reclaim_callback_(buffer, reclaim_user_data_);
 }
 
-void Serializer::serializeRegisterClientCallback(serialize_callback reclaim_callback,
+void Serializer::registerClientCallback(serialize_callback reclaim_callback,
 												 void* user_data)
 {
 	reclaim_callback_ = reclaim_callback;
 	reclaim_user_data_ = user_data;
-	uring.serializeRegisterClientCallback(reclaim_callback, user_data);
+	uring.registerClientCallback(reclaim_callback, user_data);
 }
-serialize_callback Serializer::getSerializerReclaimCallback(void)
-{
-	return reclaim_callback_;
+SerializeBuf Serializer::getPoolBuffer(uint64_t len){
+	return pool_.get(len);
 }
-void* Serializer::getSerializerReclaimUserData(void)
-{
-	return reclaim_user_data_;
-}
-int Serializer::getFd(void)
-{
-	return fd_;
+void Serializer::putPoolBuffer(SerializeBuf buf){
+	pool_.put(buf);
 }
 bool Serializer::attach(Serializer *parent){
 	fd_ = parent->fd_;
@@ -105,7 +104,7 @@ bool Serializer::open(std::string name, std::string mode, bool asynch)
 	if (asynch) {
 		if(!uring.attach(name, mode, fd))
 			return false;
-		state_ = SERIALIZE_STATE_ASYNCH;
+		state_ = SERIALIZE_STATE_ASYNCH_WRITE;
 	} else {
 		state_ = SERIALIZE_STATE_SYNCH;
 	}
@@ -129,7 +128,7 @@ uint64_t Serializer::seek(int64_t off, int32_t whence)
 {
 	if(state_ != SERIALIZE_STATE_SYNCH)
 		return off_;
-	off_t rc = lseek(getFd(), off, whence);
+	off_t rc = lseek(fd_, off, whence);
 	if(rc == (off_t)-1)
 	{
 		if(strerror(errno) != NULL)
@@ -165,7 +164,7 @@ size_t Serializer::write(uint8_t* buf, uint64_t bytes_total)
 		uring.write(scheduled_);
 		off_ += scheduled_.dataLen;
 		if(scheduled_.pooled && (++numPooledRequests_ == maxPooledRequests_)){
-			state_ = SERIALIZE_STATE_ASYNCH;
+			state_ = SERIALIZE_STATE_ASYNCH_WRITE;
 			bool rc = uring.close();
 			::close(fd_);
 			fd_ = -1;
