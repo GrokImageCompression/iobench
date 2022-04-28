@@ -25,13 +25,17 @@ static void run(uint32_t concurrency, bool doStore, bool doAsynch){
 			tasks[i] = taskflow.placeholder();
 		for(uint16_t j = 0; j < numStrips; ++j)
 		{
-			uint16_t tileIndex = j;
-			tasks[j].work([&tiffFormat, tileIndex,len,doStore,img] {
+			uint16_t strip = j;
+			tasks[j].work([&tiffFormat, strip,len,doStore,img] {
 			    uint8_t b[len] __attribute__((__aligned__(ALIGNMENT)));
 				for (uint64_t k = 0; k < img.rowsPerStrip_ * 16 * 1024; ++k)
 					b[k%len] = k;
+				if (strip == 0){
+					auto inf = tiffFormat.getHeader();
+					memcpy(b,inf.header_,inf.length_);
+				}
 				if (doStore)
-					tiffFormat.encodePixels(b, len, tileIndex);
+					tiffFormat.encodePixels(b, len, strip);
 			});
 		}
 		ChronoTimer timer;

@@ -19,6 +19,13 @@ struct TIFFFormatHeaderClassic {
 	uint32_t tiff_diroff;     /* byte offset to first directory */
 };
 
+struct HeaderInfo{
+	HeaderInfo(uint8_t *header,uint32_t length ) : header_(header), length_(length)
+	{}
+	uint8_t *header_;
+	uint32_t length_;
+};
+
 class TIFFFormat {
 public:
 	TIFFFormat();
@@ -29,7 +36,7 @@ public:
 	void serializeReclaimBuffer(serialize_buf buffer);
 	void serializeRegisterApplicationClient(void);
 	bool encodePixels(uint8_t *pix, uint64_t len, uint32_t index);
-	void getHeader(uint8_t **header, uint32_t *headerLength);
+	HeaderInfo getHeader(void);
 private:
 	bool encodePixels(serialize_buf pixels);
 	TIFF* MyTIFFOpen(const char* name, const char* mode, bool asynch);
