@@ -36,7 +36,7 @@ public:
 	void serializeReclaimBuffer(serialize_buf buffer);
 	void serializeRegisterApplicationClient(void);
 	bool encodePixels(uint8_t *pix, uint64_t len, uint32_t index);
-	HeaderInfo getHeader(void);
+	HeaderInfo getHeaderInfo(void);
 private:
 	bool encodePixels(serialize_buf pixels);
 	TIFF* MyTIFFOpen(const char* name, const char* mode, bool asynch);

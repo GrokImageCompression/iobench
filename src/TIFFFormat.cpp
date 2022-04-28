@@ -70,7 +70,7 @@ TIFFFormat::~TIFFFormat() {
 	if(tif_)
 		TIFFClose(tif_);
 }
-HeaderInfo TIFFFormat::getHeader(){
+HeaderInfo TIFFFormat::getHeaderInfo(){
 	HeaderInfo ret((uint8_t*)&header_,sizeof(TIFFFormatHeaderClassic) );
 
 	return ret;

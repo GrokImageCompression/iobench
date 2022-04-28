@@ -1,17 +1,27 @@
 #include <taskflow/taskflow.hpp>
 #include "TIFFFormat.h"
+#include "SeamCache.h"
 #include "timer.h"
 #include <cstdlib>
 
 static void run(uint32_t concurrency, bool doStore, bool doAsynch){
-	   TIFFFormat tiffFormat;
+		uint32_t imgWidth = 88000;
+		uint8_t numComps = 1;
+	    TIFFFormat tiffFormat;
+		auto headerInfo = tiffFormat.getHeaderInfo();
+		SeamCacheInitInfo seamInit;
+		seamInit.headerSize_ = headerInfo.length_;
+		seamInit.nominalStripHeight_ = 32;
+		seamInit.height_ = 32000;
+		seamInit.stripPackedByteWidth_ = numComps * imgWidth;
+		seamInit.writeSize_ = WRTSIZE;
+		SeamCache seamCache(seamInit);
+
 	   Image img;
-	   img.width_ = 88000;
-	   img.height_ = 32000;
-	   img.numcomps_ = 1;
-	   img.rowsPerStrip_ = 32;
-	   uint32_t numStrips = (img.height_ + img.rowsPerStrip_ - 1) / img.rowsPerStrip_;
-	   uint64_t len = img.width_ * img.rowsPerStrip_ * img.numcomps_;
+	   img.width_ = imgWidth;
+	   img.height_ = seamInit.height_;
+	   img.numcomps_ = numComps;
+	   img.rowsPerStrip_ = seamInit.nominalStripHeight_;
 
 	   if (doStore)
 		   tiffFormat.encodeInit(img, "dump.tif", doAsynch);
@@ -20,9 +30,11 @@ static void run(uint32_t concurrency, bool doStore, bool doAsynch){
 
 		tf::Executor exec(concurrency);
 		tf::Taskflow taskflow;
+		uint32_t numStrips = seamCache.getNumStrips();
 		auto tasks = new tf::Task[numStrips];
 		for(uint64_t i = 0; i < numStrips; i++)
 			tasks[i] = taskflow.placeholder();
+		uint64_t len = img.width_ * img.rowsPerStrip_ * img.numcomps_;
 		for(uint16_t j = 0; j < numStrips; ++j)
 		{
 			uint16_t strip = j;
@@ -31,7 +43,7 @@ static void run(uint32_t concurrency, bool doStore, bool doAsynch){
 				for (uint64_t k = 0; k < img.rowsPerStrip_ * 16 * 1024; ++k)
 					b[k%len] = k;
 				if (strip == 0){
-					auto inf = tiffFormat.getHeader();
+					auto inf = tiffFormat.getHeaderInfo();
 					memcpy(b,inf.header_,inf.length_);
 				}
 				if (doStore)
