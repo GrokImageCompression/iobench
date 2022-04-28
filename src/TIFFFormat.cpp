@@ -80,6 +80,7 @@ bool TIFFFormat::encodeInit(Image image,
 	auto maxRequests = (image_.height_ + image_.rowsPerStrip_ - 1) / image_.rowsPerStrip_;
 	serializer_.setMaxPooledRequests(maxRequests);
 	serializer_.registerApplicationClient();
+	std::string mode = "w'";
 	if (asynch){
 		// create one serializer per thread and attach to parent serializer
 		asynchSerializers_ = new Serializer*[concurrency];
@@ -87,8 +88,9 @@ bool TIFFFormat::encodeInit(Image image,
 			asynchSerializers_[i] = new Serializer();
 			asynchSerializers_[i]->attach(&serializer_);
 		}
+		mode = "wd";
 	}
-	tif_ =  MyTIFFOpen(filename.c_str(), "w", asynch);
+	tif_ =  MyTIFFOpen(filename.c_str(), mode.c_str(), asynch);
 
 	return tif_ != nullptr;
 }
@@ -100,11 +102,12 @@ bool TIFFFormat::encodePixels(uint8_t *pix, uint64_t offset, uint64_t len, uint3
 
 	return encodePixels(b);
 }
-TIFF* TIFFFormat::MyTIFFOpen(const char* name, const char* mode, bool asynch)
+TIFF* TIFFFormat::MyTIFFOpen(std::string name, std::string mode, bool asynch)
 {
 	if(!serializer_.open(name, mode,asynch))
 		return ((TIFF*)0);
-	auto tif = TIFFClientOpen(name, mode, &serializer_, TiffRead, TiffWrite, TiffSeek, TiffClose,
+	auto tif = TIFFClientOpen(name.c_str(),
+							mode.c_str(), &serializer_, TiffRead, TiffWrite, TiffSeek, TiffClose,
 							  TiffSize, nullptr, nullptr);
 	if(!tif)
 		serializer_.close();

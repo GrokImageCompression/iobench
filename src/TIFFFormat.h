@@ -35,7 +35,7 @@ public:
 	HeaderInfo getHeaderInfo(void);
 private:
 	bool encodePixels(serialize_buf pixels);
-	TIFF* MyTIFFOpen(const char* name, const char* mode, bool asynch);
+	TIFF* MyTIFFOpen(std::string name, std::string mode, bool asynch);
 	bool encodeHeader(void);
 	bool encodePixelsCoreWrite(serialize_buf pixels);
 	bool encodePixelsCore(serialize_buf pixels);
