@@ -56,13 +56,10 @@ static uint64_t TiffSize(thandle_t handle)
 TIFFFormat::TIFFFormat() : tif_(nullptr), encodeState_(IMAGE_FORMAT_UNENCODED),
 							concurrency_(0), asynchSerializers_(nullptr),
 							asynch_(false)
-{
-
-}
+{}
 
 TIFFFormat::~TIFFFormat() {
-	if(tif_)
-		TIFFClose(tif_);
+	close();
 	if (asynchSerializers_){
 		for (uint32_t i = 0; i < concurrency_; ++i)
 			delete asynchSerializers_[i];
@@ -125,6 +122,16 @@ TIFF* TIFFFormat::MyTIFFOpen(std::string name, std::string mode, bool asynch)
 		serializer_.close();
 
 	return tif;
+}
+bool TIFFFormat::close(void){
+	serializer_.close();
+	if (asynchSerializers_){
+		for (uint32_t i = 0; i < concurrency_; ++i)
+			asynchSerializers_[i]->close();
+	}
+	if(tif_)
+		TIFFClose(tif_);
+	return true;
 }
 bool TIFFFormat::encodePixelsCoreWrite(serialize_buf pixels)
 {

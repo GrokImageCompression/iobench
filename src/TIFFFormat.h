@@ -33,6 +33,7 @@ public:
 	bool encodeInit(Image image, std::string filename, bool asynch, uint32_t concurrency);
 	bool encodePixels(uint32_t threadId, uint8_t *pix, uint64_t  offset, uint64_t len, uint32_t index);
 	HeaderInfo getHeaderInfo(void);
+	bool close(void);
 private:
 	bool encodePixels(serialize_buf pixels);
 	TIFF* MyTIFFOpen(std::string name, std::string mode, bool asynch);

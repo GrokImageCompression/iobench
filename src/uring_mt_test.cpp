@@ -52,6 +52,7 @@ static void run(uint32_t concurrency, bool doStore, bool doAsynch){
 		ChronoTimer timer;
 		timer.start();
 		exec.run(taskflow).wait();
+		tiffFormat.close();
 		timer.finish("");
 }
 static void run(uint8_t i){

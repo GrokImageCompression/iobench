@@ -24,6 +24,10 @@ Serializer::Serializer(void)
 	  numPooledRequests_(0), maxPooledRequests_(0), state_(SERIALIZE_STATE_NONE), off_(0),
 	  reclaim_callback_(nullptr), reclaim_user_data_(nullptr)
 {}
+Serializer::~Serializer(void){
+	uring.close();
+	close();
+}
 
 void Serializer::setMaxPooledRequests(uint32_t maxRequests)
 {

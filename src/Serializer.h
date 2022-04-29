@@ -16,6 +16,7 @@ enum SerializeState{
 struct Serializer
 {
 	Serializer(void);
+	~Serializer(void);
 	void setMaxPooledRequests(uint32_t maxRequests);
 	void registerApplicationClient(void);
 	void registerClientCallback(serialize_callback reclaim_callback, void* user_data);
