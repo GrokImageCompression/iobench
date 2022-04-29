@@ -175,10 +175,13 @@ uint64_t FileUringIO::write(SerializeBuf buffer)
 	io_data* data = new io_data();
 	if(!buffer.pooled)
 	{
-		auto b = new uint8_t[buffer.dataLen];
+		auto b = new uint8_t[buffer.dataLen + buffer.headerSize_];
 		if(!b)
 			return false;
-		memcpy(b, buffer.data, buffer.dataLen);
+		memcpy(b + buffer.headerSize_, buffer.data, buffer.dataLen);
+		if (buffer.index == 0 && buffer.header_ && buffer.headerSize_){
+			memcpy(b , buffer.header_, buffer.headerSize_);
+		}
 		buffer.data = b;
 	}
 	data->buf = buffer;

@@ -26,7 +26,6 @@ Serializer::Serializer(void)
 	  header_(nullptr), headerSize_(0)
 {}
 Serializer::~Serializer(void){
-	uring.close();
 	close();
 }
 void Serializer::setHeader(uint8_t *header, uint32_t headerSize){
@@ -156,6 +155,12 @@ size_t Serializer::write(uint8_t* buf, uint64_t offset, uint64_t size, uint32_t 
 	ser.data = buf;
 	ser.dataLen = size;
 	ser.offset = offset;
+	ser.index = index;
+	if (index == 0){
+		ser.header_ = header_;
+		ser.headerSize_ = headerSize_;
+	}
+
 	return uring.write(ser);
 }
 size_t Serializer::write(uint8_t* buf, uint64_t bytes_total)
