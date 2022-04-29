@@ -145,10 +145,11 @@ uint64_t Serializer::seek(int64_t off, int32_t whence)
 	return (uint64_t)rc;
 }
 size_t Serializer::write(uint8_t* buf, uint64_t offset, uint64_t size){
-	scheduled_.data = buf;
-	scheduled_.dataLen = size;
-	scheduled_.offset = offset;
-	return uring.write(scheduled_);
+	SerializeBuf ser;
+	ser.data = buf;
+	ser.dataLen = size;
+	ser.offset = offset;
+	return uring.write(ser);
 }
 size_t Serializer::write(uint8_t* buf, uint64_t bytes_total)
 {

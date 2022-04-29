@@ -59,30 +59,6 @@ bool FileUringIO::initQueue(void)
 	return true;
 }
 
-int FileUringIO::getMode(const char* mode)
-{
-	int m = -1;
-
-	switch(mode[0])
-	{
-		case 'r':
-			m = O_RDONLY;
-			if(mode[1] == '+')
-				m = O_RDWR;
-			break;
-		case 'w':
-			m = O_WRONLY | O_CREAT | O_TRUNC;
-			break;
-		case 'a':
-			m = O_RDWR | O_CREAT;
-			break;
-		default:
-			printf("Bad mode %s", mode);
-			break;
-	}
-	return m;
-}
-
 void FileUringIO::enqueue(io_uring* ring, io_data* data, bool readop, int fd)
 {
 	auto sqe = io_uring_get_sqe(ring);

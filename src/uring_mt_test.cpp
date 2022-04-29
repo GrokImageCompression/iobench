@@ -41,7 +41,7 @@ static void run(uint32_t concurrency, bool doStore, bool doAsynch){
 			tasks[j].work([&tiffFormat, strip,len,doStore,img,headerInfo, &seamCache, &exec] {
 				auto seamInfo = seamCache.getSeamInfo(strip);
 			    uint8_t b[strip == 0 ? len + headerInfo.length_ : len] __attribute__((__aligned__(ALIGNMENT)));
-				for (uint64_t k = 0; k < img.rowsPerStrip_ * 16 * 1024; ++k)
+				for (uint64_t k = 0; k < img.rowsPerStrip_ * 2 * 1024; ++k)
 					b[k%len] = k;
 				if (strip == 0)
 					memcpy(b,headerInfo.header_,headerInfo.length_);

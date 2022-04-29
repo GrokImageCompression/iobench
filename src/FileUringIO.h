@@ -32,7 +32,6 @@ class FileUringIO : public IFileIO
 	std::string mode_;
 	size_t requestsSubmitted;
 	size_t requestsCompleted;
-	int getMode(const char* mode);
 	void enqueue(io_uring* ring, io_data* data, bool readop, int fd);
 	bool initQueue(void);
 
