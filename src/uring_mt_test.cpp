@@ -5,6 +5,9 @@
 #include <cstdlib>
 
 static void run(uint32_t concurrency, bool doStore, bool doAsynch){
+	ChronoTimer timer;
+	timer.start();
+	{
 		uint32_t imgWidth = 88000;
 		uint8_t numComps = 1;
 	    TIFFFormat tiffFormat;
@@ -28,7 +31,6 @@ static void run(uint32_t concurrency, bool doStore, bool doAsynch){
 				   doAsynch ? SERIALIZE_STATE_ASYNCH_WRITE : SERIALIZE_STATE_SYNCH,concurrency);
 
 	   printf("Run with concurrency = %d, store to disk = %d, use uring = %d\n",concurrency,doStore,doAsynch);
-
 		tf::Executor exec(concurrency);
 		tf::Taskflow taskflow;
 		uint32_t numStrips = seamCache.getNumStrips();
@@ -42,7 +44,7 @@ static void run(uint32_t concurrency, bool doStore, bool doAsynch){
 			tasks[j].work([&tiffFormat, strip,len,doStore,img,headerInfo, &seamCache, &exec] {
 				auto seamInfo = seamCache.getSeamInfo(strip);
 			    uint8_t b[strip == 0 ? len + headerInfo.length_ : len] __attribute__((__aligned__(ALIGNMENT)));
-				for (uint64_t k = 0; k < img.rowsPerStrip_ * 2 * 1024; ++k)
+				for (uint64_t k = 0; k < img.rowsPerStrip_ * 8 * 1024; ++k)
 					b[k%len] = k;
 				if (strip == 0)
 					memcpy(b,headerInfo.header_,headerInfo.length_);
@@ -50,11 +52,11 @@ static void run(uint32_t concurrency, bool doStore, bool doAsynch){
 					tiffFormat.encodePixels(exec.this_worker_id(),  b, seamInfo.lowerBegin_, len, strip);
 			});
 		}
-		ChronoTimer timer;
-		timer.start();
+
 		exec.run(taskflow).wait();
 		tiffFormat.close();
-		timer.finish("");
+	}
+	timer.finish("");
 }
 static void run(uint8_t i){
 	   run(i,false,false);
