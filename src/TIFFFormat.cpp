@@ -80,7 +80,7 @@ bool TIFFFormat::encodeInit(Image image,
 	serializer_.registerApplicationClient();
 	bool rc;
 	if (serializeState == SERIALIZE_STATE_ASYNCH_WRITE){
-		if(!serializer_.open(filename, "wd",SERIALIZE_STATE_ASYNCH_WRITE))
+		if(!serializer_.open(filename, "w",SERIALIZE_STATE_ASYNCH_WRITE))
 			return false;
 		// create one serializer per thread and attach to parent serializer
 		asynchSerializers_ = new Serializer*[concurrency];

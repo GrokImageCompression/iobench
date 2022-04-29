@@ -6,6 +6,8 @@
 
 #include <cstdint>
 
+const int32_t invalid_fd = -1;
+
 enum SerializeState {
 	SERIALIZE_STATE_NONE,
 	SERIALIZE_STATE_ASYNCH_WRITE,

@@ -20,7 +20,7 @@ static bool applicationReclaimCallback(serialize_buf buffer, void* serialize_use
 
 Serializer::Serializer(void)
 	:
-	  fd_(-1),
+	  fd_(invalid_fd),
 	  numPooledRequests_(0), maxPooledRequests_(0), state_(SERIALIZE_STATE_NONE), off_(0),
 	  reclaim_callback_(nullptr), reclaim_user_data_(nullptr)
 {}
@@ -58,6 +58,7 @@ void Serializer::putPoolBuffer(SerializeBuf buf){
 }
 bool Serializer::attach(Serializer *parent){
 	fd_ = parent->fd_;
+	state_ = parent->state_;
 	return uring.attach(&parent->uring);
 }
 int Serializer::getMode(std::string mode)
@@ -120,11 +121,14 @@ bool Serializer::open(std::string name, std::string mode, SerializeState seriali
 }
 bool Serializer::close(void)
 {
-	if(fd_ < 0)
+	if (state_ == SERIALIZE_STATE_ASYNCH_WRITE)
+		uring.close();
+
+	if(fd_ == invalid_fd)
 		return true;
 
 	int rc = ::close(fd_);
-	fd_ = -1;
+	fd_ = invalid_fd;
 
 	return rc == 0;
 }

@@ -5,58 +5,59 @@
 #include <cstdlib>
 
 static void run(uint32_t concurrency, bool doStore, bool doAsynch){
+	TIFFFormat tiffFormat;
+	uint32_t imgWidth = 88000;
+	uint8_t numComps = 1;
+	auto headerInfo = tiffFormat.getHeaderInfo();
+	SeamCacheInitInfo seamInit;
+	seamInit.headerSize_ = headerInfo.length_;
+	seamInit.nominalStripHeight_ = 32;
+	seamInit.height_ = 32000;
+	seamInit.stripPackedByteWidth_ = numComps * imgWidth;
+	seamInit.writeSize_ = WRTSIZE;
+	SeamCache seamCache(seamInit);
+
+   Image img;
+   img.width_ = imgWidth;
+   img.height_ = seamInit.height_;
+   img.numcomps_ = numComps;
+   img.rowsPerStrip_ = seamInit.nominalStripHeight_;
+
+   if (doStore)
+	   tiffFormat.encodeInit(img, "dump.tif",
+			   doAsynch ? SERIALIZE_STATE_ASYNCH_WRITE : SERIALIZE_STATE_SYNCH,concurrency);
+
+   printf("Run with concurrency = %d, store to disk = %d, use uring = %d\n",concurrency,doStore,doAsynch);
+	tf::Executor exec(concurrency);
+	tf::Taskflow taskflow;
+	uint32_t numStrips = seamCache.getNumStrips();
+	auto tasks = new tf::Task[numStrips];
+	for(uint64_t i = 0; i < numStrips; i++)
+		tasks[i] = taskflow.placeholder();
+	uint64_t len = img.width_ * img.rowsPerStrip_ * img.numcomps_;
+	for(uint16_t j = 0; j < numStrips; ++j)
+	{
+		uint16_t strip = j;
+		tasks[j].work([&tiffFormat, strip,len,doStore,img,headerInfo, &seamCache, &exec] {
+			auto seamInfo = seamCache.getSeamInfo(strip);
+			uint8_t b[strip == 0 ? len + headerInfo.length_ : len] __attribute__((__aligned__(ALIGNMENT)));
+			for (uint64_t k = 0; k < img.rowsPerStrip_ * 2 * 1024; ++k)
+				b[k%len] = k;
+			if (strip == 0)
+				memcpy(b,headerInfo.header_,headerInfo.length_);
+			if (doStore)
+				tiffFormat.encodePixels(exec.this_worker_id(),  b, seamInfo.lowerBegin_, len, strip);
+		});
+	}
 	ChronoTimer timer;
 	timer.start();
-	{
-		uint32_t imgWidth = 88000;
-		uint8_t numComps = 1;
-	    TIFFFormat tiffFormat;
-		auto headerInfo = tiffFormat.getHeaderInfo();
-		SeamCacheInitInfo seamInit;
-		seamInit.headerSize_ = headerInfo.length_;
-		seamInit.nominalStripHeight_ = 32;
-		seamInit.height_ = 32000;
-		seamInit.stripPackedByteWidth_ = numComps * imgWidth;
-		seamInit.writeSize_ = WRTSIZE;
-		SeamCache seamCache(seamInit);
-
-	   Image img;
-	   img.width_ = imgWidth;
-	   img.height_ = seamInit.height_;
-	   img.numcomps_ = numComps;
-	   img.rowsPerStrip_ = seamInit.nominalStripHeight_;
-
-	   if (doStore)
-		   tiffFormat.encodeInit(img, "dump.tif",
-				   doAsynch ? SERIALIZE_STATE_ASYNCH_WRITE : SERIALIZE_STATE_SYNCH,concurrency);
-
-	   printf("Run with concurrency = %d, store to disk = %d, use uring = %d\n",concurrency,doStore,doAsynch);
-		tf::Executor exec(concurrency);
-		tf::Taskflow taskflow;
-		uint32_t numStrips = seamCache.getNumStrips();
-		auto tasks = new tf::Task[numStrips];
-		for(uint64_t i = 0; i < numStrips; i++)
-			tasks[i] = taskflow.placeholder();
-		uint64_t len = img.width_ * img.rowsPerStrip_ * img.numcomps_;
-		for(uint16_t j = 0; j < numStrips; ++j)
-		{
-			uint16_t strip = j;
-			tasks[j].work([&tiffFormat, strip,len,doStore,img,headerInfo, &seamCache, &exec] {
-				auto seamInfo = seamCache.getSeamInfo(strip);
-			    uint8_t b[strip == 0 ? len + headerInfo.length_ : len] __attribute__((__aligned__(ALIGNMENT)));
-				for (uint64_t k = 0; k < img.rowsPerStrip_ * 8 * 1024; ++k)
-					b[k%len] = k;
-				if (strip == 0)
-					memcpy(b,headerInfo.header_,headerInfo.length_);
-				if (doStore)
-					tiffFormat.encodePixels(exec.this_worker_id(),  b, seamInfo.lowerBegin_, len, strip);
-			});
-		}
-
-		exec.run(taskflow).wait();
+	exec.run(taskflow).wait();
+	timer.finish(doAsynch ? "time to schedule" : "");
+	if (doAsynch){
+		timer.start();
 		tiffFormat.close();
-	}
-	timer.finish("");
+		timer.finish("time to flush");
+	};
 }
 static void run(uint8_t i){
 	   run(i,false,false);
