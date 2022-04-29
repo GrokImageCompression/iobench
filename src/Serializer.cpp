@@ -22,13 +22,17 @@ Serializer::Serializer(void)
 	:
 	  fd_(invalid_fd),
 	  numPooledRequests_(0), maxPooledRequests_(0), state_(SERIALIZE_STATE_NONE), off_(0),
-	  reclaim_callback_(nullptr), reclaim_user_data_(nullptr)
+	  reclaim_callback_(nullptr), reclaim_user_data_(nullptr),
+	  header_(nullptr), headerSize_(0)
 {}
 Serializer::~Serializer(void){
 	uring.close();
 	close();
 }
-
+void Serializer::setHeader(uint8_t *header, uint32_t headerSize){
+	header_ = header;
+	headerSize_ = headerSize;
+}
 void Serializer::setMaxPooledRequests(uint32_t maxRequests)
 {
 	maxPooledRequests_ = maxRequests;
@@ -108,7 +112,6 @@ bool Serializer::open(std::string name, std::string mode, SerializeState seriali
 		return false;
 	}
 	state_ = serializeState;
-
 	if (state_ == SERIALIZE_STATE_ASYNCH_WRITE) {
 		if(!uring.attach(name, mode, fd))
 			return false;
@@ -148,7 +151,7 @@ uint64_t Serializer::seek(int64_t off, int32_t whence)
 
 	return (uint64_t)rc;
 }
-size_t Serializer::write(uint8_t* buf, uint64_t offset, uint64_t size){
+size_t Serializer::write(uint8_t* buf, uint64_t offset, uint64_t size, uint32_t index){
 	SerializeBuf ser;
 	ser.data = buf;
 	ser.dataLen = size;

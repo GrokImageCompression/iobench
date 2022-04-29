@@ -87,6 +87,7 @@ bool TIFFFormat::encodeInit(Image image,
 		for (uint32_t i = 0; i < concurrency_; ++i){
 			asynchSerializers_[i] = new Serializer();
 			asynchSerializers_[i]->attach(&serializer_);
+			asynchSerializers_[i]->setHeader((uint8_t*)&header_, sizeof(header_));
 		}
 		rc = true;
 	} else {
@@ -102,7 +103,7 @@ bool TIFFFormat::encodePixels(uint32_t threadId, uint8_t *pix, uint64_t offset,
 		case SERIALIZE_STATE_ASYNCH_WRITE:
 		{
 			auto ser = asynchSerializers_[threadId];
-			auto written = ser->write(pix,offset,len);
+			auto written = ser->write(pix,offset,len,index);
 			return written == len;
 		}
 			break;

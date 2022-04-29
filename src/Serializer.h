@@ -26,7 +26,7 @@ struct Serializer
 	bool attach(Serializer *parent);
 	bool open(std::string name, std::string mode, SerializeState serializeState);
 	bool close(void);
-	size_t write(uint8_t* buf, uint64_t offset, uint64_t size);
+	size_t write(uint8_t* buf, uint64_t offset, uint64_t size, uint32_t index);
 	size_t write(uint8_t* buf, uint64_t size);
 	uint64_t seek(int64_t off, int32_t whence);
 	uint32_t getNumPooledRequests(void);
@@ -36,6 +36,7 @@ struct Serializer
 	SerializeBuf getPoolBuffer(uint64_t len);
 	void putPoolBuffer(SerializeBuf buf);
 	SerializeState getState(void);
+	void setHeader(uint8_t *header, uint32_t headerSize);
   private:
 	FileUringIO uring;
 	SerializeBuf scheduled_;
@@ -51,4 +52,6 @@ struct Serializer
 	std::string filename_;
 	std::string mode_;
 	BufferPool pool_;
+	uint8_t *header_;
+	uint32_t headerSize_;
 };
