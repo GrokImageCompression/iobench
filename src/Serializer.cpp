@@ -86,8 +86,10 @@ int Serializer::getMode(std::string mode)
 	return (m);
 }
 
-bool Serializer::open(std::string name, std::string mode, bool asynch)
+bool Serializer::open(std::string name, std::string mode, SerializeState serializeState)
 {
+	if (!close())
+		return false;
 	bool doRead = mode[0] == -'r';
 	int fd = 0;
 
@@ -104,13 +106,11 @@ bool Serializer::open(std::string name, std::string mode, bool asynch)
 			printf("Cannot open %s", name.c_str());
 		return false;
 	}
+	state_ = serializeState;
 
-	if (asynch) {
+	if (state_ == SERIALIZE_STATE_ASYNCH_WRITE) {
 		if(!uring.attach(name, mode, fd))
 			return false;
-		state_ = SERIALIZE_STATE_ASYNCH_WRITE;
-	} else {
-		state_ = SERIALIZE_STATE_SYNCH;
 	}
 	fd_ = fd;
 	filename_ = name;
@@ -179,7 +179,7 @@ size_t Serializer::write(uint8_t* buf, uint64_t bytes_total)
 			bool rc = uring.close();
 			::close(fd_);
 			fd_ = -1;
-			rc = open(filename_,"a",false);
+			rc = open(filename_,"a",SERIALIZE_STATE_SYNCH_SIM_PIXEL_WRITE);
 		}
 		// clear
 		scheduled_ = SerializeBuf();
@@ -204,7 +204,9 @@ size_t Serializer::write(uint8_t* buf, uint64_t bytes_total)
 
 	return (size_t)count;
 }
-
+SerializeState Serializer::getState(void){
+	return state_;
+}
 void Serializer::initPooledRequest(void)
 {
 	scheduled_.pooled = true;

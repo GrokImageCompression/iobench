@@ -30,13 +30,13 @@ class TIFFFormat {
 public:
 	TIFFFormat();
 	virtual ~TIFFFormat();
-	bool encodeInit(Image image, std::string filename, bool asynch, uint32_t concurrency);
+	bool encodeInit(Image image, std::string filename, SerializeState serializeState, uint32_t concurrency);
 	bool encodePixels(uint32_t threadId, uint8_t *pix, uint64_t  offset, uint64_t len, uint32_t index);
 	HeaderInfo getHeaderInfo(void);
 	bool close(void);
 private:
 	bool encodePixels(serialize_buf pixels);
-	TIFF* MyTIFFOpen(std::string name, std::string mode, bool asynch);
+	TIFF* MyTIFFOpen(std::string name, std::string mode, SerializeState serializeState);
 	bool encodeHeader(void);
 	bool encodePixelsCoreWrite(serialize_buf pixels);
 	bool encodePixelsCore(serialize_buf pixels);
@@ -51,5 +51,4 @@ private:
 	TIFFFormatHeaderClassic header_;
 	uint32_t concurrency_;
 	Serializer **asynchSerializers_;
-	bool asynch_;
 };

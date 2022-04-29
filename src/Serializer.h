@@ -6,7 +6,7 @@
 
 #include <cstdint>
 
-enum SerializeState{
+enum SerializeState {
 	SERIALIZE_STATE_NONE,
 	SERIALIZE_STATE_ASYNCH_WRITE,
 	SERIALIZE_STATE_SYNCH_SIM_PIXEL_WRITE,
@@ -22,7 +22,7 @@ struct Serializer
 	void registerClientCallback(serialize_callback reclaim_callback, void* user_data);
 	void reclaimBuffer(serialize_buf buffer);
 	bool attach(Serializer *parent);
-	bool open(std::string name, std::string mode, bool asynch);
+	bool open(std::string name, std::string mode, SerializeState serializeState);
 	bool close(void);
 	size_t write(uint8_t* buf, uint64_t offset, uint64_t size);
 	size_t write(uint8_t* buf, uint64_t size);
@@ -33,6 +33,7 @@ struct Serializer
 	bool allPooledRequestsComplete(void);
 	SerializeBuf getPoolBuffer(uint64_t len);
 	void putPoolBuffer(SerializeBuf buf);
+	SerializeState getState(void);
   private:
 	FileUringIO uring;
 	SerializeBuf scheduled_;
