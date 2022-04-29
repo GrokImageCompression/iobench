@@ -31,7 +31,7 @@ public:
 	TIFFFormat();
 	virtual ~TIFFFormat();
 	bool encodeInit(Image image, std::string filename, bool asynch, uint32_t concurrency);
-	bool encodePixels(uint8_t *pix, uint64_t  offset, uint64_t len, uint32_t index);
+	bool encodePixels(uint32_t threadId, uint8_t *pix, uint64_t  offset, uint64_t len, uint32_t index);
 	HeaderInfo getHeaderInfo(void);
 private:
 	bool encodePixels(serialize_buf pixels);
@@ -50,4 +50,5 @@ private:
 	TIFFFormatHeaderClassic header_;
 	uint32_t concurrency_;
 	Serializer **asynchSerializers_;
+	bool asynch_;
 };

@@ -17,7 +17,8 @@ struct SeamInfo{
 
 struct SeamCacheInitInfo{
 	SeamCacheInitInfo() : headerSize_(0),
-			stripPackedByteWidth_(0), height_(0),
+			stripPackedByteWidth_(0), nominalStripHeight_(0),
+			height_(0),
 			writeSize_(0)
 	{}
 	uint64_t headerSize_;

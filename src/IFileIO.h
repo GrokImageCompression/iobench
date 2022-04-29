@@ -7,7 +7,6 @@
 #define K 1024
 #define ALIGNMENT (4*K)
 #define WRTSIZE (16*K)
-#define BLOCKSIZE (512*K)
 
 struct SerializeBuf : public serialize_buf
 {
@@ -33,7 +32,7 @@ struct SerializeBuf : public serialize_buf
 	bool alloc(uint64_t len)
 	{
 		dealloc();
-		data = (uint8_t*)aligned_alloc(BLOCKSIZE,len);
+		data = (uint8_t*)aligned_alloc(ALIGNMENT,len);
 		if(data)
 		{
 			dataLen = len;

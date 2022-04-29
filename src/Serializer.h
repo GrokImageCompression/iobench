@@ -23,6 +23,7 @@ struct Serializer
 	bool attach(Serializer *parent);
 	bool open(std::string name, std::string mode, bool asynch);
 	bool close(void);
+	size_t write(uint8_t* buf, uint64_t offset, uint64_t size);
 	size_t write(uint8_t* buf, uint64_t size);
 	uint64_t seek(int64_t off, int32_t whence);
 	uint32_t getNumPooledRequests(void);
