@@ -77,11 +77,12 @@ bool TIFFFormat::encodeInit(Image image,
 	concurrency_ = concurrency;
 	auto maxRequests = (image_.height_ + image_.rowsPerStrip_ - 1) / image_.rowsPerStrip_;
 	serializer_.setMaxPooledRequests(maxRequests);
-	serializer_.registerApplicationClient();
 	bool rc;
+	const char* mode = "w";
+	if(!serializer_.open(filename, mode,serializeState))
+		return false;
 	if (serializeState == SERIALIZE_STATE_ASYNCH_WRITE){
-		if(!serializer_.open(filename, "w",SERIALIZE_STATE_ASYNCH_WRITE))
-			return false;
+		serializer_.registerApplicationClient();
 		// create one serializer per thread and attach to parent serializer
 		asynchSerializers_ = new Serializer*[concurrency];
 		for (uint32_t i = 0; i < concurrency_; ++i){
@@ -91,7 +92,7 @@ bool TIFFFormat::encodeInit(Image image,
 		}
 		rc = true;
 	} else {
-		tif_ =  MyTIFFOpen(filename.c_str(), "w", SERIALIZE_STATE_SYNCH);
+		tif_ =  openTIFF(filename.c_str(), mode, SERIALIZE_STATE_SYNCH);
 		rc = tif_ != nullptr;
 	}
 
@@ -120,22 +121,18 @@ bool TIFFFormat::encodePixels(uint32_t threadId, uint8_t *pix, uint64_t offset,
 
 	return false;
 }
-TIFF* TIFFFormat::MyTIFFOpen(std::string name, std::string mode, SerializeState serializeState)
+TIFF* TIFFFormat::openTIFF(std::string name, std::string mode, SerializeState serializeState)
 {
-	if(!serializer_.open(name, mode,serializeState))
-		return ((TIFF*)0);
 	TIFF* tif = nullptr;
-	if (serializeState == SERIALIZE_STATE_SYNCH) {
-		tif = TIFFOpen(name.c_str(), mode.c_str());
-	}
-	else {
+	if (serializeState == SERIALIZE_STATE_ASYNCH_WRITE) {
 		tif = TIFFClientOpen(name.c_str(),
 								mode.c_str(), &serializer_, TiffRead, TiffWrite,
 									TiffSeek, TiffClose,
 										TiffSize, nullptr, nullptr);
 	}
-	if(!tif)
-		serializer_.close();
+	else {
+		tif = TIFFOpen(name.c_str(), mode.c_str());
+	}
 
 	return tif;
 }
