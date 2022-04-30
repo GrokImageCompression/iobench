@@ -40,8 +40,8 @@ static void run(uint32_t concurrency, bool doStore, bool doAsynch){
 		uint16_t strip = j;
 		tasks[j].work([&tiffFormat, strip,len,doStore,img,headerInfo, &seamCache, &exec] {
 			auto seamInfo = seamCache.getSeamInfo(strip);
-			uint8_t b[strip == 0 ? len + headerInfo.length_ : len] __attribute__((__aligned__(ALIGNMENT)));
-			for (uint64_t k = 0; k < img.rowsPerStrip_ * 2 * 1024; ++k)
+			uint8_t b[len] __attribute__((__aligned__(ALIGNMENT)));
+			for (uint64_t k = 0; k < img.rowsPerStrip_ * 16 * 1024; ++k)
 				b[k%len] = k;
 			if (doStore)
 				tiffFormat.encodePixels(exec.this_worker_id(),  b, seamInfo.lowerBegin_, len, strip);

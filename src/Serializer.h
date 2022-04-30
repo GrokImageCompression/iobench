@@ -11,7 +11,6 @@ const int32_t invalid_fd = -1;
 enum SerializeState {
 	SERIALIZE_STATE_NONE,
 	SERIALIZE_STATE_ASYNCH_WRITE,
-	SERIALIZE_STATE_SYNCH_SIM_PIXEL_WRITE,
 	SERIALIZE_STATE_SYNCH
 };
 
@@ -26,11 +25,10 @@ struct Serializer
 	bool attach(Serializer *parent);
 	bool open(std::string name, std::string mode, SerializeState serializeState);
 	bool close(void);
-	size_t write(uint8_t* buf, uint64_t offset, uint64_t size, uint32_t index);
+	size_t writeAsynch(uint8_t* buf, uint64_t offset, uint64_t size, uint32_t index);
 	size_t write(uint8_t* buf, uint64_t size);
 	uint64_t seek(int64_t off, int32_t whence);
 	uint32_t getNumPooledRequests(void);
-	uint64_t getOffset(void);
 	void initPooledRequest(void);
 	bool allPooledRequestsComplete(void);
 	SerializeBuf getPoolBuffer(uint64_t len);

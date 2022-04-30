@@ -103,11 +103,9 @@ bool TIFFFormat::encodePixels(uint32_t threadId, uint8_t *pix, uint64_t offset,
 		case SERIALIZE_STATE_ASYNCH_WRITE:
 		{
 			auto ser = asynchSerializers_[threadId];
-			auto written = ser->write(pix,offset,len,index);
+			auto written = ser->writeAsynch(pix,offset,len,index);
 			return written == len;
 		}
-			break;
-		case SERIALIZE_STATE_SYNCH_SIM_PIXEL_WRITE:
 			break;
 		case SERIALIZE_STATE_SYNCH:
 		{
@@ -126,9 +124,16 @@ TIFF* TIFFFormat::MyTIFFOpen(std::string name, std::string mode, SerializeState 
 {
 	if(!serializer_.open(name, mode,serializeState))
 		return ((TIFF*)0);
-	auto tif = TIFFClientOpen(name.c_str(),
-							mode.c_str(), &serializer_, TiffRead, TiffWrite, TiffSeek, TiffClose,
-							  TiffSize, nullptr, nullptr);
+	TIFF* tif = nullptr;
+	if (serializeState == SERIALIZE_STATE_SYNCH) {
+		tif = TIFFOpen(name.c_str(), mode.c_str());
+	}
+	else {
+		tif = TIFFClientOpen(name.c_str(),
+								mode.c_str(), &serializer_, TiffRead, TiffWrite,
+									TiffSeek, TiffClose,
+										TiffSize, nullptr, nullptr);
+	}
 	if(!tif)
 		serializer_.close();
 

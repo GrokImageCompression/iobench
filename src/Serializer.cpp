@@ -136,7 +136,7 @@ bool Serializer::close(void)
 }
 uint64_t Serializer::seek(int64_t off, int32_t whence)
 {
-	if(state_ != SERIALIZE_STATE_SYNCH)
+	if(state_ == SERIALIZE_STATE_ASYNCH_WRITE)
 		return off_;
 	off_t rc = lseek(fd_, off, whence);
 	if(rc == (off_t)-1)
@@ -150,8 +150,9 @@ uint64_t Serializer::seek(int64_t off, int32_t whence)
 
 	return (uint64_t)rc;
 }
-size_t Serializer::write(uint8_t* buf, uint64_t offset, uint64_t size, uint32_t index){
+size_t Serializer::writeAsynch(uint8_t* buf, uint64_t offset, uint64_t size, uint32_t index){
 	SerializeBuf ser;
+	ser.pooled = true;
 	ser.data = buf;
 	ser.dataLen = size;
 	ser.offset = offset;
@@ -166,36 +167,13 @@ size_t Serializer::write(uint8_t* buf, uint64_t offset, uint64_t size, uint32_t 
 size_t Serializer::write(uint8_t* buf, uint64_t bytes_total)
 {
 	// asynch
-	if(state_ != SERIALIZE_STATE_SYNCH)
-	{
-#if 0
-		struct TIFFFormatHeaderClassic {
-			uint16_t tiff_magic;      /* magic number (defines byte order) */
-			uint16_t tiff_version;    /* TIFF version number */
-			uint32_t tiff_diroff;     /* byte offset to first directory */
-		};
-		if (off_ == 0 && bytes_total == 8){
-			auto hdr = (TIFFFormatHeaderClassic*)buf;
-
-			int k = 0 ;
+	if (state_ == SERIALIZE_STATE_ASYNCH_WRITE){
+		if (off_ != 0) {
+			// this must be a pooled request
+			if(++numPooledRequests_ == maxPooledRequests_)
+				state_ = SERIALIZE_STATE_SYNCH;
 		}
-#endif
-
-		scheduled_.data = buf;
-		scheduled_.dataLen = bytes_total;
-		scheduled_.offset = off_;
-		uring.write(scheduled_);
-		off_ += scheduled_.dataLen;
-		if(scheduled_.pooled && (++numPooledRequests_ == maxPooledRequests_)){
-			state_ = SERIALIZE_STATE_ASYNCH_WRITE;
-			bool rc = uring.close();
-			::close(fd_);
-			fd_ = -1;
-			rc = open(filename_,"a",SERIALIZE_STATE_SYNCH_SIM_PIXEL_WRITE);
-		}
-		// clear
-		scheduled_ = SerializeBuf();
-
+		off_ += bytes_total;
 		return bytes_total;
 	}
 	ssize_t count = 0;
@@ -226,10 +204,6 @@ void Serializer::initPooledRequest(void)
 uint32_t Serializer::getNumPooledRequests(void)
 {
 	return numPooledRequests_;
-}
-uint64_t Serializer::getOffset(void)
-{
-	return off_;
 }
 bool Serializer::allPooledRequestsComplete(void)
 {
