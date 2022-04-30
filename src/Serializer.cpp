@@ -9,6 +9,8 @@
 #include <fcntl.h>
 #include <cstring>
 
+bool debugAsynch = false;
+
 static bool applicationReclaimCallback(serialize_buf buffer, void* serialize_user_data)
 {
 	auto pool = (BufferPool*)serialize_user_data;
@@ -141,6 +143,8 @@ bool Serializer::close(void)
 }
 uint64_t Serializer::seek(int64_t off, int32_t whence)
 {
+	if (state_ == SERIALIZE_STATE_ASYNCH_WRITE)
+		return off_;
 	off_t rc = lseek(fd_, off, whence);
 	if(rc == (off_t)-1)
 	{
@@ -150,6 +154,8 @@ uint64_t Serializer::seek(int64_t off, int32_t whence)
 			printf("I/O error");
 		return (uint64_t)-1;
 	}
+	if (debugAsynch)
+		fprintf(stderr,"seek to offset %d (actual offset %d)\n",off,rc);
 
 	return (uint64_t)rc;
 }
@@ -170,16 +176,21 @@ size_t Serializer::writeAsynch(uint8_t* buf, uint64_t offset, uint64_t size, uin
 size_t Serializer::write(uint8_t* buf, uint64_t bytes_total)
 {
 	// asynch
-	if (bytes_total != 4 &&
-			state_ == SERIALIZE_STATE_ASYNCH_WRITE){
+	if (state_ == SERIALIZE_STATE_ASYNCH_WRITE){
 		// offset 0 write is for file header
 		if (off_ != 0) {
 			if(++numPooledRequests_ == maxPooledRequests_)
 				state_ = SERIALIZE_STATE_SYNCH;
 		}
-		//fprintf(stderr,"simulated write %d : %ld\n",numPooledRequests_,bytes_total);
+		if (debugAsynch)
+			fprintf(stderr,"simulated write %d at offset %d : %ld\n",
+							numPooledRequests_,bytes_total,off_);
 		off_ += bytes_total;
 		return bytes_total;
+	}
+	if (debugAsynch) {
+		int pos = lseek(fd_, 0, SEEK_CUR);
+		fprintf(stderr,"actual write %ld at offset %d\n",bytes_total, pos);
 	}
 	ssize_t count = 0;
 	size_t bytes_written = 0;
@@ -193,9 +204,6 @@ size_t Serializer::write(uint8_t* buf, uint64_t bytes_total)
 		if(count <= 0)
 			break;
 	}
-
-	//static int ct = 0;
-	//fprintf(stderr,"%d actual write %ld\n",ct++,bytes_total);
 	if(scheduled_.pooled)
 	   ++numPooledRequests_;
 
