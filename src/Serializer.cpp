@@ -172,12 +172,12 @@ size_t Serializer::write(uint8_t* buf, uint64_t bytes_total)
 	// asynch
 	if (bytes_total != 4 &&
 			state_ == SERIALIZE_STATE_ASYNCH_WRITE){
+		// offset 0 write is for file header
 		if (off_ != 0) {
-			// this must be a pooled request
-			//fprintf(stderr,"sim write %d : %ld\n",numPooledRequests_,bytes_total);
 			if(++numPooledRequests_ == maxPooledRequests_)
 				state_ = SERIALIZE_STATE_SYNCH;
 		}
+		//fprintf(stderr,"simulated write %d : %ld\n",numPooledRequests_,bytes_total);
 		off_ += bytes_total;
 		return bytes_total;
 	}
@@ -194,7 +194,8 @@ size_t Serializer::write(uint8_t* buf, uint64_t bytes_total)
 			break;
 	}
 
-	//fprintf(stderr,"write %ld\n",bytes_total);
+	//static int ct = 0;
+	//fprintf(stderr,"%d actual write %ld\n",ct++,bytes_total);
 	if(scheduled_.pooled)
 	   ++numPooledRequests_;
 

@@ -214,7 +214,7 @@ bool TIFFFormat::encodeFinish(void)
 		//3. simulate strip writes
 		for(uint32_t j = 0; j < image_.numStrips_; ++j){
 			uint64_t len =
-					(j == image_.numStrips_ - 1) ? image_.finalStripLen_ : image_.stripLen_;
+					(j == image_.numStrips_ - 1 && image_.finalStripLen_) ? image_.finalStripLen_ : image_.stripLen_;
 			//fprintf(stderr,"TIFF initiate sim write %d\n",j);
 			tmsize_t written =
 				TIFFWriteEncodedStrip(tif_, j, nullptr, (tmsize_t)len);
