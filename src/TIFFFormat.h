@@ -51,5 +51,5 @@ private:
 	TIFFFormatHeaderClassic header_;
 	uint32_t concurrency_;
 	Serializer **asynchSerializers_;
-	uint32_t numPixelWrites_;
+	std::atomic<uint32_t> numPixelWrites_;
 };

@@ -24,8 +24,10 @@ static void run(uint32_t concurrency, bool doStore, bool doAsynch){
 			uint8_t b[len] __attribute__((__aligned__(ALIGNMENT)));
 			for (uint64_t k = 0; k < img.rowsPerStrip_ * 16 * 1024; ++k)
 				b[k%len] = k;
-			if (doStore)
-				tiffFormat.encodePixels(exec.this_worker_id(),  b, img.stripLen_ * strip, len, strip);
+			if (doStore) {
+				bool ret = tiffFormat.encodePixels(exec.this_worker_id(),  b, img.stripLen_ * strip, len, strip);
+				assert(ret);
+			}
 		});
 	}
 	ChronoTimer timer;

@@ -110,25 +110,30 @@ bool TIFFFormat::encodePixels(uint32_t threadId, uint8_t *pix, uint64_t offset,
 			//1. schedule write
 			auto ser = asynchSerializers_[threadId];
 			auto written = ser->writeAsynch(pix,offset,len,index);
-			if (written != len)
+			if (written != len){
+				printf("Error writing strip\n");
 				return false;
+			}
 
 			if (++numPixelWrites_ == image_.numStrips_){
 				// 1. close asynch serializers
 				for (uint32_t i = 0; i < concurrency_; ++i)
 					asynchSerializers_[i]->close();
+
+				// 2. close and re-open main serializer in append mode
 				serializer_.close();
 				if(!serializer_.open(filename_, "a",SERIALIZE_STATE_ASYNCH_WRITE))
 					return false;
 
-				// 2. open tiff and encode header
+				// 3. open tiff and encode header
 				tif_ =   TIFFClientOpen(filename_.c_str(),
 						"w", &serializer_, TiffRead, TiffWrite,
 							TiffSeek, TiffClose,
 								TiffSize, nullptr, nullptr);
 				if (!tif_)
 					return false;
-				encodeHeader();
+				if (!encodeHeader())
+					return false;
 
 				//3. simulate strip writes
 				for(uint32_t j = 0; j < image_.numStrips_; ++j){
@@ -137,8 +142,10 @@ bool TIFFFormat::encodePixels(uint32_t threadId, uint8_t *pix, uint64_t offset,
 					//fprintf(stderr,"TIFF initiate sim write %d\n",j);
 					tmsize_t written =
 						TIFFWriteEncodedStrip(tif_, j, nullptr, (tmsize_t)len);
-					if (written == -1)
+					if (written == -1){
+						printf("Error writing strip\n");
 						return false;
+					}
 				}
 
 				//5. close
