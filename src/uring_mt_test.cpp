@@ -6,56 +6,41 @@
 
 static void run(uint32_t concurrency, bool doStore, bool doAsynch){
 	TIFFFormat tiffFormat;
-	uint32_t imgWidth = 88000;
-	uint8_t numComps = 1;
-	auto headerInfo = tiffFormat.getHeaderInfo();
-	SeamCacheInitInfo seamInit;
-	seamInit.headerSize_ = headerInfo.length_;
-	seamInit.nominalStripHeight_ = 32;
-	seamInit.height_ = 32000;
-	seamInit.stripPackedByteWidth_ = numComps * imgWidth;
-	seamInit.writeSize_ = WRTSIZE;
-	SeamCache seamCache(seamInit);
-
-   Image img;
-   img.width_ = imgWidth;
-   img.height_ = seamInit.height_;
-   img.numcomps_ = numComps;
-   img.rowsPerStrip_ = seamInit.nominalStripHeight_;
-
+	Image img(88000, 32005,1,32);
+   auto headerInfo = tiffFormat.getHeaderInfo();
    if (doStore)
 	   tiffFormat.encodeInit(img, "dump.tif",
 			   doAsynch ? SERIALIZE_STATE_ASYNCH_WRITE : SERIALIZE_STATE_SYNCH,concurrency);
 
-   printf("Run with concurrency = %d, store to disk = %d, use uring = %d\n",concurrency,doStore,doAsynch);
+    printf("Run with concurrency = %d, store to disk = %d, use uring = %d\n",concurrency,doStore,doAsynch);
 	tf::Executor exec(concurrency);
 	tf::Taskflow taskflow;
-	uint32_t numStrips = seamCache.getNumStrips();
-	auto tasks = new tf::Task[numStrips];
-	for(uint64_t i = 0; i < numStrips; i++)
+	auto tasks = new tf::Task[img.numStrips_];
+	for(uint64_t i = 0; i < img.numStrips_; i++)
 		tasks[i] = taskflow.placeholder();
-	uint64_t len = img.width_ * img.rowsPerStrip_ * img.numcomps_;
-	for(uint16_t j = 0; j < numStrips; ++j)
+	for(uint16_t j = 0; j < img.numStrips_; ++j)
 	{
 		uint16_t strip = j;
-		tasks[j].work([&tiffFormat, strip,len,doStore,img,headerInfo, &seamCache, &exec] {
-			auto seamInfo = seamCache.getSeamInfo(strip);
-			uint8_t b[len] __attribute__((__aligned__(ALIGNMENT)));
+		tasks[j].work([&tiffFormat, strip,doStore,img,headerInfo, &exec] {
+			uint64_t len =  (strip == img.numStrips_ - 1) ? img.finalStripLen_ : img.stripLen_;
+			uint8_t b[img.stripLen_] __attribute__((__aligned__(ALIGNMENT)));
 			for (uint64_t k = 0; k < img.rowsPerStrip_ * 16 * 1024; ++k)
 				b[k%len] = k;
 			if (doStore)
-				tiffFormat.encodePixels(exec.this_worker_id(),  b, seamInfo.lowerBegin_, len, strip);
+				tiffFormat.encodePixels(exec.this_worker_id(),  b, img.stripLen_ * strip, len, strip);
 		});
 	}
 	ChronoTimer timer;
 	timer.start();
 	exec.run(taskflow).wait();
 	timer.finish(doAsynch ? "time to schedule" : "");
-	if (doAsynch){
+	if (doAsynch) {
 		timer.start();
 		tiffFormat.close();
 		timer.finish("time to flush");
-	};
+	}else {
+		tiffFormat.close();
+	}
 }
 static void run(uint8_t i){
 	   run(i,false,false);

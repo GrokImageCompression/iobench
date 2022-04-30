@@ -75,7 +75,7 @@ bool TIFFFormat::encodeInit(Image image,
 	image_ = image;
 	filename_ = filename;
 	concurrency_ = concurrency;
-	auto maxRequests = (image_.height_ + image_.rowsPerStrip_ - 1) / image_.rowsPerStrip_;
+	auto maxRequests = image.numStrips_;
 	serializer_.setMaxPooledRequests(maxRequests);
 	bool rc;
 	const char* mode = "w";
@@ -123,18 +123,10 @@ bool TIFFFormat::encodePixels(uint32_t threadId, uint8_t *pix, uint64_t offset,
 }
 TIFF* TIFFFormat::openTIFF(std::string name, std::string mode, SerializeState serializeState)
 {
-	TIFF* tif = nullptr;
-	if (serializeState == SERIALIZE_STATE_ASYNCH_WRITE) {
-		tif = TIFFClientOpen(name.c_str(),
-								mode.c_str(), &serializer_, TiffRead, TiffWrite,
-									TiffSeek, TiffClose,
-										TiffSize, nullptr, nullptr);
-	}
-	else {
-		tif = TIFFOpen(name.c_str(), mode.c_str());
-	}
-
-	return tif;
+	return TIFFClientOpen(name.c_str(),
+							mode.c_str(), &serializer_, TiffRead, TiffWrite,
+								TiffSeek, TiffClose,
+									TiffSize, nullptr, nullptr);
 }
 bool TIFFFormat::close(void){
 	serializer_.close();
