@@ -41,7 +41,7 @@ static void run(uint32_t concurrency, bool doStore, bool doAsynch){
 			uint32_t strip = j;
 			closeFlow.nextTask().work([&tiffFormat, strip,&exec] {
 				bool ret = tiffFormat.close(exec.this_worker_id());
-				//assert(ret);
+				assert(ret);
 			});
 		}
 	}

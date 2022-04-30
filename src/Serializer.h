@@ -52,4 +52,5 @@ struct Serializer
 	BufferPool pool_;
 	uint8_t *header_;
 	uint32_t headerSize_;
+	bool ownsFileDescriptor_;
 };

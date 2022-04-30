@@ -23,7 +23,7 @@ Serializer::Serializer(void)
 	  fd_(invalid_fd),
 	  numPooledRequests_(0), maxPooledRequests_(0), state_(SERIALIZE_STATE_NONE), off_(0),
 	  reclaim_callback_(nullptr), reclaim_user_data_(nullptr),
-	  header_(nullptr), headerSize_(0)
+	  header_(nullptr), headerSize_(0),ownsFileDescriptor_(false)
 {}
 Serializer::~Serializer(void){
 	close();
@@ -118,6 +118,7 @@ bool Serializer::open(std::string name, std::string mode, SerializeState seriali
 	fd_ = fd;
 	filename_ = name;
 	mode_ = mode;
+	ownsFileDescriptor_ = true;
 
 	return true;
 }
@@ -126,11 +127,15 @@ bool Serializer::close(void)
 	if (state_ == SERIALIZE_STATE_ASYNCH_WRITE)
 		uring.close();
 
-	if(fd_ == invalid_fd)
-		return true;
+	int rc = 0;
+	if (ownsFileDescriptor_) {
+		if(fd_ == invalid_fd)
+			return true;
 
-	int rc = ::close(fd_);
-	fd_ = invalid_fd;
+		rc = ::close(fd_);
+		fd_ = invalid_fd;
+	}
+	ownsFileDescriptor_ = false;
 
 	return rc == 0;
 }
