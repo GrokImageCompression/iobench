@@ -54,7 +54,8 @@ static uint64_t TiffSize(thandle_t handle)
 }
 
 TIFFFormat::TIFFFormat() : tif_(nullptr), encodeState_(IMAGE_FORMAT_UNENCODED),
-							concurrency_(0), asynchSerializers_(nullptr)
+							concurrency_(0), asynchSerializers_(nullptr),
+							numPixelWrites_(0)
 {}
 
 TIFFFormat::~TIFFFormat() {
@@ -78,8 +79,8 @@ bool TIFFFormat::encodeInit(Image image,
 	auto maxRequests = image.numStrips_;
 	serializer_.setMaxPooledRequests(maxRequests);
 	bool rc;
-	const char* mode = "w";
-	if(!serializer_.open(filename, mode,serializeState))
+	mode_ = "w";
+	if(!serializer_.open(filename_, mode_,serializeState))
 		return false;
 	if (serializeState == SERIALIZE_STATE_ASYNCH_WRITE){
 		serializer_.registerApplicationClient();
@@ -92,7 +93,10 @@ bool TIFFFormat::encodeInit(Image image,
 		}
 		rc = true;
 	} else {
-		tif_ =  openTIFF(filename.c_str(), mode, SERIALIZE_STATE_SYNCH);
+		tif_ =   TIFFClientOpen(filename_.c_str(),
+				mode_.c_str(), &serializer_, TiffRead, TiffWrite,
+					TiffSeek, TiffClose,
+						TiffSize, nullptr, nullptr);
 		rc = tif_ != nullptr;
 	}
 
@@ -103,9 +107,45 @@ bool TIFFFormat::encodePixels(uint32_t threadId, uint8_t *pix, uint64_t offset,
 	switch(serializer_.getState() ){
 		case SERIALIZE_STATE_ASYNCH_WRITE:
 		{
+			//1. schedule write
 			auto ser = asynchSerializers_[threadId];
 			auto written = ser->writeAsynch(pix,offset,len,index);
-			return written == len;
+			if (written != len)
+				return false;
+
+			if (++numPixelWrites_ == image_.numStrips_){
+				// 1. close asynch serializers
+				for (uint32_t i = 0; i < concurrency_; ++i)
+					asynchSerializers_[i]->close();
+				serializer_.close();
+				if(!serializer_.open(filename_, "a",SERIALIZE_STATE_ASYNCH_WRITE))
+					return false;
+
+				// 2. open tiff and encode header
+				tif_ =   TIFFClientOpen(filename_.c_str(),
+						"w", &serializer_, TiffRead, TiffWrite,
+							TiffSeek, TiffClose,
+								TiffSize, nullptr, nullptr);
+				if (!tif_)
+					return false;
+				encodeHeader();
+
+				//3. simulate strip writes
+				for(uint32_t j = 0; j < image_.numStrips_; ++j){
+					uint64_t len =
+							(j == image_.numStrips_ - 1) ? image_.finalStripLen_ : image_.stripLen_;
+					//fprintf(stderr,"TIFF initiate sim write %d\n",j);
+					tmsize_t written =
+						TIFFWriteEncodedStrip(tif_, j, nullptr, (tmsize_t)len);
+					if (written == -1)
+						return false;
+				}
+
+				//5. close
+				close();
+			}
+
+			return true;
 		}
 			break;
 		case SERIALIZE_STATE_SYNCH:
@@ -121,21 +161,16 @@ bool TIFFFormat::encodePixels(uint32_t threadId, uint8_t *pix, uint64_t offset,
 
 	return false;
 }
-TIFF* TIFFFormat::openTIFF(std::string name, std::string mode, SerializeState serializeState)
-{
-	return TIFFClientOpen(name.c_str(),
-							mode.c_str(), &serializer_, TiffRead, TiffWrite,
-								TiffSeek, TiffClose,
-									TiffSize, nullptr, nullptr);
-}
 bool TIFFFormat::close(void){
-	serializer_.close();
 	if (asynchSerializers_){
 		for (uint32_t i = 0; i < concurrency_; ++i)
 			asynchSerializers_[i]->close();
 	}
-	if(tif_)
+	if(tif_) {
 		TIFFClose(tif_);
+		tif_ = nullptr;
+	}
+	serializer_.close();
 
 	return true;
 }

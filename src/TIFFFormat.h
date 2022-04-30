@@ -36,7 +36,6 @@ public:
 	bool close(void);
 private:
 	bool encodePixels(serialize_buf pixels);
-	TIFF* openTIFF(std::string name, std::string mode, SerializeState serializeState);
 	bool encodeHeader(void);
 	bool encodePixelsCoreWrite(serialize_buf pixels);
 	bool encodePixelsCore(serialize_buf pixels);
@@ -48,7 +47,9 @@ private:
 	Serializer serializer_;
 	Image image_;
 	std::string filename_;
+	std::string mode_;
 	TIFFFormatHeaderClassic header_;
 	uint32_t concurrency_;
 	Serializer **asynchSerializers_;
+	uint32_t numPixelWrites_;
 };

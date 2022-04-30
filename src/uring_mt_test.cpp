@@ -1,14 +1,12 @@
 #include <taskflow/taskflow.hpp>
 #include "TIFFFormat.h"
-#include "SeamCache.h"
 #include "timer.h"
 #include <cstdlib>
 
 static void run(uint32_t concurrency, bool doStore, bool doAsynch){
 	TIFFFormat tiffFormat;
 	Image img(88000, 32005,1,32);
-   auto headerInfo = tiffFormat.getHeaderInfo();
-   if (doStore)
+    if (doStore)
 	   tiffFormat.encodeInit(img, "dump.tif",
 			   doAsynch ? SERIALIZE_STATE_ASYNCH_WRITE : SERIALIZE_STATE_SYNCH,concurrency);
 
@@ -18,12 +16,12 @@ static void run(uint32_t concurrency, bool doStore, bool doAsynch){
 	auto tasks = new tf::Task[img.numStrips_];
 	for(uint64_t i = 0; i < img.numStrips_; i++)
 		tasks[i] = taskflow.placeholder();
-	for(uint16_t j = 0; j < img.numStrips_; ++j)
+	for(uint32_t j = 0; j < img.numStrips_; ++j)
 	{
-		uint16_t strip = j;
-		tasks[j].work([&tiffFormat, strip,doStore,img,headerInfo, &exec] {
-			uint64_t len =  (strip == img.numStrips_ - 1) ? img.finalStripLen_ : img.stripLen_;
-			uint8_t b[img.stripLen_] __attribute__((__aligned__(ALIGNMENT)));
+		uint32_t strip = j;
+		tasks[j].work([&tiffFormat, strip,doStore,img,&exec] {
+			uint64_t len =  (strip == img.numStrips_ - 1 && img.finalStripLen_) ? img.finalStripLen_ : img.stripLen_;
+			uint8_t b[len] __attribute__((__aligned__(ALIGNMENT)));
 			for (uint64_t k = 0; k < img.rowsPerStrip_ * 16 * 1024; ++k)
 				b[k%len] = k;
 			if (doStore)

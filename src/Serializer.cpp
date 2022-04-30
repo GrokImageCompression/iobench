@@ -136,8 +136,6 @@ bool Serializer::close(void)
 }
 uint64_t Serializer::seek(int64_t off, int32_t whence)
 {
-	if(state_ == SERIALIZE_STATE_ASYNCH_WRITE)
-		return off_;
 	off_t rc = lseek(fd_, off, whence);
 	if(rc == (off_t)-1)
 	{
@@ -167,9 +165,11 @@ size_t Serializer::writeAsynch(uint8_t* buf, uint64_t offset, uint64_t size, uin
 size_t Serializer::write(uint8_t* buf, uint64_t bytes_total)
 {
 	// asynch
-	if (state_ == SERIALIZE_STATE_ASYNCH_WRITE){
+	if (bytes_total != 4 &&
+			state_ == SERIALIZE_STATE_ASYNCH_WRITE){
 		if (off_ != 0) {
 			// this must be a pooled request
+			//fprintf(stderr,"sim write %d : %ld\n",numPooledRequests_,bytes_total);
 			if(++numPooledRequests_ == maxPooledRequests_)
 				state_ = SERIALIZE_STATE_SYNCH;
 		}
@@ -189,6 +189,7 @@ size_t Serializer::write(uint8_t* buf, uint64_t bytes_total)
 			break;
 	}
 
+	//fprintf(stderr,"write %ld\n",bytes_total);
 	if(scheduled_.pooled)
 	   ++numPooledRequests_;
 

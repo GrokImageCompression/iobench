@@ -14,7 +14,7 @@
 
 
 FileUringIO::FileUringIO()
-	: fd_(0), ownsDescriptor(false), requestsSubmitted(0), requestsCompleted(0),
+	: fd_(-1), ownsDescriptor(false), requestsSubmitted(0), requestsCompleted(0),
 	  reclaim_callback_(nullptr), reclaim_user_data_(nullptr)
 {
 	memset(&ring, 0, sizeof(ring));
@@ -140,7 +140,7 @@ io_data* FileUringIO::retrieveCompletion(bool peek, bool& success)
 
 bool FileUringIO::close(void)
 {
-	if(!fd_)
+	if(fd_ == -1)
 		return true;
 	if(ring.ring_fd)
 	{
@@ -163,8 +163,8 @@ bool FileUringIO::close(void)
 	}
 	requestsSubmitted = 0;
 	requestsCompleted = 0;
-	bool rc = !ownsDescriptor || (fd_ && ::close(fd_) == 0);
-	fd_ = 0;
+	bool rc = !ownsDescriptor || (fd_ != -1 && ::close(fd_) == 0);
+	fd_ = -1;
 	ownsDescriptor = false;
 
 	return rc;
