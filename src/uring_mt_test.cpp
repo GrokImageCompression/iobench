@@ -48,14 +48,8 @@ static void run(uint32_t concurrency, bool doStore, bool doAsynch){
 	ChronoTimer timer;
 	timer.start();
 	exec.run(taskflow).wait();
-	timer.finish(doAsynch ? "time to schedule" : "");
-	if (doAsynch) {
-		timer.start();
-		tiffFormat.encodeFinish();
-		timer.finish("time to flush");
-	}else {
-		tiffFormat.close();
-	}
+	tiffFormat.encodeFinish();
+	timer.finish("");
 }
 static void run(uint8_t i){
 	   run(i,false,false);
