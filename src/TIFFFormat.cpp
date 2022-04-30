@@ -102,6 +102,9 @@ bool TIFFFormat::encodeInit(Image image,
 
 	return rc;
 }
+bool TIFFFormat::close(uint32_t threadId){
+	return asynchSerializers_[threadId]->close();
+}
 bool TIFFFormat::encodePixels(uint32_t threadId, uint8_t *pix, uint64_t offset,
 								uint64_t len, uint32_t index){
 	switch(serializer_.getState() ){
@@ -113,43 +116,6 @@ bool TIFFFormat::encodePixels(uint32_t threadId, uint8_t *pix, uint64_t offset,
 			if (written != len){
 				printf("Error writing strip\n");
 				return false;
-			}
-
-			if (++numPixelWrites_ == image_.numStrips_){
-				// 1. close asynch serializers
-				for (uint32_t i = 0; i < concurrency_; ++i)
-					asynchSerializers_[i]->close();
-
-				// 2. close and re-open main serializer in append mode
-				serializer_.close();
-				if(!serializer_.open(filename_, "a",SERIALIZE_STATE_ASYNCH_WRITE))
-					return false;
-
-				// 3. open tiff and encode header
-				tif_ =   TIFFClientOpen(filename_.c_str(),
-						"w", &serializer_, TiffRead, TiffWrite,
-							TiffSeek, TiffClose,
-								TiffSize, nullptr, nullptr);
-				if (!tif_)
-					return false;
-				if (!encodeHeader())
-					return false;
-
-				//3. simulate strip writes
-				for(uint32_t j = 0; j < image_.numStrips_; ++j){
-					uint64_t len =
-							(j == image_.numStrips_ - 1) ? image_.finalStripLen_ : image_.stripLen_;
-					//fprintf(stderr,"TIFF initiate sim write %d\n",j);
-					tmsize_t written =
-						TIFFWriteEncodedStrip(tif_, j, nullptr, (tmsize_t)len);
-					if (written == -1){
-						printf("Error writing strip\n");
-						return false;
-					}
-				}
-
-				//5. close
-				close();
 			}
 
 			return true;
@@ -228,9 +194,38 @@ bool TIFFFormat::encodeFinish(void)
 		assert(!tif_);
 		return true;
 	}
-	if(tif_)
-		TIFFClose(tif_);
-	tif_ = nullptr;
+
+	if (serializer_.getState() == SERIALIZE_STATE_ASYNCH_WRITE){
+		// 1. close and re-open main serializer in append mode
+		serializer_.close();
+		if(!serializer_.open(filename_, "a",SERIALIZE_STATE_ASYNCH_WRITE))
+			return false;
+
+		// 2. open tiff and encode header
+		tif_ =   TIFFClientOpen(filename_.c_str(),
+				"w", &serializer_, TiffRead, TiffWrite,
+					TiffSeek, TiffClose,
+						TiffSize, nullptr, nullptr);
+		if (!tif_)
+			return false;
+		if (!encodeHeader())
+			return false;
+
+		//3. simulate strip writes
+		for(uint32_t j = 0; j < image_.numStrips_; ++j){
+			uint64_t len =
+					(j == image_.numStrips_ - 1) ? image_.finalStripLen_ : image_.stripLen_;
+			//fprintf(stderr,"TIFF initiate sim write %d\n",j);
+			tmsize_t written =
+				TIFFWriteEncodedStrip(tif_, j, nullptr, (tmsize_t)len);
+			if (written == -1){
+				printf("Error writing strip\n");
+				return false;
+			}
+		}
+	}
+
+	close();
 	encodeState_ |= IMAGE_FORMAT_ENCODED_PIXELS;
 
 	return true;

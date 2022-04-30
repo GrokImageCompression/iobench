@@ -32,14 +32,15 @@ public:
 	virtual ~TIFFFormat();
 	bool encodeInit(Image image, std::string filename, SerializeState serializeState, uint32_t concurrency);
 	bool encodePixels(uint32_t threadId, uint8_t *pix, uint64_t  offset, uint64_t len, uint32_t index);
+	bool encodeFinish(void);
 	HeaderInfo getHeaderInfo(void);
+	bool close(uint32_t threadId);
 	bool close(void);
 private:
 	bool encodePixels(serialize_buf pixels);
 	bool encodeHeader(void);
 	bool encodePixelsCoreWrite(serialize_buf pixels);
 	bool encodePixelsCore(serialize_buf pixels);
-	bool encodeFinish(void);
 	bool isHeaderEncoded(void);
 	TIFF* tif_;
 	mutable std::mutex encodePixelmutex_;

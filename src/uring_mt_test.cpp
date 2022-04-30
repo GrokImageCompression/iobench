@@ -2,10 +2,11 @@
 #include "TIFFFormat.h"
 #include "timer.h"
 #include <cstdlib>
+#include "FlowComponent.h"
 
 static void run(uint32_t concurrency, bool doStore, bool doAsynch){
 	TIFFFormat tiffFormat;
-	Image img(88000, 32005,1,32);
+	Image img(88000, 32000,1,32);
     if (doStore)
 	   tiffFormat.encodeInit(img, "dump.tif",
 			   doAsynch ? SERIALIZE_STATE_ASYNCH_WRITE : SERIALIZE_STATE_SYNCH,concurrency);
@@ -13,13 +14,17 @@ static void run(uint32_t concurrency, bool doStore, bool doAsynch){
     printf("Run with concurrency = %d, store to disk = %d, use uring = %d\n",concurrency,doStore,doAsynch);
 	tf::Executor exec(concurrency);
 	tf::Taskflow taskflow;
-	auto tasks = new tf::Task[img.numStrips_];
-	for(uint64_t i = 0; i < img.numStrips_; i++)
-		tasks[i] = taskflow.placeholder();
+	FlowComponent encodeFlow;
+	FlowComponent closeFlow;
+	encodeFlow.addTo(taskflow);
+	if (doStore && doAsynch) {
+		closeFlow.addTo(taskflow);
+		encodeFlow.precede(closeFlow);
+	}
 	for(uint32_t j = 0; j < img.numStrips_; ++j)
 	{
 		uint32_t strip = j;
-		tasks[j].work([&tiffFormat, strip,doStore,img,&exec] {
+		encodeFlow.nextTask().work([&tiffFormat, strip,doStore,img,&exec] {
 			uint64_t len =  (strip == img.numStrips_ - 1 && img.finalStripLen_) ? img.finalStripLen_ : img.stripLen_;
 			uint8_t b[len] __attribute__((__aligned__(ALIGNMENT)));
 			for (uint64_t k = 0; k < img.rowsPerStrip_ * 16 * 1024; ++k)
@@ -30,13 +35,23 @@ static void run(uint32_t concurrency, bool doStore, bool doAsynch){
 			}
 		});
 	}
+	if (doStore && doAsynch) {
+		for(uint32_t j = 0; j < img.numStrips_; ++j)
+		{
+			uint32_t strip = j;
+			closeFlow.nextTask().work([&tiffFormat, strip,&exec] {
+				bool ret = tiffFormat.close(exec.this_worker_id());
+				//assert(ret);
+			});
+		}
+	}
 	ChronoTimer timer;
 	timer.start();
 	exec.run(taskflow).wait();
 	timer.finish(doAsynch ? "time to schedule" : "");
 	if (doAsynch) {
 		timer.start();
-		tiffFormat.close();
+		tiffFormat.encodeFinish();
 		timer.finish("time to flush");
 	}else {
 		tiffFormat.close();
