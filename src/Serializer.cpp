@@ -164,6 +164,7 @@ size_t Serializer::writeAsynch(uint8_t* buf, uint64_t offset, uint64_t size, uin
 	ser.pooled = true;
 	ser.data = buf;
 	ser.dataLen = size;
+	ser.allocLen = size;
 	ser.offset = offset;
 	ser.index = index;
 	if (index == 0){

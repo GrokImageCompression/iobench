@@ -13,6 +13,15 @@ set(CMAKE_MODULE_PATH
     ${CMAKE_MODULE_PATH})
 
 find_package(Threads REQUIRED)
+
+find_package(Valgrind)
+message(STATUS "Looking for liburing")
+if (Valgrind_FOUND)
+	message(STATUS "Found Valgrind")
+    add_definitions(-DHAVE_VALGRIND)
+    include_directories(${Valgrind_INCLUDE_DIR})
+endif(Valgrind_FOUND)
+
 include (Findliburing)
 include(GNUInstallDirs)
 

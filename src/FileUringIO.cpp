@@ -12,6 +12,8 @@
 #include <chrono>
 #include <cstring>
 
+#include "testing.h"
+
 
 FileUringIO::FileUringIO()
 	: fd_(-1), ownsDescriptor(false), requestsSubmitted(0), requestsCompleted(0),
