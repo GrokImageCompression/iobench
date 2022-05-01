@@ -47,7 +47,6 @@ void Serializer::reclaimBuffer(serialize_buf buffer)
 	if(reclaim_callback_)
 		reclaim_callback_(buffer, reclaim_user_data_);
 }
-
 void Serializer::registerClientCallback(serialize_callback reclaim_callback,
 												 void* user_data)
 {
@@ -91,7 +90,7 @@ int Serializer::getMode(std::string mode)
 			break;
 	}
 
-	return (m);
+	return m;
 }
 
 bool Serializer::open(std::string name, std::string mode, bool asynch)
@@ -115,10 +114,8 @@ bool Serializer::open(std::string name, std::string mode, bool asynch)
 		return false;
 	}
 	asynch_ = asynch;
-	if (asynch_) {
-		if(!uring.attach(name, mode, fd,0))
-			return false;
-	}
+	if (asynch_ && !uring.attach(name, mode, fd,0))
+		return false;
 	fd_ = fd;
 	filename_ = name;
 	mode_ = mode;

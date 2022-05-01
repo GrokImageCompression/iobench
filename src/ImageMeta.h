@@ -10,7 +10,9 @@ struct ImageMeta{
 		numStrips_(nominalStripHeight ? (height  + nominalStripHeight - 1)/ nominalStripHeight : 0),
 		stripPackedByteWidth_(numcomps * width),
 		stripLen_(nominalStripHeight * stripPackedByteWidth_),
-		finalStripHeight_(nominalStripHeight ? height - ((height / nominalStripHeight) * nominalStripHeight) : 0),
+		finalStripHeight_( (nominalStripHeight && (height % nominalStripHeight != 0)) ?
+							height - ((height / nominalStripHeight) * nominalStripHeight) :
+								nominalStripHeight),
 		finalStripLen_ (finalStripHeight_ * stripPackedByteWidth_)
 	{}
 	uint32_t stripHeight(uint32_t strip){
