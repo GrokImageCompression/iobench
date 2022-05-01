@@ -6,7 +6,7 @@
 
 static void run(uint32_t concurrency, bool doStore, bool doAsynch){
 	TIFFFormat tiffFormat;
-	ImageMeta img(88000, 32000,1,32);
+	ImageMeta img(88000, 32005,1,32);
     if (doStore)
 	   tiffFormat.encodeInit(img, "dump.tif",
 			   doAsynch ? SERIALIZE_STATE_ASYNCH_WRITE : SERIALIZE_STATE_SYNCH,concurrency);
@@ -15,12 +15,7 @@ static void run(uint32_t concurrency, bool doStore, bool doAsynch){
 	tf::Executor exec(concurrency);
 	tf::Taskflow taskflow;
 	FlowComponent encodeFlow;
-	FlowComponent closeFlow;
 	encodeFlow.addTo(taskflow);
-	if (doStore && doAsynch) {
-		closeFlow.addTo(taskflow);
-		encodeFlow.precede(closeFlow);
-	}
 	for(uint32_t j = 0; j < img.numStrips_; ++j)
 	{
 		uint32_t strip = j;
@@ -34,16 +29,6 @@ static void run(uint32_t concurrency, bool doStore, bool doAsynch){
 				assert(ret);
 			}
 		});
-	}
-	if (doStore && doAsynch) {
-		for(uint32_t j = 0; j < img.numStrips_; ++j)
-		{
-			uint32_t strip = j;
-			closeFlow.nextTask().work([&tiffFormat, strip,&exec] {
-				bool ret = tiffFormat.close(exec.this_worker_id());
-				assert(ret);
-			});
-		}
 	}
 	ChronoTimer timer;
 	timer.start();
