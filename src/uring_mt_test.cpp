@@ -20,8 +20,10 @@ static void run(uint32_t concurrency, bool doStore, bool doAsynch){
 	{
 		uint32_t strip = j;
 		encodeFlow.nextTask().work([&tiffFormat, strip,doStore,img,&exec] {
-			uint64_t len =  (strip == img.numStrips_ - 1 && img.finalStripLen_) ? img.finalStripLen_ : img.stripLen_;
-			uint8_t b[len] __attribute__((__aligned__(ALIGNMENT)));
+			uint64_t len =  ((strip == img.numStrips_ - 1) && (img.finalStripLen_ != 0)) ?
+								img.finalStripLen_ : img.stripLen_;
+			assert(len);
+			uint8_t b[img.stripLen_] __attribute__((__aligned__(ALIGNMENT)));
 			for (uint64_t k = 0; k < img.rowsPerStrip_ * 16 * 1024; ++k)
 				b[k%len] = k;
 			if (doStore) {
