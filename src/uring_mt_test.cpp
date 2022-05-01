@@ -9,7 +9,10 @@ static void run(uint32_t concurrency, bool doStore, bool doAsynch){
 	ChronoTimer timer;
 	{
 		TIFFFormat tiffFormat;
-		ImageMeta img(88000, 32005,1,32);
+		uint32_t width = 88000;
+		uint32_t height = 32005;
+		uint32_t packedBytesWidth = width * 1;
+		ImageMeta img(width, height,1,32);
 		if (doStore){
 			std::string filename = "dump.tif";
 			remove(filename.c_str());
@@ -30,8 +33,8 @@ static void run(uint32_t concurrency, bool doStore, bool doAsynch){
 									img.finalStripLen_ : img.stripLen_;
 				assert(len);
 				uint8_t b[img.stripLen_] __attribute__((__aligned__(ALIGNMENT)));
-				for (uint64_t k = 0; k < img.rowsPerStrip_ * 16 * 1024; ++k)
-					b[k%len] = k;
+				for (uint64_t k = 0; k < 2*len; ++k)
+					b[k/2] = k;
 				if (doStore) {
 					bool ret = tiffFormat.encodePixels(exec.this_worker_id(),  b, img.stripLen_ * strip, len, strip);
 					assert(ret);
