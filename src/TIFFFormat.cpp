@@ -164,7 +164,7 @@ bool TIFFFormat::encodeHeader(void){
 	TIFFSetField(tif_, TIFFTAG_BITSPERSAMPLE, 8);
 	TIFFSetField(tif_, TIFFTAG_PHOTOMETRIC, image_.numcomps_ == 3 ? PHOTOMETRIC_RGB : PHOTOMETRIC_MINISBLACK);
 	TIFFSetField(tif_, TIFFTAG_PLANARCONFIG, PLANARCONFIG_CONTIG);
-	TIFFSetField(tif_, TIFFTAG_ROWSPERSTRIP, image_.rowsPerStrip_);
+	TIFFSetField(tif_, TIFFTAG_ROWSPERSTRIP, image_.nominalStripHeight_);
 
 	encodeState_ = IMAGE_FORMAT_ENCODED_HEADER;
 
