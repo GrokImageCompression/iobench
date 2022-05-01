@@ -95,21 +95,10 @@ void FileUringIO::enqueue(io_uring* ring, io_data* data, bool readop, int fd)
 		auto data = retrieveCompletion(true, success);
 		if(!success || !data)
 			break;
-		if(data->buf.pooled)
-		{
-			if(reclaim_callback_)
-			{
-				reclaim_callback_(data->buf, reclaim_user_data_);
-			}
-			else
-			{
-				delete[] ((uint8_t*)data->iov.iov_base);
-			}
-		}
+		if(data->buf.pooled && reclaim_callback_)
+			reclaim_callback_(data->buf, reclaim_user_data_);
 		else
-		{
 			delete[] ((uint8_t*)data->iov.iov_base);
-		}
 		delete data;
 	}
 }
@@ -194,9 +183,8 @@ uint64_t FileUringIO::write(SerializeBuf buffer)
 	auto b = new uint8_t[totalLength];
 	if(!b)
 		return false;
-	if ((buffer.index == 0) && (buffer.header_ != nullptr) && (buffer.headerSize_ != 0)){
+	if ((buffer.index == 0) && (buffer.header_ != nullptr) && (buffer.headerSize_ != 0))
 		memcpy(b , buffer.header_, buffer.headerSize_);
-	}
 	memcpy(b + buffer.headerSize_, buffer.data, buffer.dataLen);
 
 	buffer.data = b;
