@@ -8,12 +8,6 @@
 
 const int32_t invalid_fd = -1;
 
-enum SerializeState {
-	SERIALIZE_STATE_NONE,
-	SERIALIZE_STATE_ASYNCH_WRITE,
-	SERIALIZE_STATE_SYNCH
-};
-
 struct Serializer
 {
 	Serializer(void);
@@ -23,17 +17,16 @@ struct Serializer
 	void registerClientCallback(serialize_callback reclaim_callback, void* user_data);
 	void reclaimBuffer(serialize_buf buffer);
 	bool attach(Serializer *parent);
-	bool open(std::string name, std::string mode, SerializeState serializeState);
+	bool open(std::string name, std::string mode, bool asynch);
 	bool close(void);
 	size_t writeAsynch(uint8_t* buf, uint64_t offset, uint64_t size, uint32_t index);
 	size_t write(uint8_t* buf, uint64_t size);
 	uint64_t seek(int64_t off, int32_t whence);
-	uint32_t getNumPooledRequests(void);
 	void initPooledRequest(void);
 	bool allPooledRequestsComplete(void);
 	SerializeBuf getPoolBuffer(uint64_t len);
 	void putPoolBuffer(SerializeBuf buf);
-	SerializeState getState(void);
+	bool isAsynch(void);
 	void setHeader(uint8_t *header, uint32_t headerSize);
   private:
 	FileUringIO uring;
@@ -43,7 +36,7 @@ struct Serializer
 	uint32_t numPooledRequests_;
 	// used to detect when library-orchestrated encode is complete
 	uint32_t maxPooledRequests_;
-	SerializeState state_;
+	bool asynch_;
 	uint64_t off_;
 	serialize_callback reclaim_callback_;
 	void* reclaim_user_data_;

@@ -71,7 +71,7 @@ HeaderInfo TIFFFormat::getHeaderInfo(){
 }
 bool TIFFFormat::encodeInit(ImageMeta image,
 							std::string filename,
-							SerializeState serializeState,
+							bool asynch,
 							uint32_t concurrency){
 	image_ = image;
 	filename_ = filename;
@@ -80,9 +80,9 @@ bool TIFFFormat::encodeInit(ImageMeta image,
 	serializer_.setMaxPooledRequests(maxRequests);
 	bool rc;
 	mode_ = "w";
-	if(!serializer_.open(filename_, mode_,serializeState))
+	if(!serializer_.open(filename_, mode_,asynch))
 		return false;
-	if (serializeState == SERIALIZE_STATE_ASYNCH_WRITE){
+	if (asynch){
 		serializer_.registerApplicationClient();
 		// create one serializer per thread and attach to parent serializer
 		asynchSerializers_ = new Serializer*[concurrency];
@@ -107,32 +107,23 @@ bool TIFFFormat::close(uint32_t threadId){
 }
 bool TIFFFormat::encodePixels(uint32_t threadId, uint8_t *pix, uint64_t offset,
 								uint64_t len, uint32_t index){
-	switch(serializer_.getState() ){
-		case SERIALIZE_STATE_ASYNCH_WRITE:
-		{
-			//1. schedule write
-			auto ser = asynchSerializers_[threadId];
-			auto written = ser->writeAsynch(pix,index == 0 ? 0 : sizeof(header_) + offset,len,index);
-			if (written != len){
-				printf("Error writing strip\n");
-				return false;
-			}
-
-			return true;
+	if (serializer_.isAsynch())
+	{
+		//1. schedule write
+		auto ser = asynchSerializers_[threadId];
+		auto written = ser->writeAsynch(pix,index == 0 ? 0 : sizeof(header_) + offset,len,index);
+		if (written != len){
+			printf("Error writing strip\n");
+			return false;
 		}
-			break;
-		case SERIALIZE_STATE_SYNCH:
-		{
-			auto b = serializer_.getPoolBuffer(len);
-			b.pooled = true;
-			b.index = index;
-			memcpy(b.data, pix,len);
-			return encodePixels(b);
-		}
-			break;
+		return true;
+	} else {
+		auto b = serializer_.getPoolBuffer(len);
+		b.pooled = true;
+		b.index = index;
+		memcpy(b.data, pix,len);
+		return encodePixels(b);
 	}
-
-	return false;
 }
 bool TIFFFormat::close(void){
 	if (asynchSerializers_){
@@ -195,7 +186,7 @@ bool TIFFFormat::encodeFinish(void)
 		return true;
 	}
 
-	if (serializer_.getState() == SERIALIZE_STATE_ASYNCH_WRITE){
+	if (serializer_.isAsynch()){
 		// 1. open tiff and encode header
 		tif_ =   TIFFClientOpen(filename_.c_str(),
 				"w", &serializer_, TiffRead, TiffWrite,

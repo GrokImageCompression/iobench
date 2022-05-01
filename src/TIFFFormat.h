@@ -30,7 +30,7 @@ class TIFFFormat {
 public:
 	TIFFFormat();
 	virtual ~TIFFFormat();
-	bool encodeInit(ImageMeta image, std::string filename, SerializeState serializeState, uint32_t concurrency);
+	bool encodeInit(ImageMeta image, std::string filename, bool asynch, uint32_t concurrency);
 	bool encodePixels(uint32_t threadId, uint8_t *pix, uint64_t  offset, uint64_t len, uint32_t index);
 	bool encodeFinish(void);
 	HeaderInfo getHeaderInfo(void);

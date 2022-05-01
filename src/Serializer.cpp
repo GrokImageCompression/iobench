@@ -23,7 +23,7 @@ static bool applicationReclaimCallback(serialize_buf buffer, void* serialize_use
 Serializer::Serializer(void)
 	:
 	  fd_(invalid_fd),
-	  numPooledRequests_(0), maxPooledRequests_(0), state_(SERIALIZE_STATE_NONE), off_(0),
+	  numPooledRequests_(0), maxPooledRequests_(0), asynch_(false), off_(0),
 	  reclaim_callback_(nullptr), reclaim_user_data_(nullptr),
 	  header_(nullptr), headerSize_(0),ownsFileDescriptor_(false)
 {}
@@ -63,7 +63,8 @@ void Serializer::putPoolBuffer(SerializeBuf buf){
 }
 bool Serializer::attach(Serializer *parent){
 	fd_ = parent->fd_;
-	state_ = parent->state_;
+	asynch_ = parent->asynch_;
+
 	return uring.attach(&parent->uring);
 }
 int Serializer::getMode(std::string mode)
@@ -89,10 +90,11 @@ int Serializer::getMode(std::string mode)
 			printf("Bad mode %s", mode.c_str());
 			break;
 	}
+
 	return (m);
 }
 
-bool Serializer::open(std::string name, std::string mode, SerializeState serializeState)
+bool Serializer::open(std::string name, std::string mode, bool asynch)
 {
 	if (!close())
 		return false;
@@ -112,8 +114,8 @@ bool Serializer::open(std::string name, std::string mode, SerializeState seriali
 			printf("Cannot open %s", name.c_str());
 		return false;
 	}
-	state_ = serializeState;
-	if (state_ == SERIALIZE_STATE_ASYNCH_WRITE) {
+	asynch_ = asynch;
+	if (asynch_) {
 		if(!uring.attach(name, mode, fd,0))
 			return false;
 	}
@@ -126,7 +128,7 @@ bool Serializer::open(std::string name, std::string mode, SerializeState seriali
 }
 bool Serializer::close(void)
 {
-	if (state_ == SERIALIZE_STATE_ASYNCH_WRITE)
+	if (asynch_)
 		uring.close();
 
 	int rc = 0;
@@ -143,7 +145,7 @@ bool Serializer::close(void)
 }
 uint64_t Serializer::seek(int64_t off, int32_t whence)
 {
-	if (state_ == SERIALIZE_STATE_ASYNCH_WRITE)
+	if (asynch_)
 		return off_;
 	off_t rc = lseek(fd_, off, whence);
 	if(rc == (off_t)-1)
@@ -177,11 +179,11 @@ size_t Serializer::writeAsynch(uint8_t* buf, uint64_t offset, uint64_t size, uin
 size_t Serializer::write(uint8_t* buf, uint64_t bytes_total)
 {
 	// asynch
-	if (state_ == SERIALIZE_STATE_ASYNCH_WRITE){
+	if (asynch_){
 		// offset 0 write is for file header
 		if (off_ != 0) {
 			if(++numPooledRequests_ == maxPooledRequests_)
-				state_ = SERIALIZE_STATE_SYNCH;
+				asynch_ = false;
 		}
 		if (debugAsynch)
 			fprintf(stderr,"simulated write %d at offset %d : %ld\n",
@@ -210,16 +212,12 @@ size_t Serializer::write(uint8_t* buf, uint64_t bytes_total)
 
 	return (size_t)count;
 }
-SerializeState Serializer::getState(void){
-	return state_;
+bool Serializer::isAsynch(void){
+	return asynch_;
 }
 void Serializer::initPooledRequest(void)
 {
 	scheduled_.pooled = true;
-}
-uint32_t Serializer::getNumPooledRequests(void)
-{
-	return numPooledRequests_;
 }
 bool Serializer::allPooledRequestsComplete(void)
 {

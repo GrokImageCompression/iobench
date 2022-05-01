@@ -16,8 +16,7 @@ static void run(uint32_t concurrency, bool doStore, bool doAsynch){
 		if (doStore){
 			std::string filename = "dump.tif";
 			remove(filename.c_str());
-		   tiffFormat.encodeInit(img, filename,
-				   doAsynch ? SERIALIZE_STATE_ASYNCH_WRITE : SERIALIZE_STATE_SYNCH,concurrency);
+		   tiffFormat.encodeInit(img, filename, doAsynch,concurrency);
 		}
 
 		printf("Run with concurrency = %d, store to disk = %d, use uring = %d\n",concurrency,doStore,doAsynch);
