@@ -32,7 +32,7 @@ public:
 	TIFFFormat();
 	virtual ~TIFFFormat();
 	bool encodeInit(ImageMeta image, std::string filename, bool asynch, uint32_t concurrency);
-	bool encodePixels(uint32_t threadId, uint8_t *pix, uint64_t  offset, uint64_t len, uint32_t index);
+	bool encodePixels(uint32_t threadId, uint8_t *pix,uint32_t index);
 	bool encodeFinish(void);
 	bool close(void);
 private:

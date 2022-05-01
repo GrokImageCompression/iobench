@@ -7,6 +7,7 @@
 
 static void run(uint32_t concurrency, bool doStore, bool doAsynch){
 	ChronoTimer timer;
+	bool storeAsynch = doStore && doAsynch;
 	{
 		TIFFFormat tiffFormat;
 		uint32_t width = 88000;
@@ -24,6 +25,11 @@ static void run(uint32_t concurrency, bool doStore, bool doAsynch){
 		tf::Taskflow taskflow;
 		FlowComponent encodeFlow;
 		encodeFlow.addTo(taskflow);
+		FlowComponent seamFlow;
+		if (storeAsynch) {
+			seamFlow.addTo(taskflow);
+			encodeFlow.precede(seamFlow);
+		}
 		for(uint32_t j = 0; j < img.numStrips_; ++j)
 		{
 			uint32_t strip = j;
@@ -35,20 +41,20 @@ static void run(uint32_t concurrency, bool doStore, bool doAsynch){
 				for (uint64_t k = 0; k < 2*len; ++k)
 					b[k/2] = k;
 				if (doStore) {
-					bool ret = tiffFormat.encodePixels(exec.this_worker_id(),  b, img.stripLen_ * strip, len, strip);
+					bool ret = tiffFormat.encodePixels(exec.this_worker_id(),b,strip);
 					assert(ret);
 				}
 			});
 		}
 		timer.start();
 		exec.run(taskflow).wait();
-		if (doStore && doAsynch){
+		if (storeAsynch){
 			timer.finish("scheduling");
 			timer.start();
 		}
 		tiffFormat.encodeFinish();
 	}
-	timer.finish(doStore && doAsynch ? "flush" : "");
+	timer.finish(storeAsynch ? "flush" : "");
 }
 static void run(uint8_t i){
 	   run(i,false,false);

@@ -104,14 +104,15 @@ bool TIFFFormat::encodeInit(ImageMeta image,
 
 	return rc;
 }
-bool TIFFFormat::encodePixels(uint32_t threadId, uint8_t *pix, uint64_t offset,
-								uint64_t len, uint32_t index){
+bool TIFFFormat::encodePixels(uint32_t threadId, uint8_t *pix, uint32_t index){
+	auto seamInfo = seamCache_->getSeamInfo(index);
+	uint64_t len = seamInfo.upperEnd_ - seamInfo.lowerBegin_;
 	if (serializer_.isAsynch())
 	{
 		//1. schedule write
 		auto ser = asynchSerializers_[threadId];
 		// use seam cache to break strip down into write blocks + seams
-		auto written = ser->writeAsynch(pix,index == 0 ? 0 : sizeof(header_) + offset,len,index);
+		auto written = ser->writeAsynch(pix,seamInfo.lowerBegin_,len,index);
 		if (written != len){
 			printf("Error writing strip\n");
 			return false;
