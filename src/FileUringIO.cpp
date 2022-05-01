@@ -30,7 +30,7 @@ void FileUringIO::registerClientCallback(serialize_callback reclaim_callback,
 	reclaim_callback_ = reclaim_callback;
 	reclaim_user_data_ = user_data;
 }
-bool FileUringIO::attach(std::string fileName, std::string mode, int fd)
+bool FileUringIO::attach(std::string fileName, std::string mode, int fd, int shared_ring_fd)
 {
 	fileName_ = fileName;
 	mode_ = mode;
@@ -38,22 +38,35 @@ bool FileUringIO::attach(std::string fileName, std::string mode, int fd)
 	fd_ = fd;
 	ownsDescriptor = false;
 
-	return (doRead ? true : initQueue());
+	return (doRead ? true : initQueue(shared_ring_fd));
 }
 
 bool FileUringIO::attach(FileUringIO *parent){
 
-	return attach(parent->fileName_, parent->mode_, parent->fd_);
+	return attach(parent->fileName_, parent->mode_, parent->fd_,parent->ring.ring_fd);
 }
 
-bool FileUringIO::initQueue(void)
+bool FileUringIO::initQueue(int shared_ring_fd)
 {
-	int ret = io_uring_queue_init(QD, &ring, 0);
-	if(ret < 0)
-	{
-		printf("queue_init: %s\n", strerror(-ret));
-		close();
-		return false;
+	if (shared_ring_fd){
+		struct io_uring_params p;
+		memset(&p, 0, sizeof(p));
+		p.flags = IORING_SETUP_ATTACH_WQ;
+		p.wq_fd = shared_ring_fd;
+		int ret = io_uring_queue_init_params(QD, &ring, &p);
+		if (ret < 0) {
+			printf("Attach to zero: %d\n", ret);
+			return false;
+		}
+
+	} else {
+		int ret = io_uring_queue_init(QD, &ring, 0);
+		if(ret < 0)
+		{
+			printf("queue_init: %s\n", strerror(-ret));
+			close();
+			return false;
+		}
 	}
 
 	return true;

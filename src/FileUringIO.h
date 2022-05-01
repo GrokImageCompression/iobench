@@ -18,7 +18,7 @@ class FileUringIO : public IFileIO
 	FileUringIO();
 	virtual ~FileUringIO() override;
 	void registerClientCallback(serialize_callback reclaim_callback, void* user_data);
-	bool attach(std::string fileName, std::string mode, int fd);
+	bool attach(std::string fileName, std::string mode, int fd, int shared_ring_fd);
 	bool attach(FileUringIO *parent);
 	bool close(void) override;
 	uint64_t write(SerializeBuf buffer) override;
@@ -33,7 +33,7 @@ class FileUringIO : public IFileIO
 	size_t requestsSubmitted;
 	size_t requestsCompleted;
 	void enqueue(io_uring* ring, io_data* data, bool readop, int fd);
-	bool initQueue(void);
+	bool initQueue(int shared_ring_fd);
 
 	const uint32_t QD = 1024;
 	serialize_callback reclaim_callback_;

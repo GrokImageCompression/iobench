@@ -114,7 +114,7 @@ bool Serializer::open(std::string name, std::string mode, SerializeState seriali
 	}
 	state_ = serializeState;
 	if (state_ == SERIALIZE_STATE_ASYNCH_WRITE) {
-		if(!uring.attach(name, mode, fd))
+		if(!uring.attach(name, mode, fd,0))
 			return false;
 	}
 	fd_ = fd;
