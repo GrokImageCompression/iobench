@@ -6,38 +6,44 @@
 #include "testing.h"
 
 static void run(uint32_t concurrency, bool doStore, bool doAsynch){
-	TIFFFormat tiffFormat;
-	ImageMeta img(88000, 32005,1,32);
-    if (doStore)
-	   tiffFormat.encodeInit(img, "dump.tif",
-			   doAsynch ? SERIALIZE_STATE_ASYNCH_WRITE : SERIALIZE_STATE_SYNCH,concurrency);
-
-    printf("Run with concurrency = %d, store to disk = %d, use uring = %d\n",concurrency,doStore,doAsynch);
-	tf::Executor exec(concurrency);
-	tf::Taskflow taskflow;
-	FlowComponent encodeFlow;
-	encodeFlow.addTo(taskflow);
-	for(uint32_t j = 0; j < img.numStrips_; ++j)
-	{
-		uint32_t strip = j;
-		encodeFlow.nextTask().work([&tiffFormat, strip,doStore,img,&exec] {
-			uint64_t len =  ((strip == img.numStrips_ - 1) && (img.finalStripLen_ != 0)) ?
-								img.finalStripLen_ : img.stripLen_;
-			assert(len);
-			uint8_t b[img.stripLen_] __attribute__((__aligned__(ALIGNMENT)));
-			for (uint64_t k = 0; k < img.rowsPerStrip_ * 16 * 1024; ++k)
-				b[k%len] = k;
-			if (doStore) {
-				bool ret = tiffFormat.encodePixels(exec.this_worker_id(),  b, img.stripLen_ * strip, len, strip);
-				assert(ret);
-			}
-		});
-	}
 	ChronoTimer timer;
-	timer.start();
-	exec.run(taskflow).wait();
-	tiffFormat.encodeFinish();
-	timer.finish("");
+	{
+		TIFFFormat tiffFormat;
+		ImageMeta img(88000, 32005,1,32);
+		if (doStore)
+		   tiffFormat.encodeInit(img, "dump.tif",
+				   doAsynch ? SERIALIZE_STATE_ASYNCH_WRITE : SERIALIZE_STATE_SYNCH,concurrency);
+
+		printf("Run with concurrency = %d, store to disk = %d, use uring = %d\n",concurrency,doStore,doAsynch);
+		tf::Executor exec(concurrency);
+		tf::Taskflow taskflow;
+		FlowComponent encodeFlow;
+		encodeFlow.addTo(taskflow);
+		for(uint32_t j = 0; j < img.numStrips_; ++j)
+		{
+			uint32_t strip = j;
+			encodeFlow.nextTask().work([&tiffFormat, strip,doStore,img,&exec] {
+				uint64_t len =  ((strip == img.numStrips_ - 1) && (img.finalStripLen_ != 0)) ?
+									img.finalStripLen_ : img.stripLen_;
+				assert(len);
+				uint8_t b[img.stripLen_] __attribute__((__aligned__(ALIGNMENT)));
+				for (uint64_t k = 0; k < img.rowsPerStrip_ * 16 * 1024; ++k)
+					b[k%len] = k;
+				if (doStore) {
+					bool ret = tiffFormat.encodePixels(exec.this_worker_id(),  b, img.stripLen_ * strip, len, strip);
+					assert(ret);
+				}
+			});
+		}
+		timer.start();
+		exec.run(taskflow).wait();
+		if (doStore && doAsynch){
+			timer.finish("scheduling");
+			timer.start();
+		}
+		tiffFormat.encodeFinish();
+	}
+	timer.finish(doStore && doAsynch ? "flush" : "");
 }
 static void run(uint8_t i){
 	   run(i,false,false);

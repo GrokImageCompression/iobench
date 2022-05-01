@@ -196,15 +196,7 @@ bool TIFFFormat::encodeFinish(void)
 	}
 
 	if (serializer_.getState() == SERIALIZE_STATE_ASYNCH_WRITE){
-		for (uint32_t i = 0; i < concurrency_; ++i)
-			asynchSerializers_[i]->close();
-
-		// 1. close main serializer and re-open in append mode
-		serializer_.close();
-		if(!serializer_.open(filename_, "a",SERIALIZE_STATE_ASYNCH_WRITE))
-			return false;
-
-		// 2. open tiff and encode header
+		// 1. open tiff and encode header
 		tif_ =   TIFFClientOpen(filename_.c_str(),
 				"w", &serializer_, TiffRead, TiffWrite,
 					TiffSeek, TiffClose,
@@ -214,7 +206,7 @@ bool TIFFFormat::encodeFinish(void)
 		if (!encodeHeader())
 			return false;
 
-		//3. simulate strip writes
+		//2. simulate strip writes
 		for(uint32_t j = 0; j < image_.numStrips_; ++j){
 			uint64_t len =
 					(j == image_.numStrips_ - 1 && image_.finalStripLen_) ? image_.finalStripLen_ : image_.stripLen_;
