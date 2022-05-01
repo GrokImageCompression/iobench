@@ -196,7 +196,10 @@ bool TIFFFormat::encodeFinish(void)
 	}
 
 	if (serializer_.getState() == SERIALIZE_STATE_ASYNCH_WRITE){
-		// 1. close and re-open main serializer in append mode
+		for (uint32_t i = 0; i < concurrency_; ++i)
+			asynchSerializers_[i]->close();
+
+		// 1. close main serializer and re-open in append mode
 		serializer_.close();
 		if(!serializer_.open(filename_, "a",SERIALIZE_STATE_ASYNCH_WRITE))
 			return false;
