@@ -186,17 +186,21 @@ bool FileUringIO::close(void)
 uint64_t FileUringIO::write(SerializeBuf buffer)
 {
 	io_data* data = new io_data();
-	auto b = new uint8_t[buffer.dataLen + buffer.headerSize_];
+	assert(buffer.dataLen);
+	assert(buffer.allocLen >= buffer.dataLen);
+	uint64_t totalLength = buffer.dataLen + buffer.headerSize_;
+	auto b = new uint8_t[totalLength];
 	if(!b)
 		return false;
-	memcpy(b + buffer.headerSize_, buffer.data, buffer.dataLen);
-	if (buffer.index == 0 && buffer.header_ && buffer.headerSize_){
+	if ((buffer.index == 0) && (buffer.header_ != nullptr) && (buffer.headerSize_ != 0)){
 		memcpy(b , buffer.header_, buffer.headerSize_);
 	}
+	memcpy(b + buffer.headerSize_, buffer.data, buffer.dataLen);
+
 	buffer.data = b;
 	data->buf = buffer;
 	data->iov.iov_base = buffer.data;
-	data->iov.iov_len = buffer.dataLen;
+	data->iov.iov_len = totalLength;
 	enqueue(&ring, data, false, fd_);
 
 	return buffer.dataLen;
