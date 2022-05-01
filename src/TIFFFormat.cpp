@@ -69,7 +69,7 @@ TIFFFormat::~TIFFFormat() {
 HeaderInfo TIFFFormat::getHeaderInfo(){
 	return  HeaderInfo((uint8_t*)&header_,sizeof(TIFFFormatHeaderClassic) );
 }
-bool TIFFFormat::encodeInit(Image image,
+bool TIFFFormat::encodeInit(ImageMeta image,
 							std::string filename,
 							SerializeState serializeState,
 							uint32_t concurrency){

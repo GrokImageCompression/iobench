@@ -6,7 +6,7 @@
 
 static void run(uint32_t concurrency, bool doStore, bool doAsynch){
 	TIFFFormat tiffFormat;
-	Image img(88000, 32000,1,32);
+	ImageMeta img(88000, 32000,1,32);
     if (doStore)
 	   tiffFormat.encodeInit(img, "dump.tif",
 			   doAsynch ? SERIALIZE_STATE_ASYNCH_WRITE : SERIALIZE_STATE_SYNCH,concurrency);
