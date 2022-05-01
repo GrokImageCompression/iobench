@@ -57,7 +57,8 @@ bool FileUringIO::initQueue(int shared_ring_fd)
 		p.wq_fd = shared_ring_fd;
 		int ret = io_uring_queue_init_params(QD, &ring, &p);
 		if (ret < 0) {
-			printf("Attach to zero: %d\n", ret);
+			printf("io_uring_queue_init_params: %s\n", strerror(-ret));
+			close();
 			return false;
 		}
 
@@ -65,7 +66,7 @@ bool FileUringIO::initQueue(int shared_ring_fd)
 		int ret = io_uring_queue_init(QD, &ring, 0);
 		if(ret < 0)
 		{
-			printf("queue_init: %s\n", strerror(-ret));
+			printf("io_uring_queue_init: %s\n", strerror(-ret));
 			close();
 			return false;
 		}
