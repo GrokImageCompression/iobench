@@ -36,7 +36,7 @@ bool FileUringIO::attach(std::string fileName, std::string mode, int fd, int sha
 {
 	fileName_ = fileName;
 	mode_ = mode;
-	bool doRead = mode[0] == -'r';
+	bool doRead = mode[0] == 'r';
 	fd_ = fd;
 	ownsDescriptor = false;
 
