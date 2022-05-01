@@ -66,9 +66,6 @@ TIFFFormat::~TIFFFormat() {
 		delete[] asynchSerializers_;
 	}
 }
-HeaderInfo TIFFFormat::getHeaderInfo(){
-	return  HeaderInfo((uint8_t*)&header_,sizeof(TIFFFormatHeaderClassic) );
-}
 bool TIFFFormat::encodeInit(ImageMeta image,
 							std::string filename,
 							bool asynch,
@@ -101,9 +98,6 @@ bool TIFFFormat::encodeInit(ImageMeta image,
 	}
 
 	return rc;
-}
-bool TIFFFormat::close(uint32_t threadId){
-	return asynchSerializers_[threadId]->close();
 }
 bool TIFFFormat::encodePixels(uint32_t threadId, uint8_t *pix, uint64_t offset,
 								uint64_t len, uint32_t index){
