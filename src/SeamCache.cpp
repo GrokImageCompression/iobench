@@ -1,11 +1,11 @@
 #include <SeamCache.h>
 #include <cassert>
 
-SeamCache::SeamCache(SeamCacheInitInfo initInfo) : init_(initInfo)
+SeamCache::SeamCache(SeamCacheInitInfo initInfo) : init_(initInfo),
+													numSeams_(init_.imageMeta_.numStrips_-1)
 {
-	uint32_t numSeams = init_.imageMeta_.numStrips_-1;
-	seamBuffers_ = new SerializeBuf*[numSeams];
-	for (uint32_t i = 0; i < numSeams; ++i){
+	seamBuffers_ = new SerializeBuf*[numSeams_];
+	for (uint32_t i = 0; i < numSeams_; ++i){
 		auto seamInfo = getSeamInfo(i);
 		if (seamInfo.upperBegin_ != seamInfo.upperEnd_){
 			seamBuffers_[i] = new SerializeBuf();
@@ -16,8 +16,12 @@ SeamCache::SeamCache(SeamCacheInitInfo initInfo) : init_(initInfo)
 	}
 }
 SeamCache::~SeamCache() {
-	for (uint32_t i = 0; i < init_.imageMeta_.numStrips_-1; ++i)
-		delete seamBuffers_[i];
+	for (uint32_t i = 0; i < numSeams_; ++i){
+		auto s = seamBuffers_[i];
+		if (s)
+		  s->dealloc();
+		delete s;
+	}
 	delete[] seamBuffers_;
 }
 ImageMeta& SeamCache::imageMeta(void){

@@ -40,4 +40,5 @@ private:
 	ImageMeta& imageMeta(void);
 	SerializeBuf **seamBuffers_;
 	SeamCacheInitInfo init_;
+	uint32_t numSeams_;
 };
