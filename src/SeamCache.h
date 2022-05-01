@@ -5,14 +5,14 @@
 
 struct SeamInfo{
 	SeamInfo() :    lowerBegin_(0), lowerEnd_(0),
-					upperBegin_(0), upperEnd_(0), numWriteBlocks_(0),
+					upperBegin_(0), upperEnd_(0), numFullBlocks_(0),
 					writeSize_(0)
 	{}
 	uint64_t lowerBegin_;
 	uint64_t lowerEnd_;
 	uint64_t upperBegin_;
 	uint64_t upperEnd_;
-	uint32_t numWriteBlocks_;
+	uint32_t numFullBlocks_;
 	uint64_t writeSize_;
 };
 

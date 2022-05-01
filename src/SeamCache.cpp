@@ -48,7 +48,7 @@ SeamInfo SeamCache::getSeamInfo(uint32_t strip){
 	assert(ret.lowerEnd_% init_.writeSize_ == 0);
 	assert((strip ==  (imageMeta().numStrips_- 1)) ||
 			(ret.upperBegin_ - ret.lowerEnd_) % init_.writeSize_ == 0);
-	ret.numWriteBlocks_ = (ret.upperBegin_ - ret.lowerEnd_) / init_.writeSize_;
+	ret.numFullBlocks_ = (ret.upperBegin_ - ret.lowerEnd_) / init_.writeSize_;
 
 	return ret;
 }

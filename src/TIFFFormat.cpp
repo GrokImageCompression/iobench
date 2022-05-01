@@ -110,6 +110,7 @@ bool TIFFFormat::encodePixels(uint32_t threadId, uint8_t *pix, uint64_t offset,
 	{
 		//1. schedule write
 		auto ser = asynchSerializers_[threadId];
+		// use seam cache to break strip down into write blocks + seams
 		auto written = ser->writeAsynch(pix,index == 0 ? 0 : sizeof(header_) + offset,len,index);
 		if (written != len){
 			printf("Error writing strip\n");
