@@ -1,5 +1,6 @@
 #include "TIFFFormat.h"
 #include "tiffiop.h"
+
 #define IO_MAX 2147483647U
 
 static tmsize_t TiffRead(thandle_t handle, void* buf, tmsize_t size)
@@ -55,7 +56,7 @@ static uint64_t TiffSize(thandle_t handle)
 
 TIFFFormat::TIFFFormat() : tif_(nullptr), encodeState_(IMAGE_FORMAT_UNENCODED),
 							concurrency_(0), asynchSerializers_(nullptr),
-							numPixelWrites_(0)
+							numPixelWrites_(0), seamCache_(nullptr)
 {}
 
 TIFFFormat::~TIFFFormat() {
@@ -65,11 +66,15 @@ TIFFFormat::~TIFFFormat() {
 			delete asynchSerializers_[i];
 		delete[] asynchSerializers_;
 	}
+	delete seamCache_;
 }
 bool TIFFFormat::encodeInit(ImageMeta image,
 							std::string filename,
 							bool asynch,
 							uint32_t concurrency){
+	SeamCacheInitInfo
+		seamCacheInitInfo(sizeof(header_), WRTSIZE, image);
+	seamCache_ = new SeamCache(seamCacheInitInfo);
 	image_ = image;
 	filename_ = filename;
 	concurrency_ = concurrency;

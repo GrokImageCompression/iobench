@@ -17,7 +17,10 @@ struct SeamInfo{
 };
 
 struct SeamCacheInitInfo{
-	SeamCacheInitInfo() : headerSize_(0), writeSize_(0)
+	SeamCacheInitInfo() : SeamCacheInitInfo(0,0,ImageMeta())
+	{}
+	SeamCacheInitInfo(uint64_t headerSize, uint64_t writeSize, ImageMeta imageMeta) :
+		headerSize_(headerSize), writeSize_(writeSize), imageMeta_(imageMeta)
 	{}
 	uint64_t headerSize_;
 	uint64_t writeSize_;
