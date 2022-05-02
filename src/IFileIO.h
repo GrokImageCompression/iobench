@@ -13,7 +13,7 @@ struct SerializeBuf : public serialize_buf
   public:
 	SerializeBuf() : SerializeBuf(0,nullptr, 0, 0, 0, false) {}
 	SerializeBuf(uint32_t index, uint8_t* data, uint64_t offset, uint64_t dataLen, uint64_t allocLen,
-					bool pooled) : header_(nullptr), headerSize_(0)
+					bool pooled)
 	{
 		this->data = data;
 		this->offset = offset;
@@ -22,7 +22,7 @@ struct SerializeBuf : public serialize_buf
 		this->pooled = pooled;
 		this->index = index;
 	}
-	explicit SerializeBuf(const serialize_buf rhs) : header_(nullptr), headerSize_(0)
+	explicit SerializeBuf(const serialize_buf rhs)
 	{
 		data = rhs.data;
 		offset = rhs.offset;
@@ -47,8 +47,6 @@ struct SerializeBuf : public serialize_buf
 		free(data);
 		data = nullptr;
 	}
-	uint8_t *header_;
-	uint32_t headerSize_;
 };
 
 class IFileIO
