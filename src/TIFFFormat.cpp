@@ -71,7 +71,7 @@ TIFFFormat::~TIFFFormat() {
 SerializeBuf TIFFFormat::getPoolBuffer(uint32_t threadId,uint64_t len){
 	return asynchSerializers_[threadId]->getPoolBuffer(len);
 }
-bool TIFFFormat::encodeInit(ImageMeta image,
+bool TIFFFormat::encodeInit(ImageStripper image,
 							std::string filename,
 							bool asynch,
 							uint32_t concurrency){
@@ -158,6 +158,7 @@ bool TIFFFormat::close(void){
 }
 bool TIFFFormat::encodePixelsCoreWrite(serialize_buf pixels)
 {
+	serializer_.initPooledRequest();
 	tmsize_t written =
 		TIFFWriteEncodedStrip(tif_, pixels.index, pixels.data, (tmsize_t)pixels.dataLen);
 
@@ -237,7 +238,6 @@ bool TIFFFormat::encodeFinish(void)
 bool TIFFFormat::encodePixelsCore(serialize_buf pixels)
 {
 	(void)(pixels);
-	serializer_.initPooledRequest();
 	bool success = encodePixelsCoreWrite(pixels);
 	if(success)
 	{

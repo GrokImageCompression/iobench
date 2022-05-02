@@ -1,7 +1,7 @@
 #pragma once
 
 #include "IFileIO.h"
-#include "ImageMeta.h"
+#include "ImageStripper.h"
 
 struct SeamInfo{
 	SeamInfo() :    lowerBegin_(0), lowerEnd_(0),
@@ -17,14 +17,14 @@ struct SeamInfo{
 };
 
 struct SeamCacheInitInfo{
-	SeamCacheInitInfo() : SeamCacheInitInfo(0,0,ImageMeta())
+	SeamCacheInitInfo() : SeamCacheInitInfo(0,0,ImageStripper())
 	{}
-	SeamCacheInitInfo(uint64_t headerSize, uint64_t writeSize, ImageMeta imageMeta) :
-		headerSize_(headerSize), writeSize_(writeSize), imageMeta_(imageMeta)
+	SeamCacheInitInfo(uint64_t headerSize, uint64_t writeSize, ImageStripper imageStripper) :
+		headerSize_(headerSize), writeSize_(writeSize), imageMeta_(imageStripper)
 	{}
 	uint64_t headerSize_;
 	uint64_t writeSize_;
-	ImageMeta imageMeta_;
+	ImageStripper imageMeta_;
 };
 
 class SeamCache {
@@ -37,7 +37,7 @@ private:
 	uint64_t stripOffset(uint32_t strip);
 	uint64_t stripEnd(uint32_t strip);
 	uint64_t upperBegin(uint32_t strip);
-	ImageMeta& imageMeta(void);
+	ImageStripper& imageStripper(void);
 	SerializeBuf **seamBuffers_;
 	SeamCacheInitInfo init_;
 	uint32_t numSeams_;

@@ -188,7 +188,7 @@ size_t Serializer::write(uint8_t* buf, uint64_t bytes_total)
 		if(count <= 0)
 			break;
 	}
-	if(scheduled_.pooled)
+	if(pooled_)
 	   ++numPooledRequests_;
 
 	return (size_t)count;
@@ -198,7 +198,7 @@ bool Serializer::isAsynch(void){
 }
 void Serializer::initPooledRequest(void)
 {
-	scheduled_.pooled = true;
+	pooled_ = true;
 }
 bool Serializer::allPooledRequestsComplete(void)
 {

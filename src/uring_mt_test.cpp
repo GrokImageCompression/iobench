@@ -13,7 +13,7 @@ static void run(uint32_t concurrency, bool doStore, bool doAsynch){
 		uint32_t width = 88000;
 		uint32_t height = 32005;
 		uint32_t packedBytesWidth = width * 1;
-		ImageMeta img(width, height,1,32);
+		ImageStripper img(width, height,1,32);
 		if (doStore){
 			std::string filename = "dump.tif";
 			remove(filename.c_str());

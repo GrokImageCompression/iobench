@@ -1,6 +1,6 @@
 #pragma once
 
-#include <ImageMeta.h>
+#include <ImageStripper.h>
 #include "Serializer.h"
 #include "BufferPool.h"
 #include <string>
@@ -31,7 +31,7 @@ class TIFFFormat {
 public:
 	TIFFFormat();
 	virtual ~TIFFFormat();
-	bool encodeInit(ImageMeta image, std::string filename, bool asynch, uint32_t concurrency);
+	bool encodeInit(ImageStripper image, std::string filename, bool asynch, uint32_t concurrency);
 	bool encodePixels(uint32_t threadId, uint8_t *pix,uint32_t index);
 	bool encodeFinish(void);
 	bool close(void);
@@ -46,7 +46,7 @@ private:
 	mutable std::mutex encodePixelmutex_;
 	uint32_t encodeState_;
 	Serializer serializer_;
-	ImageMeta image_;
+	ImageStripper image_;
 	std::string filename_;
 	std::string mode_;
 	TIFFFormatHeaderClassic header_;

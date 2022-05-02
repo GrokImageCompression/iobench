@@ -2,10 +2,10 @@
 
 #include <cstdint>
 
-struct ImageMeta{
-	ImageMeta() : ImageMeta(0,0,0,0)
+struct ImageStripper{
+	ImageStripper() : ImageStripper(0,0,0,0)
 	{}
-	ImageMeta(uint32_t width, uint32_t height, uint16_t numcomps, uint32_t nominalStripHeight) :
+	ImageStripper(uint32_t width, uint32_t height, uint16_t numcomps, uint32_t nominalStripHeight) :
 		width_(width), height_(height),numcomps_(numcomps), nominalStripHeight_(nominalStripHeight),
 		numStrips_(nominalStripHeight ? (height  + nominalStripHeight - 1)/ nominalStripHeight : 0),
 		stripPackedByteWidth_(numcomps * width),

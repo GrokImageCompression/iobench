@@ -24,12 +24,12 @@ SeamCache::~SeamCache() {
 	}
 	delete[] seamBuffers_;
 }
-ImageMeta& SeamCache::imageMeta(void){
+ImageStripper& SeamCache::imageStripper(void){
 	return init_.imageMeta_;
 }
 //note: there are (numStrips_-1) seam buffers : the final strip has none
 uint8_t* SeamCache::getSeamBuffer(uint32_t strip){
-	return (strip < imageMeta().numStrips_-1) ? seamBuffers_[strip]->data : nullptr;
+	return (strip < imageStripper().numStrips_-1) ? seamBuffers_[strip]->data : nullptr;
 }
 SeamInfo SeamCache::getSeamInfo(uint32_t strip){
 	SeamInfo ret;
@@ -51,10 +51,10 @@ SeamInfo SeamCache::getSeamInfo(uint32_t strip){
 	return ret;
 }
 uint64_t SeamCache::stripOffset(uint32_t strip){
-	return strip == 0 ? 0 : init_.headerSize_ + imageMeta().stripOffset(strip);
+	return strip == 0 ? 0 : init_.headerSize_ + imageStripper().stripOffset(strip);
 }
 uint64_t SeamCache::stripEnd(uint32_t strip){
-	return stripOffset(strip) + imageMeta().stripLen(strip);
+	return stripOffset(strip) + imageStripper().stripLen(strip);
 }
 uint64_t SeamCache::upperBegin(uint32_t strip){
 	return (strip < numSeams_) ?

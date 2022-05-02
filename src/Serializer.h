@@ -29,7 +29,7 @@ struct Serializer
 	bool isAsynch(void);
   private:
 	FileUringIO uring;
-	SerializeBuf scheduled_;
+	bool pooled_;
 	int getMode(std::string mode);
 	int fd_;
 	uint32_t numPooledRequests_;
