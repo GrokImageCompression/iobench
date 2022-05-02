@@ -121,15 +121,15 @@ bool TIFFFormat::encodePixels(uint32_t threadId, uint8_t *pix, uint32_t index){
 		// use seam cache to break strip down into write blocks + seams
 		uint64_t headerSize = ((index == 0) ? sizeof(header_) : 0);
 		uint64_t totalLength = len + headerSize;
-		SerializeBuf serializeBuf(index,pix,seamInfo.lowerBegin_,totalLength,totalLength,true);
-		auto b = new uint8_t[totalLength];
+		SerializeBuf serializeBuf(index,nullptr,seamInfo.lowerBegin_,totalLength,totalLength,true);
+		if (!serializeBuf.alloc(totalLength))
+			return false;
 		if (headerSize)
-			memcpy(b , &header_, headerSize);
-		memcpy(b + headerSize, pix, len);
-		serializeBuf.data = b;
+			memcpy(serializeBuf.data , &header_, headerSize);
+		memcpy(serializeBuf.data + headerSize, pix, len);
 		auto written = ser->writeAsynch(serializeBuf);
 		if (written != totalLength){
-			printf("Error writing strip\n");
+			printf("encodePixels: write error\n");
 			return false;
 		}
 

@@ -99,7 +99,7 @@ void FileUringIO::enqueue(io_uring* ring, io_data* data, bool readop, int fd)
 		if(data->buf.pooled && reclaim_callback_)
 			reclaim_callback_(data->buf, reclaim_user_data_);
 		else
-			delete[] ((uint8_t*)data->iov.iov_base);
+			data->buf.dealloc();
 		delete data;
 	}
 }
@@ -159,7 +159,7 @@ bool FileUringIO::close(void)
 				break;
 			if(data)
 			{
-				delete[] ((uint8_t*)data->iov.iov_base);
+				data->buf.dealloc();
 				delete data;
 			}
 		}
