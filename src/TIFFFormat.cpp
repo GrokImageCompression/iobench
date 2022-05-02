@@ -108,11 +108,19 @@ bool TIFFFormat::encodePixels(uint32_t threadId, uint8_t *pix, uint32_t index){
 	uint64_t len = seamInfo.upperEnd_ - seamInfo.lowerBegin_;
 	if (serializer_.isAsynch())
 	{
-		//1. schedule write
 		auto ser = asynchSerializers_[threadId];
+
+		//1. write bottom seam
+
+		//2. write full blocks
+
+		//3. write top seam
+
+
+		{
+		// use seam cache to break strip down into write blocks + seams
 		uint64_t headerSize = ((index == 0) ? sizeof(header_) : 0);
 		uint64_t totalLength = len + headerSize;
-		// use seam cache to break strip down into write blocks + seams
 		SerializeBuf serializeBuf(index,pix,seamInfo.lowerBegin_,totalLength,totalLength,true);
 		auto b = new uint8_t[totalLength];
 		if (headerSize)
@@ -123,6 +131,8 @@ bool TIFFFormat::encodePixels(uint32_t threadId, uint8_t *pix, uint32_t index){
 		if (written != totalLength){
 			printf("Error writing strip\n");
 			return false;
+		}
+
 		}
 		return true;
 	} else {

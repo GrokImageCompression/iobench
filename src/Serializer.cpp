@@ -82,7 +82,7 @@ int Serializer::getMode(std::string mode)
 			m = O_WRONLY | O_CREAT;
 			break;
 		default:
-			printf("Bad mode %s", mode.c_str());
+			printf("Bad mode %s\n", mode.c_str());
 			break;
 	}
 
@@ -93,7 +93,7 @@ bool Serializer::open(std::string name, std::string mode, bool asynch)
 {
 	if (!close())
 		return false;
-	bool doRead = mode[0] == -'r';
+	bool doRead = mode[0] == 'r';
 	int fd = 0;
 
 	int m = getMode(mode);
@@ -104,9 +104,9 @@ bool Serializer::open(std::string name, std::string mode, bool asynch)
 	if(fd < 0)
 	{
 		if(errno > 0 && strerror(errno) != NULL)
-			printf("%s: %s", name.c_str(), strerror(errno));
+			printf("%s: %s\n", name.c_str(), strerror(errno));
 		else
-			printf("Cannot open %s", name.c_str());
+			printf("Cannot open %s\n", name.c_str());
 		return false;
 	}
 	asynch_ = asynch;
@@ -144,9 +144,9 @@ uint64_t Serializer::seek(int64_t off, int32_t whence)
 	if(rc == (off_t)-1)
 	{
 		if(strerror(errno) != NULL)
-			printf("%s", strerror(errno));
+			printf("%s\n", strerror(errno));
 		else
-			printf("I/O error");
+			printf("I/O error\n");
 		return (uint64_t)-1;
 	}
 	if (debugAsynch)

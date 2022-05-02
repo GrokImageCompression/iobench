@@ -35,18 +35,16 @@ SeamInfo SeamCache::getSeamInfo(uint32_t strip){
 	SeamInfo ret;
 	ret.writeSize_ = init_.writeSize_;
 	ret.upperBegin_ = upperBegin(strip);
-	assert(strip ==  (imageMeta().numStrips_- 1) ||
-				ret.upperBegin_% init_.writeSize_ == 0);
+	assert(strip ==  numSeams_ || ret.upperBegin_% init_.writeSize_ == 0);
 	ret.upperEnd_   = stripEnd(strip);
 	ret.lowerBegin_ = stripOffset(strip);
 	// no lower seam
-	if (strip == 0 ||
-			ret.lowerBegin_ % init_.writeSize_ == 0)
+	if (strip == 0 ||  ret.lowerBegin_ % init_.writeSize_ == 0)
 		ret.lowerEnd_ = ret.lowerBegin_;
 	else
 		ret.lowerEnd_ = upperBegin(strip-1) + init_.writeSize_;
 	assert(ret.lowerEnd_% init_.writeSize_ == 0);
-	assert((strip ==  (imageMeta().numStrips_- 1)) ||
+	assert((strip ==  numSeams_) ||
 			(ret.upperBegin_ - ret.lowerEnd_) % init_.writeSize_ == 0);
 	ret.numFullBlocks_ = (ret.upperBegin_ - ret.lowerEnd_) / init_.writeSize_;
 
@@ -59,7 +57,7 @@ uint64_t SeamCache::stripEnd(uint32_t strip){
 	return stripOffset(strip) + imageMeta().stripLen(strip);
 }
 uint64_t SeamCache::upperBegin(uint32_t strip){
-	return (strip < imageMeta().numStrips_ - 1) ?
+	return (strip < numSeams_) ?
 			(stripEnd(strip)/init_.writeSize_) * init_.writeSize_ : stripEnd(strip);
 }
 

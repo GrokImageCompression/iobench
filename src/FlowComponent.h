@@ -25,12 +25,19 @@ class FlowComponent
 	}
 	tf::Task& nextTask()
 	{
-		componentTasks_.push(componentFlow_.placeholder());
+		componentTasks_.push_back(componentFlow_.placeholder());
 		return componentTasks_.back();
+	}
+	tf::Task& getTask(size_t index)
+	{
+		if (index >= componentTasks_.size())
+			return *componentTasks_.end();
+
+		return componentTasks_[index];
 	}
 
   private:
-	std::queue<tf::Task> componentTasks_;
+	std::vector<tf::Task> componentTasks_;
 	tf::Taskflow componentFlow_;
 	tf::Task compositionTask_;
 };
