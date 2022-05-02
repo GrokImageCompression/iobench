@@ -5,7 +5,7 @@
 #include <cstdlib>
 
 #define K 1024
-#define ALIGNMENT (4*K)
+#define ALIGNMENT (512)
 #define WRTSIZE (16*K)
 
 struct SerializeBuf : public serialize_buf
