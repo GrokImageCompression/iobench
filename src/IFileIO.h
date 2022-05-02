@@ -46,6 +46,8 @@ struct SerializeBuf : public serialize_buf
 	{
 		free(data);
 		data = nullptr;
+		dataLen = 0;
+		allocLen = 0;
 	}
 };
 

@@ -110,6 +110,7 @@ bool TIFFFormat::encodePixels(uint32_t threadId, uint8_t *pix, uint32_t index){
 	{
 		auto ser = asynchSerializers_[threadId];
 
+		// use seam cache to break strip down into write blocks + seams
 		//1. write bottom seam
 
 		//2. write full blocks
@@ -118,7 +119,6 @@ bool TIFFFormat::encodePixels(uint32_t threadId, uint8_t *pix, uint32_t index){
 
 
 		{
-		// use seam cache to break strip down into write blocks + seams
 		uint64_t headerSize = ((index == 0) ? sizeof(header_) : 0);
 		uint64_t totalLength = len + headerSize;
 		SerializeBuf serializeBuf(index,nullptr,seamInfo.lowerBegin_,totalLength,totalLength,true);
@@ -136,11 +136,8 @@ bool TIFFFormat::encodePixels(uint32_t threadId, uint8_t *pix, uint32_t index){
 		}
 		return true;
 	} else {
-		auto b = serializer_.getPoolBuffer(len);
-		b.pooled = true;
-		b.index = index;
-		memcpy(b.data, pix,len);
-		return encodePixels(b);
+		SerializeBuf serializeBuf(index,pix,0,len,len,true);
+		return encodePixels(serializeBuf);
 	}
 }
 bool TIFFFormat::close(void){
