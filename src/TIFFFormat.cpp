@@ -68,6 +68,9 @@ TIFFFormat::~TIFFFormat() {
 	}
 	delete seamCache_;
 }
+SerializeBuf TIFFFormat::getPoolBuffer(uint32_t threadId,uint64_t len){
+	return asynchSerializers_[threadId]->getPoolBuffer(len);
+}
 bool TIFFFormat::encodeInit(ImageMeta image,
 							std::string filename,
 							bool asynch,
@@ -117,13 +120,13 @@ bool TIFFFormat::encodePixels(uint32_t threadId, uint8_t *pix, uint32_t index){
 
 		//3. write top seam
 
-
 		{
+
 		uint64_t headerSize = ((index == 0) ? sizeof(header_) : 0);
 		uint64_t totalLength = len + headerSize;
-		SerializeBuf serializeBuf(index,nullptr,seamInfo.lowerBegin_,totalLength,totalLength,true);
-		if (!serializeBuf.alloc(totalLength))
-			return false;
+		auto serializeBuf = ser->getPoolBuffer(totalLength);
+		serializeBuf.index = index;
+		serializeBuf.offset = seamInfo.lowerBegin_;
 		if (headerSize)
 			memcpy(serializeBuf.data , &header_, headerSize);
 		memcpy(serializeBuf.data + headerSize, pix, len);

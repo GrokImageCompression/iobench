@@ -35,6 +35,7 @@ public:
 	bool encodePixels(uint32_t threadId, uint8_t *pix,uint32_t index);
 	bool encodeFinish(void);
 	bool close(void);
+	SerializeBuf getPoolBuffer(uint32_t threadId,uint64_t len);
 private:
 	bool encodePixels(serialize_buf pixels);
 	bool encodeHeader(void);
