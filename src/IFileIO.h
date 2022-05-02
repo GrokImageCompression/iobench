@@ -11,8 +11,8 @@
 struct SerializeBuf : public serialize_buf
 {
   public:
-	SerializeBuf() : SerializeBuf(nullptr, 0, 0, 0, false) {}
-	SerializeBuf(uint8_t* data, uint64_t offset, uint64_t dataLen, uint64_t allocLen,
+	SerializeBuf() : SerializeBuf(0,nullptr, 0, 0, 0, false) {}
+	SerializeBuf(uint32_t index, uint8_t* data, uint64_t offset, uint64_t dataLen, uint64_t allocLen,
 					bool pooled) : header_(nullptr), headerSize_(0)
 	{
 		this->data = data;
@@ -20,6 +20,7 @@ struct SerializeBuf : public serialize_buf
 		this->dataLen = dataLen;
 		this->allocLen = allocLen;
 		this->pooled = pooled;
+		this->index = index;
 	}
 	explicit SerializeBuf(const serialize_buf rhs) : header_(nullptr), headerSize_(0)
 	{

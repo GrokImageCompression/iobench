@@ -25,14 +25,10 @@ Serializer::Serializer(void)
 	  fd_(invalid_fd),
 	  numPooledRequests_(0), maxPooledRequests_(0), asynch_(false), off_(0),
 	  reclaim_callback_(nullptr), reclaim_user_data_(nullptr),
-	  header_(nullptr), headerSize_(0),ownsFileDescriptor_(false)
+	  ownsFileDescriptor_(false)
 {}
 Serializer::~Serializer(void){
 	close();
-}
-void Serializer::setHeader(uint8_t *header, uint32_t headerSize){
-	header_ = header;
-	headerSize_ = headerSize;
 }
 void Serializer::setMaxPooledRequests(uint32_t maxRequests)
 {
@@ -158,20 +154,8 @@ uint64_t Serializer::seek(int64_t off, int32_t whence)
 
 	return (uint64_t)rc;
 }
-size_t Serializer::writeAsynch(uint8_t* buf, uint64_t offset, uint64_t size, uint32_t index){
-	SerializeBuf ser;
-	ser.pooled = true;
-	ser.data = buf;
-	ser.dataLen = size;
-	ser.allocLen = size;
-	ser.offset = offset;
-	ser.index = index;
-	if (index == 0){
-		ser.header_ = header_;
-		ser.headerSize_ = headerSize_;
-	}
-
-	return uring.write(ser);
+size_t Serializer::writeAsynch(SerializeBuf serializeBuf){
+	return uring.write(serializeBuf);
 }
 size_t Serializer::write(uint8_t* buf, uint64_t bytes_total)
 {

@@ -91,7 +91,6 @@ bool TIFFFormat::encodeInit(ImageMeta image,
 		for (uint32_t i = 0; i < concurrency_; ++i){
 			asynchSerializers_[i] = new Serializer();
 			asynchSerializers_[i]->attach(&serializer_);
-			asynchSerializers_[i]->setHeader((uint8_t*)&header_, sizeof(header_));
 		}
 		rc = true;
 	} else {
@@ -112,7 +111,12 @@ bool TIFFFormat::encodePixels(uint32_t threadId, uint8_t *pix, uint32_t index){
 		//1. schedule write
 		auto ser = asynchSerializers_[threadId];
 		// use seam cache to break strip down into write blocks + seams
-		auto written = ser->writeAsynch(pix,seamInfo.lowerBegin_,len,index);
+		SerializeBuf serializeBuf(index,pix,seamInfo.lowerBegin_,len,len,true);
+		if (index == 0){
+			serializeBuf.header_ = (uint8_t*)&header_;
+			serializeBuf.headerSize_ = sizeof(header_);
+		}
+		auto written = ser->writeAsynch(serializeBuf);
 		if (written != len){
 			printf("Error writing strip\n");
 			return false;
@@ -200,11 +204,8 @@ bool TIFFFormat::encodeFinish(void)
 
 		//2. simulate strip writes
 		for(uint32_t j = 0; j < image_.numStrips_; ++j){
-			uint64_t len =
-					(j == image_.numStrips_ - 1 && image_.finalStripLen_) ? image_.finalStripLen_ : image_.stripLen_;
-			//fprintf(stderr,"TIFF initiate sim write %d\n",j);
 			tmsize_t written =
-				TIFFWriteEncodedStrip(tif_, j, nullptr, (tmsize_t)len);
+				TIFFWriteEncodedStrip(tif_, j, nullptr, (tmsize_t)image_.stripLen(j));
 			if (written == -1){
 				printf("Error writing strip\n");
 				return false;
