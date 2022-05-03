@@ -41,12 +41,17 @@ static void run(uint32_t concurrency, bool doStore, bool doAsynch){
 		{
 			uint32_t strip = j;
 			encodeStrips[j].work([&tiffFormat, strip,doAsynch,doStore,img,&exec] {
-				uint64_t len =  (strip == img.numStrips_ - 1) ? img.finalStripLen_ : img.stripLen_;
-				uint8_t b[img.stripLen_] __attribute__((__aligned__(ALIGNMENT)));
-				for (uint64_t k = 0; k < 2*len; ++k)
-					b[k/2] = k;
-				if (doStore) {
-					bool ret = tiffFormat.encodePixels(exec.this_worker_id(),b,strip);
+				if (!doStore) {
+					uint64_t len =  (strip == img.numStrips_ - 1) ? img.finalStripLen_ : img.stripLen_;
+					uint8_t b[img.stripLen_] __attribute__((__aligned__(ALIGNMENT)));
+					for (uint64_t k = 0; k < 2*len; ++k)
+						b[k/2] = k;
+				} else {
+					auto b = tiffFormat.getPoolBuffer(exec.this_worker_id(), strip);
+					auto ptr = b.data + b.skip;
+					for (uint64_t k = 0; k < 2*(b.dataLen-b.skip); ++k)
+						ptr[k/2] = k;
+					bool ret = tiffFormat.encodePixels(exec.this_worker_id(),b);
 					assert(ret);
 				}
 			});

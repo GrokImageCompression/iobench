@@ -32,10 +32,10 @@ public:
 	TIFFFormat();
 	virtual ~TIFFFormat();
 	bool encodeInit(ImageStripper image, std::string filename, bool asynch, uint32_t concurrency);
-	bool encodePixels(uint32_t threadId, uint8_t *pix,uint32_t index);
+	bool encodePixels(uint32_t threadId, SerializeBuf serializeBuf);
 	bool encodeFinish(void);
 	bool close(void);
-	SerializeBuf getPoolBuffer(uint32_t threadId,uint64_t len);
+	SerializeBuf getPoolBuffer(uint32_t threadId,uint32_t index);
 private:
 	bool encodePixels(serialize_buf pixels);
 	bool encodeHeader(void);

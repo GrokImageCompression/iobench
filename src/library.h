@@ -6,6 +6,7 @@
 typedef struct _serialize_buf
 {
 	uint8_t* data;
+	uint64_t skip;
 	uint64_t offset;
 	uint64_t dataLen;
 	uint64_t allocLen;

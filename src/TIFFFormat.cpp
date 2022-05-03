@@ -68,8 +68,23 @@ TIFFFormat::~TIFFFormat() {
 	}
 	delete seamCache_;
 }
-SerializeBuf TIFFFormat::getPoolBuffer(uint32_t threadId,uint64_t len){
-	return asynchSerializers_[threadId]->getPoolBuffer(len);
+SerializeBuf TIFFFormat::getPoolBuffer(uint32_t threadId,uint32_t index){
+	auto seamInfo = seamCache_->getSeamInfo(index);
+	uint64_t len = seamInfo.upperEnd_ - seamInfo.lowerBegin_;
+	uint64_t headerSize = ((index == 0) ? sizeof(header_) : 0);
+	uint64_t totalLength = len + headerSize;
+	SerializeBuf  serializeBuf =
+			asynchSerializers_ ? asynchSerializers_[threadId]->getPoolBuffer(totalLength) :
+					serializer_.getPoolBuffer(totalLength);
+	serializeBuf.index = index;
+	serializeBuf.offset = seamInfo.lowerBegin_;
+	if (headerSize) {
+		memcpy(serializeBuf.data , &header_, headerSize);
+		serializeBuf.skip = headerSize;
+	}
+	serializeBuf.pooled = true;
+
+	return serializeBuf;
 }
 bool TIFFFormat::encodeInit(ImageStripper image,
 							std::string filename,
@@ -106,9 +121,7 @@ bool TIFFFormat::encodeInit(ImageStripper image,
 
 	return rc;
 }
-bool TIFFFormat::encodePixels(uint32_t threadId, uint8_t *pix, uint32_t index){
-	auto seamInfo = seamCache_->getSeamInfo(index);
-	uint64_t len = seamInfo.upperEnd_ - seamInfo.lowerBegin_;
+bool TIFFFormat::encodePixels(uint32_t threadId, SerializeBuf serializeBuf){
 	if (asynchSerializers_)
 	{
 		auto ser = asynchSerializers_[threadId];
@@ -119,27 +132,14 @@ bool TIFFFormat::encodePixels(uint32_t threadId, uint8_t *pix, uint32_t index){
 		//2. write full blocks
 
 		//3. write top seam
-
-		{
-
-		uint64_t headerSize = ((index == 0) ? sizeof(header_) : 0);
-		uint64_t totalLength = len + headerSize;
-		auto serializeBuf = ser->getPoolBuffer(totalLength);
-		serializeBuf.index = index;
-		serializeBuf.offset = seamInfo.lowerBegin_;
-		if (headerSize)
-			memcpy(serializeBuf.data , &header_, headerSize);
-		memcpy(serializeBuf.data + headerSize, pix, len);
 		auto written = ser->writeAsynch(serializeBuf);
-		if (written != totalLength){
+		if (written != serializeBuf.dataLen){
 			printf("encodePixels: write error\n");
 			return false;
 		}
 
-		}
 		return true;
 	} else {
-		SerializeBuf serializeBuf(index,pix,0,len,len,true);
 		return encodePixels(serializeBuf);
 	}
 }
