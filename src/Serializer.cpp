@@ -9,8 +9,6 @@
 #include <fcntl.h>
 #include <cstring>
 
-bool debugAsynch = false;
-
 static bool applicationReclaimCallback(serialize_buf buffer, void* serialize_user_data)
 {
 	auto pool = (BufferPool*)serialize_user_data;
@@ -23,9 +21,9 @@ static bool applicationReclaimCallback(serialize_buf buffer, void* serialize_use
 Serializer::Serializer(void)
 	:
 	  fd_(invalid_fd),
-	  numPooledRequests_(0), maxPooledRequests_(0), asynch_(false), off_(0),
+	  numPooledRequests_(0), maxPooledRequests_(0), off_(0),
 	  reclaim_callback_(nullptr), reclaim_user_data_(nullptr),
-	  ownsFileDescriptor_(false)
+	  ownsFileDescriptor_(false), simulateWrite_(false)
 {}
 Serializer::~Serializer(void){
 	close();
@@ -58,7 +56,6 @@ void Serializer::putPoolBuffer(SerializeBuf buf){
 }
 bool Serializer::attach(Serializer *parent){
 	fd_ = parent->fd_;
-	asynch_ = parent->asynch_;
 
 	return uring.attach(&parent->uring);
 }
@@ -109,8 +106,7 @@ bool Serializer::open(std::string name, std::string mode, bool asynch)
 			printf("Cannot open %s\n", name.c_str());
 		return false;
 	}
-	asynch_ = asynch;
-	if (asynch_ && !uring.attach(name, mode, fd,0))
+	if (asynch && !uring.attach(name, mode, fd,0))
 		return false;
 	fd_ = fd;
 	filename_ = name;
@@ -121,8 +117,7 @@ bool Serializer::open(std::string name, std::string mode, bool asynch)
 }
 bool Serializer::close(void)
 {
-	if (asynch_)
-		uring.close();
+	uring.close();
 
 	int rc = 0;
 	if (ownsFileDescriptor_) {
@@ -138,7 +133,7 @@ bool Serializer::close(void)
 }
 uint64_t Serializer::seek(int64_t off, int32_t whence)
 {
-	if (asynch_)
+	if (simulateWrite_)
 		return off_;
 	off_t rc = lseek(fd_, off, whence);
 	if(rc == (off_t)-1)
@@ -149,32 +144,25 @@ uint64_t Serializer::seek(int64_t off, int32_t whence)
 			printf("I/O error\n");
 		return (uint64_t)-1;
 	}
-	if (debugAsynch)
-		fprintf(stderr,"seek to offset %d (actual offset %d)\n",off,rc);
 
 	return (uint64_t)rc;
+}
+void Serializer::enableSimulateWrite(void){
+	simulateWrite_ = true;
 }
 size_t Serializer::writeAsynch(SerializeBuf serializeBuf){
 	return uring.write(serializeBuf);
 }
 size_t Serializer::write(uint8_t* buf, uint64_t bytes_total)
 {
-	// asynch
-	if (asynch_){
+	if (simulateWrite_){
 		// offset 0 write is for file header
 		if (off_ != 0) {
 			if(++numPooledRequests_ == maxPooledRequests_)
-				asynch_ = false;
+				simulateWrite_ = false;
 		}
-		if (debugAsynch)
-			fprintf(stderr,"simulated write %d at offset %d : %ld\n",
-							numPooledRequests_,bytes_total,off_);
 		off_ += bytes_total;
 		return bytes_total;
-	}
-	if (debugAsynch) {
-		int pos = lseek(fd_, 0, SEEK_CUR);
-		fprintf(stderr,"actual write %ld at offset %d\n",bytes_total, pos);
 	}
 	ssize_t count = 0;
 	size_t bytes_written = 0;
@@ -192,9 +180,6 @@ size_t Serializer::write(uint8_t* buf, uint64_t bytes_total)
 	   ++numPooledRequests_;
 
 	return (size_t)count;
-}
-bool Serializer::isAsynch(void){
-	return asynch_;
 }
 void Serializer::initPooledRequest(void)
 {

@@ -8,6 +8,12 @@ struct SeamInfo{
 					upperBegin_(0), upperEnd_(0), numFullBlocks_(0),
 					writeSize_(0)
 	{}
+	bool hasLower(void){
+		return lowerEnd_ != lowerBegin_;
+	}
+	bool hasUpper(void){
+		return upperEnd_ != upperBegin_;
+	}
 	uint64_t lowerBegin_;
 	uint64_t lowerEnd_;
 	uint64_t upperBegin_;

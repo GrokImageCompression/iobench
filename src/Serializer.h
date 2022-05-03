@@ -26,7 +26,7 @@ struct Serializer
 	bool allPooledRequestsComplete(void);
 	SerializeBuf getPoolBuffer(uint64_t len);
 	void putPoolBuffer(SerializeBuf buf);
-	bool isAsynch(void);
+	void enableSimulateWrite(void);
   private:
 	FileUringIO uring;
 	bool pooled_;
@@ -35,7 +35,6 @@ struct Serializer
 	uint32_t numPooledRequests_;
 	// used to detect when library-orchestrated encode is complete
 	uint32_t maxPooledRequests_;
-	bool asynch_;
 	uint64_t off_;
 	serialize_callback reclaim_callback_;
 	void* reclaim_user_data_;
@@ -43,4 +42,5 @@ struct Serializer
 	std::string mode_;
 	BufferPool pool_;
 	bool ownsFileDescriptor_;
+	bool simulateWrite_;
 };

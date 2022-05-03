@@ -109,7 +109,7 @@ bool TIFFFormat::encodeInit(ImageStripper image,
 bool TIFFFormat::encodePixels(uint32_t threadId, uint8_t *pix, uint32_t index){
 	auto seamInfo = seamCache_->getSeamInfo(index);
 	uint64_t len = seamInfo.upperEnd_ - seamInfo.lowerBegin_;
-	if (serializer_.isAsynch())
+	if (asynchSerializers_)
 	{
 		auto ser = asynchSerializers_[threadId];
 
@@ -205,7 +205,8 @@ bool TIFFFormat::encodeFinish(void)
 		return true;
 	}
 
-	if (serializer_.isAsynch()){
+	if (asynchSerializers_){
+		serializer_.enableSimulateWrite();
 		// 1. open tiff and encode header
 		tif_ =   TIFFClientOpen(filename_.c_str(),
 				"w", &serializer_, TiffRead, TiffWrite,
@@ -215,6 +216,7 @@ bool TIFFFormat::encodeFinish(void)
 			return false;
 		if (!encodeHeader())
 			return false;
+
 
 		//2. simulate strip writes
 		for(uint32_t j = 0; j < image_.numStrips_; ++j){

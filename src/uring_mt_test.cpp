@@ -23,17 +23,24 @@ static void run(uint32_t concurrency, bool doStore, bool doAsynch){
 		printf("Run with concurrency = %d, store to disk = %d, use uring = %d\n",concurrency,doStore,doAsynch);
 		tf::Executor exec(concurrency);
 		tf::Taskflow taskflow;
-		FlowComponent encodeFlow;
-		encodeFlow.addTo(taskflow);
-		FlowComponent seamFlow;
-		if (storeAsynch) {
-			seamFlow.addTo(taskflow);
-			encodeFlow.precede(seamFlow);
+		tf::Task* encodeStrips = new tf::Task[img.numStrips_];
+		for (uint32_t i = 0; i < img.numStrips_; ++i)
+			encodeStrips[i] = taskflow.placeholder();
+		tf::Task* encodeSeams = new tf::Task[img.numStrips_-1];
+		for (uint32_t i = 0; i < img.numStrips_-1; ++i){
+			encodeSeams[i] = taskflow.placeholder();
+			encodeStrips[i].precede(encodeSeams[i]);
+			encodeStrips[i+1].precede(encodeSeams[i]);
+		}
+		for(uint32_t j = 0; j < img.numStrips_-1; ++j)
+		{
+			encodeSeams[j].work([] {
+			});
 		}
 		for(uint32_t j = 0; j < img.numStrips_; ++j)
 		{
 			uint32_t strip = j;
-			encodeFlow.nextTask().work([&tiffFormat, strip,doAsynch,doStore,img,&exec] {
+			encodeStrips[j].work([&tiffFormat, strip,doAsynch,doStore,img,&exec] {
 				uint64_t len =  (strip == img.numStrips_ - 1) ? img.finalStripLen_ : img.stripLen_;
 				uint8_t b[img.stripLen_] __attribute__((__aligned__(ALIGNMENT)));
 				for (uint64_t k = 0; k < 2*len; ++k)
@@ -46,6 +53,8 @@ static void run(uint32_t concurrency, bool doStore, bool doAsynch){
 		}
 		timer.start();
 		exec.run(taskflow).wait();
+		delete[] encodeStrips;
+		delete[] encodeSeams;
 		if (storeAsynch){
 			timer.finish("scheduling");
 			timer.start();
