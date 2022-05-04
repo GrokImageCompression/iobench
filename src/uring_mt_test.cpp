@@ -4,13 +4,12 @@
 #include <cstdlib>
 #include "testing.h"
 
-static void run(uint32_t concurrency, bool doStore, bool doAsynch){
+static void run(uint32_t width, uint32_t height,
+		uint32_t concurrency, bool doStore, bool doAsynch){
 	ChronoTimer timer;
 	bool storeAsynch = doStore && doAsynch;
 	{
 		TIFFFormat tiffFormat;
-		uint32_t width = 88000;
-		uint32_t height = 32005;
 		uint32_t packedBytesWidth = width * 1;
 		ImageStripper img(width, height,1,32);
 		if (doStore){
@@ -23,30 +22,30 @@ static void run(uint32_t concurrency, bool doStore, bool doAsynch){
 		tf::Executor exec(concurrency);
 		tf::Taskflow taskflow;
 		tf::Task* encodeStrips = new tf::Task[img.numStrips_];
-		for (uint32_t i = 0; i < img.numStrips_; ++i)
-			encodeStrips[i] = taskflow.placeholder();
+		for (uint32_t strip = 0; strip < img.numStrips_; ++strip)
+			encodeStrips[strip] = taskflow.placeholder();
 		tf::Task* encodeSeams = new tf::Task[img.numStrips_-1];
-		for (uint32_t i = 0; i < img.numStrips_-1; ++i){
-			encodeSeams[i] = taskflow.placeholder();
-			encodeStrips[i].precede(encodeSeams[i]);
-			encodeStrips[i+1].precede(encodeSeams[i]);
+		for (uint32_t seam = 0; seam < img.numStrips_-1; ++seam){
+			encodeSeams[seam] = taskflow.placeholder();
+			encodeStrips[seam].precede(encodeSeams[seam]);
+			encodeStrips[seam+1].precede(encodeSeams[seam]);
 		}
-		for(uint32_t j = 0; j < img.numStrips_-1; ++j)
+		for(uint32_t seam = 0; seam < img.numStrips_-1; ++seam)
 		{
-			encodeSeams[j].work([] {
+			encodeSeams[seam].work([] {
 			});
 		}
-		for(uint32_t j = 0; j < img.numStrips_; ++j)
+		for(uint32_t strip = 0; strip < img.numStrips_; ++strip)
 		{
-			uint32_t strip = j;
-			encodeStrips[j].work([&tiffFormat, strip,doAsynch,doStore,img,&exec] {
+			uint32_t currentStrip = strip;
+			encodeStrips[strip].work([&tiffFormat, currentStrip,doAsynch,doStore,img,&exec] {
 				if (!doStore) {
-					uint64_t len =  (strip == img.numStrips_ - 1) ? img.finalStripLen_ : img.stripLen_;
+					uint64_t len =  (currentStrip == img.numStrips_ - 1) ? img.finalStripLen_ : img.stripLen_;
 					uint8_t b[img.stripLen_] __attribute__((__aligned__(ALIGNMENT)));
 					for (uint64_t k = 0; k < 2*len; ++k)
 						b[k/2] = k;
 				} else {
-					auto b = tiffFormat.getPoolBuffer(exec.this_worker_id(), strip);
+					auto b = tiffFormat.getPoolBuffer(exec.this_worker_id(), currentStrip);
 					auto ptr = b.data + b.skip;
 					for (uint64_t k = 0; k < 2*(b.dataLen-b.skip); ++k)
 						ptr[k/2] = k;
@@ -67,28 +66,31 @@ static void run(uint32_t concurrency, bool doStore, bool doAsynch){
 	}
 	timer.finish(storeAsynch ? "flush" : "");
 }
-static void run(uint8_t i){
-	   run(i,false,false);
-	   run(i,true,false);
-	   run(i,true,true);
+static void run(uint32_t width, uint32_t height,uint8_t concurrency){
+	   run(width,height,concurrency,false,false);
+	   run(width,height,concurrency,true,false);
+	   run(width,height,concurrency,true,true);
 	   printf("\\\\\\\\\\\\\\\\\\\\\\\\\\\n");
 }
 
 int main(int argc, char** argv)
 {
+	uint32_t width = 88000;
+	uint32_t height = 32005;
 	if (argc == 1) {
-		for (uint8_t i = 2; i <= std::thread::hardware_concurrency(); i+=2){
-		   run(i);
+		for (uint8_t concurrency = 2;
+				concurrency <= std::thread::hardware_concurrency(); concurrency+=2){
+		   run(width,height,concurrency);
 	   }
 	} else {
-		uint8_t i = atoi(argv[1]);
-		uint8_t j = 1;
+		uint8_t concurrency = atoi(argv[1]);
+		uint8_t useUring = 1;
 		if (argc >= 3)
-			j = atoi(argv[2]);
-		if (i > 0)
-			run(i, true, j != 0);
+			useUring = atoi(argv[2]);
+		if (concurrency > 0)
+			run(width,height,concurrency, true, useUring);
 		else
-			run(std::thread::hardware_concurrency(),true,j != 0);
+			run(width,height,std::thread::hardware_concurrency(),true,useUring);
 	}
 
    return 0;

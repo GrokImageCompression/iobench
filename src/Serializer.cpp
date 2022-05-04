@@ -18,8 +18,7 @@ static bool applicationReclaimCallback(serialize_buf buffer, void* serialize_use
 	return true;
 }
 
-Serializer::Serializer(void)
-	:
+Serializer::Serializer(void) :
 	  fd_(invalid_fd),
 	  numPooledRequests_(0), maxPooledRequests_(0), off_(0),
 	  reclaim_callback_(nullptr), reclaim_user_data_(nullptr),
@@ -84,11 +83,9 @@ bool Serializer::open(std::string name, std::string mode, bool asynch)
 		return false;
 	bool doRead = mode[0] == 'r';
 	int fd = 0;
-
 	int m = getMode(mode);
 	if(m == -1)
 		return false;
-
 	fd = ::open(name.c_str(), m, 0666);
 	if(fd < 0)
 	{
@@ -110,7 +107,6 @@ bool Serializer::open(std::string name, std::string mode, bool asynch)
 bool Serializer::close(void)
 {
 	uring.close();
-
 	int rc = 0;
 	if (ownsFileDescriptor_) {
 		if(fd_ == invalid_fd)
@@ -128,7 +124,7 @@ uint64_t Serializer::seek(int64_t off, int32_t whence)
 	if (simulateWrite_)
 		return off_;
 	off_t rc = lseek(fd_, off, whence);
-	if(rc == (off_t)-1)
+	if(rc == -1)
 	{
 		if(strerror(errno) != NULL)
 			printf("%s\n", strerror(errno));
@@ -145,19 +141,19 @@ void Serializer::enableSimulateWrite(void){
 size_t Serializer::write(SerializeBuf serializeBuf){
 	if (uring.active())
 		return uring.write(serializeBuf);
-	else {
-		ssize_t count = 0;
-		size_t bytes_written = 0;
-		for(; bytes_written < serializeBuf.dataLen; bytes_written += (size_t)count)
-		{
-			size_t offset = serializeBuf.offset  + bytes_written;
-			size_t io_size = (size_t)(serializeBuf.dataLen - bytes_written);
-			count = pwrite(fd_, serializeBuf.data, io_size, offset);
-			if(count <= 0)
-				break;
-		}
-		return bytes_written;
+
+	ssize_t count = 0;
+	size_t bytes_written = 0;
+	for(; bytes_written < serializeBuf.dataLen; bytes_written += (size_t)count)
+	{
+		off_t offset = serializeBuf.offset  + bytes_written;
+		size_t io_size = (size_t)(serializeBuf.dataLen - bytes_written);
+		count = pwrite(fd_, serializeBuf.data, io_size, offset);
+		if(count <= 0)
+			break;
 	}
+
+	return bytes_written;
 }
 size_t Serializer::write(uint8_t* buf, uint64_t bytes_total)
 {
