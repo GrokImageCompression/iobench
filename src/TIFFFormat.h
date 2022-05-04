@@ -41,7 +41,6 @@ private:
 	bool encodeHeader(void);
 	bool isHeaderEncoded(void);
 	TIFF* tif_;
-	mutable std::mutex encodePixelmutex_;
 	uint32_t encodeState_;
 	Serializer serializer_;
 	ImageStripper image_;

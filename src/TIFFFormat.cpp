@@ -122,13 +122,7 @@ bool TIFFFormat::encodePixels(uint32_t threadId, SerializeBuf serializeBuf){
 	//2. write full blocks
 
 	//3. write top seam
-	size_t written = 0;
-	if (asynchSerializers_)
-		written = ser->write(serializeBuf);
-	else {
-		std::unique_lock<std::mutex> lk(encodePixelmutex_);
-		written = ser->write(serializeBuf);
-	}
+	size_t written = ser->write(serializeBuf);
 	if (written != serializeBuf.dataLen){
 		printf("encodePixels: write error\n");
 		return false;

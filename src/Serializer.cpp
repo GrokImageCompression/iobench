@@ -146,7 +146,17 @@ size_t Serializer::write(SerializeBuf serializeBuf){
 	if (uring.active())
 		return uring.write(serializeBuf);
 	else {
-		return ::pwrite(fd_, serializeBuf.data,serializeBuf.dataLen, serializeBuf.offset );
+		ssize_t count = 0;
+		size_t bytes_written = 0;
+		for(; bytes_written < serializeBuf.dataLen; bytes_written += (size_t)count)
+		{
+			size_t offset = serializeBuf.offset  + bytes_written;
+			size_t io_size = (size_t)(serializeBuf.dataLen - bytes_written);
+			count = pwrite(fd_, serializeBuf.data, io_size, offset);
+			if(count <= 0)
+				break;
+		}
+		return bytes_written;
 	}
 }
 size_t Serializer::write(uint8_t* buf, uint64_t bytes_total)
@@ -173,5 +183,5 @@ size_t Serializer::write(uint8_t* buf, uint64_t bytes_total)
 			break;
 	}
 
-	return (size_t)count;
+	return (size_t)bytes_written;
 }
