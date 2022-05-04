@@ -36,11 +36,6 @@ void Serializer::registerApplicationClient(void)
 {
 	registerClientCallback(applicationReclaimCallback, &pool_);
 }
-void Serializer::reclaimBuffer(serialize_buf buffer)
-{
-	if(reclaim_callback_)
-		reclaim_callback_(buffer, reclaim_user_data_);
-}
 void Serializer::registerClientCallback(serialize_callback reclaim_callback,
 												 void* user_data)
 {
@@ -50,9 +45,6 @@ void Serializer::registerClientCallback(serialize_callback reclaim_callback,
 }
 SerializeBuf Serializer::getPoolBuffer(uint64_t len){
 	return pool_.get(len);
-}
-void Serializer::putPoolBuffer(SerializeBuf buf){
-	pool_.put(buf);
 }
 bool Serializer::attach(Serializer *parent){
 	fd_ = parent->fd_;
@@ -150,8 +142,12 @@ uint64_t Serializer::seek(int64_t off, int32_t whence)
 void Serializer::enableSimulateWrite(void){
 	simulateWrite_ = true;
 }
-size_t Serializer::writeAsynch(SerializeBuf serializeBuf){
-	return uring.write(serializeBuf);
+size_t Serializer::write(SerializeBuf serializeBuf){
+	if (uring.active())
+		return uring.write(serializeBuf);
+	else {
+		return ::pwrite(fd_, serializeBuf.data,serializeBuf.dataLen, serializeBuf.offset );
+	}
 }
 size_t Serializer::write(uint8_t* buf, uint64_t bytes_total)
 {
@@ -176,16 +172,6 @@ size_t Serializer::write(uint8_t* buf, uint64_t bytes_total)
 		if(count <= 0)
 			break;
 	}
-	if(pooled_)
-	   ++numPooledRequests_;
 
 	return (size_t)count;
-}
-void Serializer::initPooledRequest(void)
-{
-	pooled_ = true;
-}
-bool Serializer::allPooledRequestsComplete(void)
-{
-	return numPooledRequests_ == maxPooledRequests_;
 }

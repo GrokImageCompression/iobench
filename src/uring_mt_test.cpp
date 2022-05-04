@@ -2,7 +2,6 @@
 #include "TIFFFormat.h"
 #include "timer.h"
 #include <cstdlib>
-#include "FlowComponent.h"
 #include "testing.h"
 
 static void run(uint32_t concurrency, bool doStore, bool doAsynch){

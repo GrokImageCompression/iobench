@@ -23,6 +23,7 @@ class FileUringIO : public IFileIO
 	bool close(void) override;
 	uint64_t write(SerializeBuf buffer) override;
 	io_data* retrieveCompletion(bool peek, bool& success);
+	bool active(void);
 
   private:
 	io_uring ring;

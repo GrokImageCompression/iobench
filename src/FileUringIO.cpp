@@ -26,6 +26,9 @@ FileUringIO::~FileUringIO()
 {
 	close();
 }
+bool FileUringIO::active(void){
+	return ring.ring_fd != 0;
+}
 void FileUringIO::registerClientCallback(serialize_callback reclaim_callback,
 												  void* user_data)
 {

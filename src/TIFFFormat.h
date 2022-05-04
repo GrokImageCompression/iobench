@@ -39,8 +39,6 @@ public:
 private:
 	bool encodePixels(serialize_buf pixels);
 	bool encodeHeader(void);
-	bool encodePixelsCoreWrite(serialize_buf pixels);
-	bool encodePixelsCore(serialize_buf pixels);
 	bool isHeaderEncoded(void);
 	TIFF* tif_;
 	mutable std::mutex encodePixelmutex_;

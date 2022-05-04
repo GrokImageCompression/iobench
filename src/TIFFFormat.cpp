@@ -102,46 +102,40 @@ bool TIFFFormat::encodeInit(ImageStripper image,
 	mode_ = "w";
 	if(!serializer_.open(filename_, mode_,asynch))
 		return false;
+	serializer_.registerApplicationClient();
 	if (asynch){
-		serializer_.registerApplicationClient();
 		// create one serializer per thread and attach to parent serializer
 		asynchSerializers_ = new Serializer*[concurrency];
 		for (uint32_t i = 0; i < concurrency_; ++i){
 			asynchSerializers_[i] = new Serializer();
 			asynchSerializers_[i]->attach(&serializer_);
 		}
-		rc = true;
-	} else {
-		tif_ =   TIFFClientOpen(filename_.c_str(),
-				mode_.c_str(), &serializer_, TiffRead, TiffWrite,
-					TiffSeek, TiffClose,
-						TiffSize, nullptr, nullptr);
-		rc = tif_ != nullptr;
 	}
 
-	return rc;
+	return true;
 }
 bool TIFFFormat::encodePixels(uint32_t threadId, SerializeBuf serializeBuf){
+	Serializer *ser = asynchSerializers_ ? asynchSerializers_[threadId] : &serializer_;
+	// use seam cache to break strip down into write blocks + seams
+	//1. write bottom seam
+
+	//2. write full blocks
+
+	//3. write top seam
+	size_t written = 0;
 	if (asynchSerializers_)
-	{
-		auto ser = asynchSerializers_[threadId];
-
-		// use seam cache to break strip down into write blocks + seams
-		//1. write bottom seam
-
-		//2. write full blocks
-
-		//3. write top seam
-		auto written = ser->writeAsynch(serializeBuf);
-		if (written != serializeBuf.dataLen){
-			printf("encodePixels: write error\n");
-			return false;
-		}
-
-		return true;
-	} else {
-		return encodePixels(serializeBuf);
+		written = ser->write(serializeBuf);
+	else {
+		std::unique_lock<std::mutex> lk(encodePixelmutex_);
+		written = ser->write(serializeBuf);
 	}
+	if (written != serializeBuf.dataLen){
+		printf("encodePixels: write error\n");
+		return false;
+	}
+
+	return true;
+
 }
 bool TIFFFormat::close(void){
 	if (asynchSerializers_){
@@ -155,14 +149,6 @@ bool TIFFFormat::close(void){
 	serializer_.close();
 
 	return true;
-}
-bool TIFFFormat::encodePixelsCoreWrite(serialize_buf pixels)
-{
-	serializer_.initPooledRequest();
-	tmsize_t written =
-		TIFFWriteEncodedStrip(tif_, pixels.index, pixels.data, (tmsize_t)pixels.dataLen);
-
-	return written != -1;
 }
 bool TIFFFormat::encodeHeader(void){
 	if(isHeaderEncoded())
@@ -180,77 +166,43 @@ bool TIFFFormat::encodeHeader(void){
 
 	return true;
 }
-/***
- * library-orchestrated pixel encoding
- */
-bool TIFFFormat::encodePixels(serialize_buf pixels)
-{
-	std::unique_lock<std::mutex> lk(encodePixelmutex_);
-	if(encodeState_ & IMAGE_FORMAT_ENCODED_PIXELS)
-		return true;
-	if(!isHeaderEncoded() && !encodeHeader())
-		return false;
-
-	return encodePixelsCore(pixels);
-}
 bool TIFFFormat::isHeaderEncoded(void)
 {
 	return ((encodeState_ & IMAGE_FORMAT_ENCODED_HEADER) == IMAGE_FORMAT_ENCODED_HEADER);
 }
 bool TIFFFormat::encodeFinish(void)
 {
-	if(encodeState_ & IMAGE_FORMAT_ENCODED_PIXELS)
+	if(filename_.empty() || (encodeState_ & IMAGE_FORMAT_ENCODED_PIXELS))
 	{
 		assert(!tif_);
 		return true;
 	}
 
-	if (asynchSerializers_){
-		serializer_.enableSimulateWrite();
-		// 1. open tiff and encode header
-		tif_ =   TIFFClientOpen(filename_.c_str(),
-				"w", &serializer_, TiffRead, TiffWrite,
-					TiffSeek, TiffClose,
-						TiffSize, nullptr, nullptr);
-		if (!tif_)
-			return false;
-		if (!encodeHeader())
-			return false;
+	serializer_.enableSimulateWrite();
+	// 1. open tiff and encode header
+	tif_ =   TIFFClientOpen(filename_.c_str(),
+			"w", &serializer_, TiffRead, TiffWrite,
+				TiffSeek, TiffClose,
+					TiffSize, nullptr, nullptr);
+	if (!tif_)
+		return false;
+	if (!encodeHeader())
+		return false;
 
 
-		//2. simulate strip writes
-		for(uint32_t j = 0; j < image_.numStrips_; ++j){
-			tmsize_t written =
-				TIFFWriteEncodedStrip(tif_, j, nullptr, (tmsize_t)image_.stripLen(j));
-			if (written == -1){
-				printf("Error writing strip\n");
-				return false;
-			}
+	//2. simulate strip writes
+	for(uint32_t j = 0; j < image_.numStrips_; ++j){
+		tmsize_t written =
+			TIFFWriteEncodedStrip(tif_, j, nullptr, (tmsize_t)image_.stripLen(j));
+		if (written == -1){
+			printf("Error writing strip\n");
+			return false;
 		}
 	}
+
 
 	close();
 	encodeState_ |= IMAGE_FORMAT_ENCODED_PIXELS;
 
 	return true;
-}
-/***
- * Common core pixel encoding
- */
-bool TIFFFormat::encodePixelsCore(serialize_buf pixels)
-{
-	(void)(pixels);
-	bool success = encodePixelsCoreWrite(pixels);
-	if(success)
-	{
-		if(serializer_.allPooledRequestsComplete())
-			encodeFinish();
-	}
-	else
-	{
-		printf("TIFFFormat::encodePixelsCore: error in pixels encode");
-		encodeState_ |= IMAGE_FORMAT_ERROR;
-	}
-
-	return success;
 }
