@@ -89,7 +89,6 @@ static void run(uint32_t width, uint32_t height,uint8_t concurrency){
 
 int main(int argc, char** argv)
 {
-
 	uint32_t width = 88000;
 	uint32_t height = 32005;
 	uint32_t concurrency = 0;

@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.17)
 
-project(uring_mt_test )
+project(ubench)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -66,6 +66,6 @@ set(LIBRARY_SRCS
   ${CMAKE_CURRENT_SOURCE_DIR}/src/SeamCache.cpp
   )
   
-add_executable(uring_mt_test ${CMAKE_CURRENT_SOURCE_DIR}/src/uring_mt_test.cpp  ${LIBRARY_SRCS} )
+add_executable(ubench ${CMAKE_CURRENT_SOURCE_DIR}/src/ubench.cpp  ${LIBRARY_SRCS} )
 
-target_link_libraries(uring_mt_test ${TIFF_LIBNAME} uring ${CMAKE_THREAD_LIBS_INIT} )
+target_link_libraries(ubench ${TIFF_LIBNAME} uring ${CMAKE_THREAD_LIBS_INIT} )
