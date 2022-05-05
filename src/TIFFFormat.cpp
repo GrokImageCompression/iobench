@@ -68,6 +68,9 @@ TIFFFormat::~TIFFFormat() {
 	}
 	delete seamCache_;
 }
+SeamCache* TIFFFormat::getSeamCache(void){
+	return seamCache_;
+}
 SerializeBuf TIFFFormat::getPoolBuffer(uint32_t threadId,uint32_t index){
 	auto seamInfo = seamCache_->getSeamInfo(index);
 	uint64_t len = seamInfo.upperEnd_ - seamInfo.lowerBegin_;
@@ -116,12 +119,6 @@ bool TIFFFormat::encodeInit(ImageStripper image,
 }
 bool TIFFFormat::encodePixels(uint32_t threadId, SerializeBuf serializeBuf){
 	Serializer *ser = asynchSerializers_ ? asynchSerializers_[threadId] : &serializer_;
-	// use seam cache to break strip down into write blocks + seams
-	//1. write bottom seam
-
-	//2. write full blocks
-
-	//3. write top seam
 	size_t written = ser->write(serializeBuf);
 	if (written != serializeBuf.dataLen){
 		printf("encodePixels: write error\n");

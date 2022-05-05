@@ -36,6 +36,8 @@ public:
 	bool encodeFinish(void);
 	bool close(void);
 	SerializeBuf getPoolBuffer(uint32_t threadId,uint32_t index);
+	SeamCache* getSeamCache(void);
+
 private:
 	bool encodePixels(serialize_buf pixels);
 	bool encodeHeader(void);

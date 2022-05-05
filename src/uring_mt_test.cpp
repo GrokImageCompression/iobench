@@ -3,6 +3,8 @@
 #include "timer.h"
 #include <cstdlib>
 #include "testing.h"
+#define TCLAP_NAMESTARTSTRING "-"
+#include "tclap/CmdLine.h"
 
 static void run(uint32_t width, uint32_t height,
 		uint32_t concurrency, bool doStore, bool doAsynch){
@@ -10,6 +12,7 @@ static void run(uint32_t width, uint32_t height,
 	bool storeAsynch = doStore && doAsynch;
 	{
 		TIFFFormat tiffFormat;
+		auto seamCache = tiffFormat.getSeamCache();
 		uint32_t packedBytesWidth = width * 1;
 		ImageStripper img(width, height,1,32);
 		if (doStore){
@@ -32,13 +35,17 @@ static void run(uint32_t width, uint32_t height,
 		}
 		for(uint32_t seam = 0; seam < img.numStrips_-1; ++seam)
 		{
-			encodeSeams[seam].work([] {
+			uint32_t currentSeam = seam;
+			encodeSeams[seam].work([currentSeam,seamCache, &tiffFormat] {
+				// write seam buffer
+				//bool ret = tiffFormat.encodePixels(exec.this_worker_id(),b);
+				//assert(ret);
 			});
 		}
 		for(uint32_t strip = 0; strip < img.numStrips_; ++strip)
 		{
 			uint32_t currentStrip = strip;
-			encodeStrips[strip].work([&tiffFormat, currentStrip,doAsynch,doStore,img,&exec] {
+			encodeStrips[strip].work([seamCache, &tiffFormat, currentStrip,doAsynch,doStore,img,&exec] {
 				if (!doStore) {
 					uint64_t len =  (currentStrip == img.numStrips_ - 1) ? img.finalStripLen_ : img.stripLen_;
 					uint8_t b[img.stripLen_] __attribute__((__aligned__(ALIGNMENT)));
@@ -49,6 +56,13 @@ static void run(uint32_t width, uint32_t height,
 					auto ptr = b.data + b.skip;
 					for (uint64_t k = 0; k < 2*(b.dataLen-b.skip); ++k)
 						ptr[k/2] = k;
+
+					// use seam cache to break strip down into write blocks + seams
+					//1. write bottom seam
+
+					//2. write full blocks
+
+					//3. write top seam
 					bool ret = tiffFormat.encodePixels(exec.this_worker_id(),b);
 					assert(ret);
 				}
@@ -75,18 +89,50 @@ static void run(uint32_t width, uint32_t height,uint8_t concurrency){
 
 int main(int argc, char** argv)
 {
+
 	uint32_t width = 88000;
 	uint32_t height = 32005;
-	if (argc == 1) {
+	uint32_t concurrency = 0;
+	bool useUring = true;
+	bool fullRun = true;
+	try
+	{
+		TCLAP::CmdLine cmd("uring test bench command line", ' ', "1.0");
+
+		TCLAP::ValueArg<uint32_t> widthArg("w", "width",
+												  "image width",
+												  false, 0, "unsigned integer", cmd);
+		TCLAP::ValueArg<uint32_t> heightArg("e", "height",
+												  "image height",
+												  false, 0, "unsigned integer", cmd);
+		TCLAP::SwitchArg synchArg("s", "synchronous", "synchronous writes", cmd);
+		TCLAP::ValueArg<uint32_t> concurrencyArg("c", "concurrency",
+												  "concurrency",
+												  false, 0, "unsigned integer", cmd);
+		cmd.parse(argc, argv);
+
+		if (widthArg.isSet())
+			width = widthArg.getValue();
+		if (heightArg.isSet())
+			height = heightArg.getValue();
+		if (concurrencyArg.isSet()) {
+			concurrency = concurrencyArg.getValue();
+			fullRun = false;
+		}
+		if (synchArg.isSet())
+			useUring = false;
+	}
+	catch(TCLAP::ArgException& e) // catch any exceptions
+	{
+		std::cerr << "error: " << e.error() << " for arg " << e.argId() << std::endl;
+		return 1;
+	}
+	if (fullRun) {
 		for (uint8_t concurrency = 2;
 				concurrency <= std::thread::hardware_concurrency(); concurrency+=2){
 		   run(width,height,concurrency);
 	   }
 	} else {
-		uint8_t concurrency = atoi(argv[1]);
-		uint8_t useUring = 1;
-		if (argc >= 3)
-			useUring = atoi(argv[2]);
 		if (concurrency > 0)
 			run(width,height,concurrency, true, useUring);
 		else
