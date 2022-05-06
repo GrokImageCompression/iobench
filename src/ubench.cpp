@@ -24,16 +24,16 @@ static void run(uint32_t width, uint32_t height,
 		printf("Run with concurrency = %d, store to disk = %d, use uring = %d\n",concurrency,doStore,doAsynch);
 		tf::Executor exec(concurrency);
 		tf::Taskflow taskflow;
-		tf::Task* encodeStrips = new tf::Task[img.numStrips_];
-		for (uint32_t strip = 0; strip < img.numStrips_; ++strip)
+		tf::Task* encodeStrips = new tf::Task[img.numStrips()];
+		for (uint32_t strip = 0; strip < img.numStrips(); ++strip)
 			encodeStrips[strip] = taskflow.placeholder();
-		tf::Task* encodeSeams = new tf::Task[img.numStrips_-1];
-		for (uint32_t seam = 0; seam < img.numStrips_-1; ++seam){
+		tf::Task* encodeSeams = new tf::Task[img.numStrips()-1];
+		for (uint32_t seam = 0; seam < img.numStrips()-1; ++seam){
 			encodeSeams[seam] = taskflow.placeholder();
 			encodeStrips[seam].precede(encodeSeams[seam]);
 			encodeStrips[seam+1].precede(encodeSeams[seam]);
 		}
-		for(uint32_t seam = 0; seam < img.numStrips_-1; ++seam)
+		for(uint32_t seam = 0; seam < img.numStrips()-1; ++seam)
 		{
 			uint32_t currentSeam = seam;
 			encodeSeams[seam].work([currentSeam,seamCache, &tiffFormat] {
@@ -42,13 +42,14 @@ static void run(uint32_t width, uint32_t height,
 				//assert(ret);
 			});
 		}
-		for(uint32_t strip = 0; strip < img.numStrips_; ++strip)
+		for(uint32_t strip = 0; strip < img.numStrips(); ++strip)
 		{
 			uint32_t currentStrip = strip;
 			encodeStrips[strip].work([seamCache, &tiffFormat, currentStrip,doAsynch,doStore,img,&exec] {
 				if (!doStore) {
-					uint64_t len =  (currentStrip == img.numStrips_ - 1) ? img.finalStripLen_ : img.stripLen_;
-					uint8_t b[img.stripLen_] __attribute__((__aligned__(ALIGNMENT)));
+					auto strip = img.getStrip(currentStrip);
+					uint64_t len =  strip.len_;
+					uint8_t b[len] __attribute__((__aligned__(ALIGNMENT)));
 					for (uint64_t k = 0; k < 2*len; ++k)
 						b[k/2] = k;
 				} else {

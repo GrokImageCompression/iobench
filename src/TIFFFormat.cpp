@@ -99,7 +99,7 @@ bool TIFFFormat::encodeInit(ImageStripper image,
 	image_ = image;
 	filename_ = filename;
 	concurrency_ = concurrency;
-	auto maxRequests = image.numStrips_;
+	auto maxRequests = image.numStrips();
 	serializer_.setMaxPooledRequests(maxRequests);
 	bool rc;
 	mode_ = "w";
@@ -182,9 +182,9 @@ bool TIFFFormat::encodeFinish(void)
 
 
 	//2. simulate strip writes
-	for(uint32_t j = 0; j < image_.numStrips_; ++j){
+	for(uint32_t j = 0; j < image_.numStrips(); ++j){
 		tmsize_t written =
-			TIFFWriteEncodedStrip(tif_, j, nullptr, (tmsize_t)image_.stripLen(j));
+			TIFFWriteEncodedStrip(tif_, j, nullptr, (tmsize_t)image_.getStrip(j).len_);
 		if (written == -1){
 			printf("Error writing strip\n");
 			return false;

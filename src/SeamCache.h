@@ -26,11 +26,11 @@ struct SeamCacheInitInfo{
 	SeamCacheInitInfo() : SeamCacheInitInfo(0,0,ImageStripper())
 	{}
 	SeamCacheInitInfo(uint64_t headerSize, uint64_t writeSize, ImageStripper imageStripper) :
-		headerSize_(headerSize), writeSize_(writeSize), imageMeta_(imageStripper)
+		headerSize_(headerSize), writeSize_(writeSize), imageStripper_(imageStripper)
 	{}
 	uint64_t headerSize_;
 	uint64_t writeSize_;
-	ImageStripper imageMeta_;
+	ImageStripper imageStripper_;
 };
 
 class SeamCache {

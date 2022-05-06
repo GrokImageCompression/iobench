@@ -2,7 +2,7 @@
 #include <cassert>
 
 SeamCache::SeamCache(SeamCacheInitInfo initInfo) : init_(initInfo),
-													numSeams_(init_.imageMeta_.numStrips_-1)
+													numSeams_(init_.imageStripper_.numStrips()-1)
 {
 	seamBuffers_ = new SerializeBuf*[numSeams_];
 	for (uint32_t i = 0; i < numSeams_; ++i){
@@ -25,11 +25,11 @@ SeamCache::~SeamCache() {
 	delete[] seamBuffers_;
 }
 ImageStripper& SeamCache::imageStripper(void){
-	return init_.imageMeta_;
+	return init_.imageStripper_;
 }
 //note: there are (numStrips_-1) seam buffers : the final strip has none
 uint8_t* SeamCache::getSeamBuffer(uint32_t strip){
-	return (strip < imageStripper().numStrips_-1) ? seamBuffers_[strip]->data : nullptr;
+	return (strip < imageStripper().numStrips()-1) ? seamBuffers_[strip]->data : nullptr;
 }
 SeamInfo SeamCache::getSeamInfo(uint32_t strip){
 	SeamInfo ret;
@@ -51,10 +51,10 @@ SeamInfo SeamCache::getSeamInfo(uint32_t strip){
 	return ret;
 }
 uint64_t SeamCache::stripOffset(uint32_t strip){
-	return strip == 0 ? 0 : init_.headerSize_ + imageStripper().stripOffset(strip);
+	return strip == 0 ? 0 : init_.headerSize_ + imageStripper().getStrip(strip).offset_;
 }
 uint64_t SeamCache::stripEnd(uint32_t strip){
-	return stripOffset(strip) + imageStripper().stripLen(strip);
+	return stripOffset(strip) + imageStripper().getStrip(strip).len_;
 }
 uint64_t SeamCache::upperBegin(uint32_t strip){
 	return (strip < numSeams_) ?
