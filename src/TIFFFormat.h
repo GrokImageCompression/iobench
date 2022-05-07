@@ -5,7 +5,6 @@
 #include "BufferPool.h"
 #include <string>
 #include <tiffio.h>
-#include "StripChunker.h"
 
 const uint32_t IMAGE_FORMAT_UNENCODED = 1;
 const uint32_t IMAGE_FORMAT_ENCODED_HEADER = 2;
@@ -54,5 +53,4 @@ private:
 	uint32_t concurrency_;
 	Serializer **asynchSerializers_;
 	std::atomic<uint32_t> numPixelWrites_;
-	StripChunker *stripChunker_;
 };
