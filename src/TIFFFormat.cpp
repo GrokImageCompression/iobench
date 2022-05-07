@@ -76,16 +76,16 @@ void TIFFFormat::init(uint32_t width, uint32_t height,
 ImageStripper* TIFFFormat::getImageStripper(void){
 	return imageStripper_;
 }
+// corrected for header
 SerializeBuf TIFFFormat::getPoolBuffer(uint32_t threadId,uint32_t index){
 	auto chunkInfo = imageStripper_->getChunkInfo(index);
-	uint64_t len = chunkInfo.lastEnd_ - chunkInfo.firstBegin_;
-	uint64_t headerSize = ((index == 0) ? sizeof(header_) : 0);
-	uint64_t totalLength = len + headerSize;
+	uint64_t len = chunkInfo.len();
 	SerializeBuf  serializeBuf =
-			asynchSerializers_ ? asynchSerializers_[threadId]->getPoolBuffer(totalLength) :
-					serializer_.getPoolBuffer(totalLength);
+			asynchSerializers_ ? asynchSerializers_[threadId]->getPoolBuffer(len) :
+					serializer_.getPoolBuffer(len);
 	serializeBuf.index = index;
 	serializeBuf.offset = chunkInfo.firstBegin_;
+	uint64_t headerSize = ((index == 0) ? sizeof(header_) : 0);
 	if (headerSize) {
 		memcpy(serializeBuf.data , &header_, headerSize);
 		serializeBuf.skip = headerSize;
@@ -184,7 +184,7 @@ bool TIFFFormat::encodeFinish(void)
 	//2. simulate strip writes
 	for(uint32_t j = 0; j < imageStripper_->numStrips(); ++j){
 		tmsize_t written =
-			TIFFWriteEncodedStrip(tif_, j, nullptr, (tmsize_t)imageStripper_->getStrip(j).len_);
+			TIFFWriteEncodedStrip(tif_, j, nullptr, (tmsize_t)imageStripper_->getStrip(j)->len_);
 		if (written == -1){
 			printf("Error writing strip\n");
 			return false;

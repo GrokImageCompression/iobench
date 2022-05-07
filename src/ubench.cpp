@@ -32,7 +32,7 @@ static void run(uint32_t width, uint32_t height,
 			encodeStrips[strip].work([&tiffFormat, currentStrip,doAsynch,doStore,imageStripper,&exec] {
 				if (!doStore) {
 					auto strip = imageStripper->getStrip(currentStrip);
-					uint64_t len =  strip.len_;
+					uint64_t len =  strip->len_;
 					uint8_t b[len] __attribute__((__aligned__(ALIGNMENT)));
 					for (uint64_t k = 0; k < 2*len; ++k)
 						b[k/2] = k;

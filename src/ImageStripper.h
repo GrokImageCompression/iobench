@@ -6,9 +6,39 @@
 
 #include "IBufferPool.h"
 
-struct Chunk {
-	Chunk(void) : Chunk(0,0,0)
+// corrected for header bytes
+struct ChunkInfo{
+	ChunkInfo() :    firstBegin_(0), firstEnd_(0),
+					lastBegin_(0), lastEnd_(0), numAlignedChunks_(0)
 	{}
+	uint64_t len(){
+		return lastEnd_ - firstBegin_;
+	}
+	uint64_t firstBegin_;
+	uint64_t firstEnd_;
+	uint64_t lastBegin_;
+	uint64_t lastEnd_;
+	uint32_t numAlignedChunks_;
+private:
+	bool hasFirst(void){
+		return firstEnd_ != firstBegin_;
+	}
+	bool hasLast(void){
+		return lastEnd_ != lastBegin_;
+	}
+	uint32_t numChunks(void){
+		uint32_t rc = numAlignedChunks_;
+		if (hasFirst())
+			rc++;
+		if (hasLast())
+			rc++;
+
+		return rc;
+	}
+};
+
+// uncorrected
+struct Chunk {
 	Chunk(uint64_t offsetForWrite, uint64_t offset,uint64_t len) :
 		offsetForWrite_(offsetForWrite), offset_(offset), len_(len)
 	{}
@@ -22,9 +52,8 @@ struct Chunk {
 	uint64_t len_;
 };
 
+// uncorrected
 struct ChunkBuffer : public Chunk{
-	ChunkBuffer() : ChunkBuffer(0,0,0,0)
-	{}
 	ChunkBuffer(uint64_t offsetForWrite, uint64_t offset,uint64_t len, uint64_t allocLen) :
 		Chunk(offsetForWrite,offset,len),
 		data_(nullptr), allocLen_(allocLen), pool_(nullptr)
@@ -48,6 +77,7 @@ struct ChunkBuffer : public Chunk{
 	IBufferPool* pool_;
 };
 
+// uncorrected
 struct StripBuffer : public Chunk {
 	StripBuffer(uint64_t offset,uint64_t len) :
 		Chunk(offset,offset,len),
@@ -77,38 +107,14 @@ struct StripBuffer : public Chunk {
 	std::mutex seamMutex_;
 };
 
-struct ChunkInfo{
-	ChunkInfo() :    firstBegin_(0), firstEnd_(0),
-					lastBegin_(0), lastEnd_(0), numAlignedChunks_(0)
-	{}
-	bool hasFirst(void){
-		return firstEnd_ != firstBegin_;
-	}
-	bool hasLast(void){
-		return lastEnd_ != lastBegin_;
-	}
-	uint32_t numChunks(void){
-		uint32_t rc = numAlignedChunks_;
-		if (hasFirst())
-			rc++;
-		if (hasLast())
-			rc++;
-
-		return rc;
-	}
-	uint64_t firstBegin_;
-	uint64_t firstEnd_;
-	uint64_t lastBegin_;
-	uint64_t lastEnd_;
-	uint32_t numAlignedChunks_;
-};
 
 struct ImageStripper{
 	ImageStripper() : ImageStripper(0,0,0,0,0,0)
 	{}
 	~ImageStripper(void){
 		if (stripBuffers_){
-
+			for (uint32_t i = 0; i < numStrips_; ++i)
+				delete stripBuffers_[i];
 			delete[] stripBuffers_;
 		}
 	}
@@ -122,24 +128,29 @@ struct ImageStripper{
 							height - ((height / nominalStripHeight) * nominalStripHeight) :
 								nominalStripHeight),
 		finalStripLen_ (finalStripHeight_ * stripPackedByteWidth_),
-		stripBuffers_(nullptr),
 		headerSize_(headerSize),
 		writeSize_(writeSize),
-		finalStrip_(numStrips_-1)
-	{}
-	StripBuffer getStrip(uint32_t strip) const{
-		return StripBuffer(strip * nominalStripHeight_ * stripPackedByteWidth_,
-					stripHeight(strip) * stripPackedByteWidth_);
+		finalStrip_(numStrips_-1),
+		stripBuffers_(new StripBuffer*[numStrips_])
+	{
+		for (uint32_t i = 0; i < numStrips_; ++i){
+			stripBuffers_[i] = new StripBuffer(i * nominalStripHeight_ * stripPackedByteWidth_,
+					stripHeight(i) * stripPackedByteWidth_);
+		}
+	}
+	StripBuffer* getStrip(uint32_t strip) const{
+		return stripBuffers_[strip];
 	}
 	uint32_t numStrips(void) const{
 		return numStrips_;
 	}
+	// corrected
 	ChunkInfo getChunkInfo(uint32_t strip){
 		ChunkInfo ret;
 		ret.lastBegin_ = lastBegin(strip);
 		assert(strip ==  finalStrip_ || (ret.lastBegin_% writeSize_ == 0));
-		ret.lastEnd_   = stripEnd(strip);
-		ret.firstBegin_ = stripOffset(strip);
+		ret.lastEnd_   = correctedStripEnd(strip);
+		ret.firstBegin_ = correctedStripOffset(strip);
 		// no lower seam
 		if (strip == 0 ||  (ret.firstBegin_ % writeSize_ == 0))
 			ret.firstEnd_ = ret.firstBegin_;
@@ -160,13 +171,13 @@ private:
 	uint32_t stripHeight(uint32_t strip) const{
 		return (strip < numStrips_-1) ? nominalStripHeight_ : finalStripHeight_;
 	}
-	uint64_t stripOffset(uint32_t strip){
+	uint64_t correctedStripOffset(uint32_t strip){
 		// header bytes added to first strip shifts all other strips
 		// by that number of bytes
-		return strip == 0 ? 0 : headerSize_ + getStrip(strip).offset_;
+		return strip == 0 ? 0 : headerSize_ + stripBuffers_[strip]->offset_;
 	}
-	uint64_t stripEnd(uint32_t strip){
-		uint64_t rc = stripOffset(strip) + getStrip(strip).len_;
+	uint64_t correctedStripEnd(uint32_t strip){
+		uint64_t rc = correctedStripOffset(strip) + stripBuffers_[strip]->len_;
 		//correct for header bytes added to first strip
 		if (strip == 0)
 			rc += headerSize_;
@@ -175,15 +186,15 @@ private:
 	}
 	uint64_t lastBegin(uint32_t strip){
 		return (strip < finalStrip_) ?
-				(stripEnd(strip)/writeSize_) * writeSize_ : stripEnd(strip);
+				(correctedStripEnd(strip)/writeSize_) * writeSize_ : correctedStripEnd(strip);
 	}
 	uint64_t stripPackedByteWidth_;
 	uint64_t stripLen_;
 	uint32_t finalStripHeight_;
 	uint64_t finalStripLen_;
 	uint32_t numStrips_;
-	StripBuffer *stripBuffers_;
 	uint64_t headerSize_;
 	uint64_t writeSize_;
 	uint32_t finalStrip_;
+	StripBuffer **stripBuffers_;
 };
