@@ -78,7 +78,7 @@ ImageStripper* TIFFFormat::getImageStripper(void){
 }
 // corrected for header
 SerializeBuf TIFFFormat::getPoolBuffer(uint32_t threadId,uint32_t index){
-	auto chunkInfo = imageStripper_->getChunkInfo(index);
+	auto chunkInfo = imageStripper_->getSerializeChunkInfo(index);
 	uint64_t len = chunkInfo.len();
 	SerializeBuf  serializeBuf =
 			asynchSerializers_ ? asynchSerializers_[threadId]->getPoolBuffer(len) :

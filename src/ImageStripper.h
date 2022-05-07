@@ -6,9 +6,9 @@
 
 #include "IBufferPool.h"
 
-// corrected for header bytes
-struct ChunkInfo{
-	ChunkInfo() :    firstBegin_(0), firstEnd_(0),
+// corrected for header size
+struct SerializeChunkInfo{
+	SerializeChunkInfo() :    firstBegin_(0), firstEnd_(0),
 					lastBegin_(0), lastEnd_(0), numAlignedChunks_(0)
 	{}
 	uint64_t len(){
@@ -36,13 +36,11 @@ private:
 		return rc;
 	}
 };
-
-// uncorrected
-struct Chunk {
-	Chunk(uint64_t offsetForWrite, uint64_t offset,uint64_t len) :
+struct SerializeChunk {
+	SerializeChunk(uint64_t offsetForWrite, uint64_t offset,uint64_t len) :
 		offsetForWrite_(offsetForWrite), offset_(offset), len_(len)
 	{}
-	Chunk(uint64_t offset,uint64_t len) :Chunk(offset,offset,len)
+	SerializeChunk(uint64_t offset,uint64_t len) :SerializeChunk(offset,offset,len)
 	{}
 	bool aligned(void){
 		return (offset_ & (ALIGNMENT-1)) && (len_ & (ALIGNMENT-1));
@@ -51,11 +49,9 @@ struct Chunk {
 	uint64_t offset_;
 	uint64_t len_;
 };
-
-// uncorrected
-struct ChunkBuffer : public Chunk{
-	ChunkBuffer(uint64_t offsetForWrite, uint64_t offset,uint64_t len, uint64_t allocLen) :
-		Chunk(offsetForWrite,offset,len),
+struct SerializeChunkBuffer : public SerializeChunk{
+	SerializeChunkBuffer(uint64_t offsetForWrite, uint64_t offset,uint64_t len, uint64_t allocLen) :
+		SerializeChunk(offsetForWrite,offset,len),
 		data_(nullptr), allocLen_(allocLen), pool_(nullptr)
 	{}
 	void alloc(IBufferPool* pool){
@@ -77,13 +73,20 @@ struct ChunkBuffer : public Chunk{
 	IBufferPool* pool_;
 };
 
-// uncorrected
-struct StripBuffer : public Chunk {
-	StripBuffer(uint64_t offset,uint64_t len) :
-		Chunk(offset,offset,len),
-		chunks_(nullptr), numChunks_(0), nextChunkIndex_(-1)
+// independant of header size
+struct StripBuffer  {
+	StripBuffer(StripBuffer* neighbour, uint64_t offset,uint64_t len) :
+		offset_(offset),
+		len_(len),
+		chunks_(nullptr),
+		numChunks_(0),
+		nextChunkIndex_(-1),
+		leftNeighbour_(neighbour)
 	{}
-	bool nextChunk(IBufferPool *pool, ChunkBuffer &chunkBuffer){
+	void setSerializeChunkInfo(SerializeChunkInfo chunkInfo){
+		chunkInfo_ = chunkInfo;
+	}
+	bool nextChunk(IBufferPool *pool, SerializeChunkBuffer &chunkBuffer){
 		int32_t ind = ++nextChunkIndex_;
 		if (ind >= numChunks_)
 			return false;
@@ -93,7 +96,8 @@ struct StripBuffer : public Chunk {
 			chunkBuffer.alloc(pool);
 		} else {
 			if (ind == 0){
-
+				assert(leftNeighbour_);
+				// get left neighbour last chunk
 			} else {
 
 			}
@@ -101,10 +105,15 @@ struct StripBuffer : public Chunk {
 
 		return true;
 	}
-	ChunkBuffer* chunks_;
+
+	uint64_t offset_;
+	uint64_t len_;
+	SerializeChunkBuffer* chunks_;
 	uint32_t numChunks_;
 	std::atomic<int32_t> nextChunkIndex_;
 	std::mutex seamMutex_;
+	StripBuffer *leftNeighbour_;
+	SerializeChunkInfo chunkInfo_;
 };
 
 
@@ -134,8 +143,11 @@ struct ImageStripper{
 		stripBuffers_(new StripBuffer*[numStrips_])
 	{
 		for (uint32_t i = 0; i < numStrips_; ++i){
-			stripBuffers_[i] = new StripBuffer(i * nominalStripHeight_ * stripPackedByteWidth_,
-					stripHeight(i) * stripPackedByteWidth_);
+			auto neighbour = (i > 0) ? stripBuffers_[i-1] : nullptr;
+			stripBuffers_[i] = new StripBuffer(neighbour,
+										i * nominalStripHeight_ * stripPackedByteWidth_,
+										stripHeight(i) * stripPackedByteWidth_);
+			stripBuffers_[i]->setSerializeChunkInfo(getSerializeChunkInfo(i));
 		}
 	}
 	StripBuffer* getStrip(uint32_t strip) const{
@@ -145,8 +157,8 @@ struct ImageStripper{
 		return numStrips_;
 	}
 	// corrected
-	ChunkInfo getChunkInfo(uint32_t strip){
-		ChunkInfo ret;
+	SerializeChunkInfo getSerializeChunkInfo(uint32_t strip){
+		SerializeChunkInfo ret;
 		ret.lastBegin_ = lastBegin(strip);
 		assert(strip ==  finalStrip_ || (ret.lastBegin_% writeSize_ == 0));
 		ret.lastEnd_   = correctedStripEnd(strip);
