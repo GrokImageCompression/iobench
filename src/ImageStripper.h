@@ -91,21 +91,19 @@ struct StripChunkBuffer {
 		assert(writeLen < serializeChunkBuffer_->buf_.dataLen);
 	}
 	~StripChunkBuffer(){
-		auto ct = serializeChunkBuffer_->unref();
-		if (ct == 0)
+		if (serializeChunkBuffer_->unref() == 0)
 			delete serializeChunkBuffer_;
 	}
 	void alloc(IBufferPool* pool){
 		serializeChunkBuffer_->alloc(pool);
 	}
 	SerializeChunkBuffer *serializeChunkBuffer_;
-	// relative write offset into buffer data
+	// write offset relative to beginning of data
 	uint64_t writeOffset_;
 	// writeable length
 	uint64_t writeLen_;
 };
 
-// independant of header size
 struct StripBuffer  {
 	StripBuffer(StripBuffer* neighbour, uint64_t offset,uint64_t len) :
 		offset_(offset),
@@ -122,7 +120,7 @@ struct StripBuffer  {
 			delete[] chunks_;
 		}
 	}
-	void setSerializeChunkInfo(SerializeChunkInfo chunkInfo){
+	void init(SerializeChunkInfo chunkInfo){
 		chunkInfo_ = chunkInfo;
 		numChunks_ = chunkInfo_.numChunks();
 		chunks_ = new StripChunkBuffer*[numChunks_];
@@ -131,20 +129,29 @@ struct StripBuffer  {
 			bool lastSeam    = (i == numChunks_-1) && chunkInfo.hasLast();
 			uint64_t offset  = i * chunkInfo_.writeSize_;
 			uint64_t len     = chunkInfo_.writeSize_;
-			uint64_t writeLength = len;
 			uint64_t writeOffset = 0;
+			bool shared = false;
 			if (firstSeam){
 				offset = chunkInfo_.firstBegin_;
 				len = chunkInfo_.firstEnd_ - chunkInfo_.firstBegin_;
+				shared = true;
 			} else if (lastSeam){
 				offset = chunkInfo_.lastBegin_;
 				len = chunkInfo_.lastEnd_ - chunkInfo_.lastBegin_;
+				shared = true;
 			} else 	if (chunkInfo.hasFirst()) {
 				offset = chunkInfo_.firstEnd_ + (i-1) * chunkInfo_.writeSize_;
 			}
-			chunks_[i] = new StripChunkBuffer(
-									new SerializeChunkBuffer(offset,len,false),
-									writeOffset,writeLength);
+			SerializeChunkBuffer* serializeChunkBuffer;
+			if (firstSeam) {
+				serializeChunkBuffer = leftNeighbour_->finalChunk()->serializeChunkBuffer_;
+				serializeChunkBuffer->ref();
+			} else {
+				serializeChunkBuffer = new SerializeChunkBuffer(offset,len,shared);
+			}
+			chunks_[i] = new StripChunkBuffer(serializeChunkBuffer,
+												writeOffset,
+												len);
 		}
 	}
 	bool nextChunk(IBufferPool *pool, StripChunkBuffer **chunkBuffer){
@@ -160,16 +167,18 @@ struct StripBuffer  {
 
 		return true;
 	}
+	StripChunkBuffer* finalChunk(void){
+		return chunks_[numChunks_-1];
+	}
 
 	// temporary
 	uint64_t offset_;
 	uint64_t len_;
-
+	////////////////
 
 	StripChunkBuffer** chunks_;
 	uint32_t numChunks_;
 	std::atomic<int32_t> nextChunkIndex_;
-	std::mutex seamMutex_;
 	StripBuffer *leftNeighbour_;
 	SerializeChunkInfo chunkInfo_;
 };
@@ -205,7 +214,7 @@ struct ImageStripper{
 			stripBuffers_[i] = new StripBuffer(neighbour,
 										i * nominalStripHeight_ * stripPackedByteWidth_,
 										stripHeight(i) * stripPackedByteWidth_);
-			stripBuffers_[i]->setSerializeChunkInfo(getSerializeChunkInfo(i));
+			stripBuffers_[i]->init(getSerializeChunkInfo(i));
 		}
 	}
 	StripBuffer* getStrip(uint32_t strip) const{
