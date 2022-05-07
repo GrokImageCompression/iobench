@@ -14,18 +14,6 @@ struct SerializeChunkInfo{
 	uint64_t len(){
 		return lastEnd_ - firstBegin_;
 	}
-	uint64_t firstBegin_;
-	uint64_t firstEnd_;
-	uint64_t lastBegin_;
-	uint64_t lastEnd_;
-	uint32_t numAlignedChunks_;
-private:
-	bool hasFirst(void){
-		return firstEnd_ != firstBegin_;
-	}
-	bool hasLast(void){
-		return lastEnd_ != lastBegin_;
-	}
 	uint32_t numChunks(void){
 		uint32_t rc = numAlignedChunks_;
 		if (hasFirst())
@@ -35,6 +23,17 @@ private:
 
 		return rc;
 	}
+	bool hasFirst(void){
+		return firstEnd_ != firstBegin_;
+	}
+	bool hasLast(void){
+		return lastEnd_ != lastBegin_;
+	}
+	uint64_t firstBegin_;
+	uint64_t firstEnd_;
+	uint64_t lastBegin_;
+	uint64_t lastEnd_;
+	uint32_t numAlignedChunks_;
 };
 struct SerializeChunk {
 	SerializeChunk(uint64_t offsetForWrite, uint64_t offset,uint64_t len) :
@@ -50,10 +49,17 @@ struct SerializeChunk {
 	uint64_t len_;
 };
 struct SerializeChunkBuffer : public SerializeChunk{
-	SerializeChunkBuffer(uint64_t offsetForWrite, uint64_t offset,uint64_t len, uint64_t allocLen) :
+	SerializeChunkBuffer(uint64_t offsetForWrite, uint64_t offset,uint64_t len) :
 		SerializeChunk(offsetForWrite,offset,len),
-		data_(nullptr), allocLen_(allocLen), pool_(nullptr)
+		data_(nullptr), allocLen_(0), pool_(nullptr),
+		refCount(1)
 	{}
+	uint32_t ref(void){
+		return refCount++;
+	}
+	uint32_t unref(void){
+		return refCount--;
+	}
 	void alloc(IBufferPool* pool){
 		auto b = pool->get(len_);
 		data_ = b.data;
@@ -71,6 +77,7 @@ struct SerializeChunkBuffer : public SerializeChunk{
 	uint8_t* data_;
 	uint64_t allocLen_;
 	IBufferPool* pool_;
+	std::atomic<uint32_t> refCount;
 };
 
 // independant of header size
@@ -83,17 +90,37 @@ struct StripBuffer  {
 		nextChunkIndex_(-1),
 		leftNeighbour_(neighbour)
 	{}
+	~StripBuffer(void){
+		if (chunks_){
+			for (uint32_t i = 0; i < numChunks_; ++i){
+				auto ct = chunks_[i]->unref();
+				if (ct == 0)
+					delete chunks_[i];
+			}
+			delete[] chunks_;
+		}
+	}
 	void setSerializeChunkInfo(SerializeChunkInfo chunkInfo){
 		chunkInfo_ = chunkInfo;
+		numChunks_ = chunkInfo_.numChunks();
+		chunks_ = new SerializeChunkBuffer*[numChunks_];
+		for (uint32_t i = 0; i < numChunks_; ++i ){
+			bool firstSeam = i == 0 && chunkInfo.hasFirst();
+			bool lastSeam = (i == numChunks_-1) && chunkInfo.hasLast();
+			uint64_t offsetForWrite;
+			uint64_t offset;
+			uint64_t len;
+			chunks_[i] = new SerializeChunkBuffer(offsetForWrite,offset,len);
+		}
 	}
-	bool nextChunk(IBufferPool *pool, SerializeChunkBuffer &chunkBuffer){
+	bool nextChunk(IBufferPool *pool, SerializeChunkBuffer *chunkBuffer){
 		int32_t ind = ++nextChunkIndex_;
 		if (ind >= numChunks_)
 			return false;
 
 		chunkBuffer = chunks_[ind];
-		if (chunkBuffer.aligned()){
-			chunkBuffer.alloc(pool);
+		if (chunkBuffer->aligned()){
+			chunkBuffer->alloc(pool);
 		} else {
 			if (ind == 0){
 				assert(leftNeighbour_);
@@ -108,7 +135,7 @@ struct StripBuffer  {
 
 	uint64_t offset_;
 	uint64_t len_;
-	SerializeChunkBuffer* chunks_;
+	SerializeChunkBuffer** chunks_;
 	uint32_t numChunks_;
 	std::atomic<int32_t> nextChunkIndex_;
 	std::mutex seamMutex_;
@@ -159,7 +186,7 @@ struct ImageStripper{
 	// corrected
 	SerializeChunkInfo getSerializeChunkInfo(uint32_t strip){
 		SerializeChunkInfo ret;
-		ret.lastBegin_ = lastBegin(strip);
+		ret.lastBegin_ = correctedLastBegin(strip);
 		assert(strip ==  finalStrip_ || (ret.lastBegin_% writeSize_ == 0));
 		ret.lastEnd_   = correctedStripEnd(strip);
 		ret.firstBegin_ = correctedStripOffset(strip);
@@ -167,7 +194,7 @@ struct ImageStripper{
 		if (strip == 0 ||  (ret.firstBegin_ % writeSize_ == 0))
 			ret.firstEnd_ = ret.firstBegin_;
 		else
-			ret.firstEnd_ = lastBegin(strip-1) + writeSize_;
+			ret.firstEnd_ = correctedLastBegin(strip-1) + writeSize_;
 		assert(ret.firstEnd_% writeSize_ == 0);
 		assert((strip ==  finalStrip_) ||
 				((ret.lastBegin_ - ret.firstEnd_) % writeSize_ == 0) );
@@ -196,7 +223,7 @@ private:
 
 		return rc;
 	}
-	uint64_t lastBegin(uint32_t strip){
+	uint64_t correctedLastBegin(uint32_t strip){
 		return (strip < finalStrip_) ?
 				(correctedStripEnd(strip)/writeSize_) * writeSize_ : correctedStripEnd(strip);
 	}
