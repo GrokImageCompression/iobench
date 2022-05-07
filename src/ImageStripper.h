@@ -8,8 +8,9 @@
 
 // corrected for header size
 struct SerializeChunkInfo{
-	SerializeChunkInfo() :    firstBegin_(0), firstEnd_(0),
-					lastBegin_(0), lastEnd_(0), numAlignedChunks_(0)
+	SerializeChunkInfo(void) :    firstBegin_(0), firstEnd_(0),
+					lastBegin_(0), lastEnd_(0), numAlignedChunks_(0),
+					writeSize_(0)
 	{}
 	uint64_t len(){
 		return lastEnd_ - firstBegin_;
@@ -34,23 +35,20 @@ struct SerializeChunkInfo{
 	uint64_t lastBegin_;
 	uint64_t lastEnd_;
 	uint32_t numAlignedChunks_;
+	uint64_t writeSize_;
 };
 struct SerializeChunk {
-	SerializeChunk(uint64_t offsetForWrite, uint64_t offset,uint64_t len) :
-		offsetForWrite_(offsetForWrite), offset_(offset), len_(len)
-	{}
-	SerializeChunk(uint64_t offset,uint64_t len) :SerializeChunk(offset,offset,len)
+	SerializeChunk(uint64_t offset,uint64_t len) : offset_(offset), len_(len)
 	{}
 	bool aligned(void){
 		return (offset_ & (ALIGNMENT-1)) && (len_ & (ALIGNMENT-1));
 	}
-	uint64_t offsetForWrite_;
 	uint64_t offset_;
 	uint64_t len_;
 };
 struct SerializeChunkBuffer : public SerializeChunk{
-	SerializeChunkBuffer(uint64_t offsetForWrite, uint64_t offset,uint64_t len) :
-		SerializeChunk(offsetForWrite,offset,len),
+	SerializeChunkBuffer(uint64_t offset,uint64_t len) :
+		SerializeChunk(offset,len),
 		data_(nullptr), allocLen_(0), pool_(nullptr),
 		refCount(1)
 	{}
@@ -107,10 +105,18 @@ struct StripBuffer  {
 		for (uint32_t i = 0; i < numChunks_; ++i ){
 			bool firstSeam = i == 0 && chunkInfo.hasFirst();
 			bool lastSeam = (i == numChunks_-1) && chunkInfo.hasLast();
-			uint64_t offsetForWrite;
-			uint64_t offset;
-			uint64_t len;
-			chunks_[i] = new SerializeChunkBuffer(offsetForWrite,offset,len);
+			uint64_t offset=i * chunkInfo_.writeSize_;
+			uint64_t len=chunkInfo_.writeSize_;
+			if (firstSeam){
+				offset = chunkInfo_.firstBegin_;
+				len = chunkInfo_.firstEnd_ - chunkInfo_.firstBegin_;
+			} else if (lastSeam){
+				offset = chunkInfo_.lastBegin_;
+				len = chunkInfo_.lastEnd_ - chunkInfo_.lastBegin_;
+			} else 	if (chunkInfo.hasFirst()) {
+				offset = chunkInfo_.firstEnd_ + (i-1) * chunkInfo_.writeSize_;
+			}
+			chunks_[i] = new SerializeChunkBuffer(offset,len);
 		}
 	}
 	bool nextChunk(IBufferPool *pool, SerializeChunkBuffer *chunkBuffer){
@@ -186,6 +192,7 @@ struct ImageStripper{
 	// corrected
 	SerializeChunkInfo getSerializeChunkInfo(uint32_t strip){
 		SerializeChunkInfo ret;
+		ret.writeSize_ = writeSize_;
 		ret.lastBegin_ = correctedLastBegin(strip);
 		assert(strip ==  finalStrip_ || (ret.lastBegin_% writeSize_ == 0));
 		ret.lastEnd_   = correctedStripEnd(strip);
