@@ -1,16 +1,66 @@
 #pragma once
 
 #include <cstdint>
+#include <atomic>
+#include <thread>
 
-struct Strip {
-	Strip(void) : Strip(0,0,0)
+#include "IBufferPool.h"
+
+struct Chunk {
+	Chunk(void) : Chunk(0,0,0)
 	{}
-	Strip(uint64_t offset,uint64_t len,uint32_t height) :
-		offset_(offset), len_(len),height_(height)
+	Chunk(uint64_t offsetForWrite, uint64_t offset,uint64_t len) :
+		offsetForWrite_(offsetForWrite), offset_(offset), len_(len)
 	{}
+	Chunk(uint64_t offset,uint64_t len) :Chunk(offset,offset,len)
+	{}
+	bool aligned(void){
+		return (offset_ & (ALIGNMENT-1)) && (len_ & (ALIGNMENT-1));
+	}
+	uint64_t offsetForWrite_;
 	uint64_t offset_;
 	uint64_t len_;
-	uint32_t height_;
+};
+
+struct ChunkBuffer : public Chunk{
+	ChunkBuffer() : ChunkBuffer(0,0,0,0)
+	{}
+	ChunkBuffer(uint64_t offsetForWrite, uint64_t offset,uint64_t len, uint64_t allocLen) :
+		Chunk(offsetForWrite,offset,len),
+		data_(nullptr), allocLen_(allocLen), pool_(nullptr)
+	{}
+	void alloc(IBufferPool* pool){
+		auto b = pool->get(len_);
+		data_ = b.data;
+		allocLen_ = b.allocLen;
+		pool_ = pool;
+	}
+	void reclaim(void){
+		if (pool_ && data_) {
+			pool_->put(SerializeBuf(data_,allocLen_));
+			data_ = nullptr;
+			allocLen_ = 0;
+			pool_ = nullptr;
+		}
+	}
+	uint8_t* data_;
+	uint64_t allocLen_;
+	IBufferPool* pool_;
+};
+
+struct StripBuffer : public Chunk {
+	StripBuffer(uint64_t offset,uint64_t len) :
+		Chunk(offset,offset,len),
+		chunks_(nullptr), numChunks_(0), nextChunkIndex_(-1)
+	{}
+	ChunkBuffer nextChunk(IBufferPool *pool){
+		int32_t ind = ++nextChunkIndex_;
+		return (ind < numChunks_) ? chunks_[ind] : ChunkBuffer();
+	}
+	ChunkBuffer* chunks_;
+	uint32_t numChunks_;
+	std::atomic<int32_t> nextChunkIndex_;
+	std::mutex seamMutex_;
 };
 
 struct ImageStripper{
@@ -26,22 +76,21 @@ struct ImageStripper{
 								nominalStripHeight),
 		finalStripLen_ (finalStripHeight_ * stripPackedByteWidth_)
 	{}
-	Strip getStrip(uint32_t strip) const{
-		return Strip(strip * nominalStripHeight_ * stripPackedByteWidth_,
-					stripHeight(strip) * stripPackedByteWidth_,
-					(strip < numStrips_-1) ? nominalStripHeight_ : finalStripHeight_);
+	StripBuffer getStrip(uint32_t strip) const{
+		return StripBuffer(strip * nominalStripHeight_ * stripPackedByteWidth_,
+					stripHeight(strip) * stripPackedByteWidth_);
 	}
 	uint32_t numStrips(void) const{
 		return numStrips_;
-	}
-	uint32_t stripHeight(uint32_t strip) const{
-		return (strip < numStrips_-1) ? nominalStripHeight_ : finalStripHeight_;
 	}
 	uint32_t width_;
 	uint32_t height_;
 	uint16_t numcomps_;
 	uint32_t nominalStripHeight_;
 private:
+	uint32_t stripHeight(uint32_t strip) const{
+		return (strip < numStrips_-1) ? nominalStripHeight_ : finalStripHeight_;
+	}
 	uint64_t stripPackedByteWidth_;
 	uint64_t stripLen_;
 	uint32_t finalStripHeight_;

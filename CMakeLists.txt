@@ -59,11 +59,10 @@ include_directories(
   ${TIFF_INCLUDE_DIRNAME})
   
 set(LIBRARY_SRCS
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/BufferPool.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/src/FileUringIO.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/src/Serializer.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/src/TIFFFormat.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/SeamCache.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/StripChunker.cpp
   )
   
 add_executable(ubench ${CMAKE_CURRENT_SOURCE_DIR}/src/ubench.cpp  ${LIBRARY_SRCS} )

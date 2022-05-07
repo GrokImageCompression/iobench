@@ -12,23 +12,26 @@ struct SerializeBuf : public serialize_buf
 {
   public:
 	SerializeBuf() : SerializeBuf(0,nullptr,0, 0, 0, 0, false) {}
+	SerializeBuf(uint8_t* data,uint64_t allocLen) :
+		SerializeBuf(0,data,0,0,0,allocLen,false)
+	{}
 	SerializeBuf(uint32_t index, uint8_t* data, uint64_t skip,
 				uint64_t offset, uint64_t dataLen, uint64_t allocLen,
 					bool pooled)
 	{
-		this->data = data;
+		this->index = index;
 		this->skip = skip;
 		this->offset = offset;
+		this->data = data;
 		this->dataLen = dataLen;
 		this->allocLen = allocLen;
 		this->pooled = pooled;
-		this->index = index;
 	}
 	explicit SerializeBuf(const serialize_buf rhs)
 	{
-		data = rhs.data;
 		skip = rhs.skip;
 		offset = rhs.offset;
+		data = rhs.data;
 		dataLen = rhs.dataLen;
 		allocLen = rhs.allocLen;
 		pooled = rhs.pooled;

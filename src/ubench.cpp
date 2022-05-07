@@ -12,7 +12,7 @@ static void run(uint32_t width, uint32_t height,
 	bool storeAsynch = doStore && doAsynch;
 	{
 		TIFFFormat tiffFormat;
-		auto seamCache = tiffFormat.getSeamCache();
+		auto seamCache = tiffFormat.getStripChunker();
 		uint32_t packedBytesWidth = width * 1;
 		ImageStripper img(width, height,1,32);
 		if (doStore){

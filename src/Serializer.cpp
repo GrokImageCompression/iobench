@@ -11,7 +11,7 @@
 
 static bool applicationReclaimCallback(serialize_buf buffer, void* serialize_user_data)
 {
-	auto pool = (BufferPool*)serialize_user_data;
+	auto pool = (IBufferPool*)serialize_user_data;
 	if(pool)
 		pool->put(SerializeBuf(buffer));
 

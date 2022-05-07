@@ -2,17 +2,40 @@
 
 #include <cstdint>
 #include <map>
-#include "IFileIO.h"
+#include <thread>
 
-class BufferPool
+#include "IFileIO.h"
+#include "IBufferPool.h"
+
+class BufferPool : public IBufferPool
 {
   public:
-	BufferPool();
-	virtual ~BufferPool();
-	void init(uint64_t allocLen);
-	SerializeBuf get(uint64_t len);
-	void put(SerializeBuf b);
+	BufferPool() = default;
+	virtual ~BufferPool(){
+		for(auto& p : pool)
+			p.second.dealloc();
+	}
+	SerializeBuf get(uint64_t len) override{
+		for(auto iter = pool.begin(); iter != pool.end(); ++iter)
+		{
+			if(iter->second.allocLen >= len)
+			{
+				auto b = iter->second;
+				b.dataLen = len;
+				pool.erase(iter);
+				return b;
+			}
+		}
+		SerializeBuf rc;
+		rc.alloc(len);
 
+		return rc;
+	}
+	void put(SerializeBuf b) override{
+		assert(b.data);
+		assert(pool.find(b.data) == pool.end());
+		pool[b.data] = b;
+	}
   private:
 	std::map<uint8_t*, SerializeBuf> pool;
 };

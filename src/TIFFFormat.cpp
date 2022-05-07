@@ -56,7 +56,7 @@ static uint64_t TiffSize(thandle_t handle)
 
 TIFFFormat::TIFFFormat() : tif_(nullptr), encodeState_(IMAGE_FORMAT_UNENCODED),
 							concurrency_(0), asynchSerializers_(nullptr),
-							numPixelWrites_(0), seamCache_(nullptr)
+							numPixelWrites_(0), stripChunker_(nullptr)
 {}
 
 TIFFFormat::~TIFFFormat() {
@@ -66,21 +66,21 @@ TIFFFormat::~TIFFFormat() {
 			delete asynchSerializers_[i];
 		delete[] asynchSerializers_;
 	}
-	delete seamCache_;
+	delete stripChunker_;
 }
-SeamCache* TIFFFormat::getSeamCache(void){
-	return seamCache_;
+StripChunker* TIFFFormat::getStripChunker(void){
+	return stripChunker_;
 }
 SerializeBuf TIFFFormat::getPoolBuffer(uint32_t threadId,uint32_t index){
-	auto seamInfo = seamCache_->getSeamInfo(index);
-	uint64_t len = seamInfo.upperEnd_ - seamInfo.lowerBegin_;
+	auto chunkInfo = stripChunker_->getChunkInfo(index);
+	uint64_t len = chunkInfo.lastEnd_ - chunkInfo.firstBegin_;
 	uint64_t headerSize = ((index == 0) ? sizeof(header_) : 0);
 	uint64_t totalLength = len + headerSize;
 	SerializeBuf  serializeBuf =
 			asynchSerializers_ ? asynchSerializers_[threadId]->getPoolBuffer(totalLength) :
 					serializer_.getPoolBuffer(totalLength);
 	serializeBuf.index = index;
-	serializeBuf.offset = seamInfo.lowerBegin_;
+	serializeBuf.offset = chunkInfo.firstBegin_;
 	if (headerSize) {
 		memcpy(serializeBuf.data , &header_, headerSize);
 		serializeBuf.skip = headerSize;
@@ -93,9 +93,9 @@ bool TIFFFormat::encodeInit(ImageStripper image,
 							std::string filename,
 							bool asynch,
 							uint32_t concurrency){
-	SeamCacheInitInfo
+	StripChunkerInitInfo
 		seamCacheInitInfo(sizeof(header_), WRTSIZE, image);
-	seamCache_ = new SeamCache(seamCacheInitInfo);
+	stripChunker_ = new StripChunker(seamCacheInitInfo);
 	image_ = image;
 	filename_ = filename;
 	concurrency_ = concurrency;

@@ -5,13 +5,13 @@
 
 typedef struct _serialize_buf
 {
-	uint8_t* data;
+	uint32_t index;
 	uint64_t skip;
 	uint64_t offset;
+	uint8_t* data;
 	uint64_t dataLen;
 	uint64_t allocLen;
 	bool pooled;
-	uint32_t index;
 } serialize_buf;
 
 typedef bool (*serialize_callback)(serialize_buf buffer, void* serialize_user_data);
