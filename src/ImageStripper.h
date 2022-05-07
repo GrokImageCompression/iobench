@@ -5,18 +5,19 @@
 #include <thread>
 
 #include "IBufferPool.h"
+#include <mutex>
 
 // corrected for header size
 struct SerializeChunkInfo{
 	SerializeChunkInfo(void) :    firstBegin_(0), firstEnd_(0),
-					lastBegin_(0), lastEnd_(0), numAlignedChunks_(0),
+					lastBegin_(0), lastEnd_(0), numWholeChunks_(0),
 					writeSize_(0)
 	{}
 	uint64_t len(){
 		return lastEnd_ - firstBegin_;
 	}
 	uint32_t numChunks(void){
-		uint32_t rc = numAlignedChunks_;
+		uint32_t rc = numWholeChunks_;
 		if (hasFirst())
 			rc++;
 		if (hasLast())
@@ -34,48 +35,46 @@ struct SerializeChunkInfo{
 	uint64_t firstEnd_;
 	uint64_t lastBegin_;
 	uint64_t lastEnd_;
-	uint32_t numAlignedChunks_;
+	uint32_t numWholeChunks_;
 	uint64_t writeSize_;
 };
-struct SerializeChunk {
-	SerializeChunk(uint64_t offset,uint64_t len) : offset_(offset), len_(len)
+struct SerializeChunkBuffer{
+	SerializeChunkBuffer(uint64_t offset,uint64_t len, bool shared) :
+		offset_(offset), len_(len),
+		refCount_(1),writeCount_(0), writeTarget_(1),
+		shared_(shared)
 	{}
-	bool aligned(void){
-		return (offset_ & (ALIGNMENT-1)) && (len_ & (ALIGNMENT-1));
+	uint32_t ref(void){
+		return refCount_++;
+	}
+	uint32_t unref(void){
+		return refCount_--;
+	}
+	void submit(ISerializeBufWriter *writer){
+		if (!writer)
+			return;
+		if (++writeCount_ == writeTarget_){
+			writer->write(buf_);
+		}
+	}
+	void alloc(IBufferPool* pool){
+		if (shared_){
+			std::unique_lock<std::mutex> locker(sharedMut_);
+			if (!buf_.data)
+				buf_ = pool->get(len_);
+		} else {
+			if (!buf_.data)
+				buf_ = pool->get(len_);
+		}
 	}
 	uint64_t offset_;
 	uint64_t len_;
-};
-struct SerializeChunkBuffer : public SerializeChunk{
-	SerializeChunkBuffer(uint64_t offset,uint64_t len) :
-		SerializeChunk(offset,len),
-		data_(nullptr), allocLen_(0), pool_(nullptr),
-		refCount(1)
-	{}
-	uint32_t ref(void){
-		return refCount++;
-	}
-	uint32_t unref(void){
-		return refCount--;
-	}
-	void alloc(IBufferPool* pool){
-		auto b = pool->get(len_);
-		data_ = b.data;
-		allocLen_ = b.allocLen;
-		pool_ = pool;
-	}
-	void reclaim(void){
-		if (pool_ && data_) {
-			pool_->put(SerializeBuf(data_,allocLen_));
-			data_ = nullptr;
-			allocLen_ = 0;
-			pool_ = nullptr;
-		}
-	}
-	uint8_t* data_;
-	uint64_t allocLen_;
-	IBufferPool* pool_;
-	std::atomic<uint32_t> refCount;
+	SerializeBuf buf_;
+	std::atomic<uint32_t> refCount_;
+	std::atomic<uint32_t> writeCount_;
+	uint32_t writeTarget_;
+	bool shared_;
+	std::mutex sharedMut_;
 };
 
 // independant of header size
@@ -116,15 +115,18 @@ struct StripBuffer  {
 			} else 	if (chunkInfo.hasFirst()) {
 				offset = chunkInfo_.firstEnd_ + (i-1) * chunkInfo_.writeSize_;
 			}
-			chunks_[i] = new SerializeChunkBuffer(offset,len);
+			chunks_[i] = new SerializeChunkBuffer(offset,len,false);
 		}
 	}
-	bool nextChunk(IBufferPool *pool, SerializeChunkBuffer *chunkBuffer){
+	bool nextChunk(IBufferPool *pool, SerializeChunkBuffer **chunkBuffer){
+		assert(pool);
+		assert(chunkBuffer);
 		int32_t ind = ++nextChunkIndex_;
 		if (ind >= numChunks_)
 			return false;
 
-		chunkBuffer = chunks_[ind];
+		*chunkBuffer = chunks_[ind];
+		/*
 		if (chunkBuffer->aligned()){
 			chunkBuffer->alloc(pool);
 		} else {
@@ -135,6 +137,7 @@ struct StripBuffer  {
 
 			}
 		}
+		*/
 
 		return true;
 	}
@@ -205,7 +208,7 @@ struct ImageStripper{
 		assert(ret.firstEnd_% writeSize_ == 0);
 		assert((strip ==  finalStrip_) ||
 				((ret.lastBegin_ - ret.firstEnd_) % writeSize_ == 0) );
-		ret.numAlignedChunks_ = (ret.lastBegin_ - ret.firstEnd_) / writeSize_;
+		ret.numWholeChunks_ = (ret.lastBegin_ - ret.firstEnd_) / writeSize_;
 
 		return ret;
 	}

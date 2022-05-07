@@ -119,8 +119,9 @@ bool TIFFFormat::encodeInit(std::string filename,
 }
 bool TIFFFormat::encodePixels(uint32_t threadId, SerializeBuf serializeBuf){
 	Serializer *ser = asynchSerializers_ ? asynchSerializers_[threadId] : &serializer_;
+	size_t toWrite = serializeBuf.dataLen;
 	size_t written = ser->write(serializeBuf);
-	if (written != serializeBuf.dataLen){
+	if (written != toWrite){
 		printf("encodePixels: write error\n");
 		return false;
 	}

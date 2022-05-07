@@ -57,6 +57,12 @@ struct SerializeBuf : public serialize_buf
 	}
 };
 
+class ISerializeBufWriter{
+public:
+	virtual ~ISerializeBufWriter() = default;
+	virtual size_t write(SerializeBuf buf) = 0;
+};
+
 class IFileIO
 {
   public:

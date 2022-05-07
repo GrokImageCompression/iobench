@@ -8,7 +8,7 @@
 
 const int32_t invalid_fd = -1;
 
-struct Serializer
+struct Serializer : public ISerializeBufWriter
 {
 	Serializer(void);
 	~Serializer(void);
@@ -18,7 +18,7 @@ struct Serializer
 	bool attach(Serializer *parent);
 	bool open(std::string name, std::string mode, bool asynch);
 	bool close(void);
-	size_t write(SerializeBuf serializeBuf);
+	size_t write(SerializeBuf serializeBuf) override;
 	size_t write(uint8_t* buf, uint64_t size);
 	uint64_t seek(int64_t off, int32_t whence);
 	SerializeBuf getPoolBuffer(uint64_t len);
