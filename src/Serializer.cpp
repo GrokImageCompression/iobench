@@ -153,6 +153,9 @@ size_t Serializer::write(SerializeBuf serializeBuf){
 			break;
 	}
 
+	if (serializeBuf.pooled && reclaim_callback_)
+		reclaim_callback_(serializeBuf, reclaim_user_data_);
+
 	return bytes_written;
 }
 size_t Serializer::write(uint8_t* buf, uint64_t bytes_total)
