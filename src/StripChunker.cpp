@@ -7,7 +7,7 @@
  *
  */
 StripChunker::StripChunker(StripChunkerInitInfo initInfo) : init_(initInfo),
-										finalStrip_(init_.imageStripper_.numStrips()-1)
+										finalStrip_(init_.imageStripper_->numStrips()-1)
 {}
 ChunkInfo StripChunker::getChunkInfo(uint32_t strip){
 	ChunkInfo ret;
@@ -27,16 +27,16 @@ ChunkInfo StripChunker::getChunkInfo(uint32_t strip){
 
 	return ret;
 }
-ImageStripper& StripChunker::imageStripper(void){
+ImageStripper* StripChunker::imageStripper(void){
 	return init_.imageStripper_;
 }
 uint64_t StripChunker::stripOffset(uint32_t strip){
 	// header bytes added to first strip shifts all other strips
 	// by that number of bytes
-	return strip == 0 ? 0 : init_.headerSize_ + imageStripper().getStrip(strip).offset_;
+	return strip == 0 ? 0 : init_.headerSize_ + imageStripper()->getStrip(strip).offset_;
 }
 uint64_t StripChunker::stripEnd(uint32_t strip){
-	uint64_t rc = stripOffset(strip) + imageStripper().getStrip(strip).len_;
+	uint64_t rc = stripOffset(strip) + imageStripper()->getStrip(strip).len_;
 	//correct for header bytes added to first strip
 	if (strip == 0)
 		rc += init_.headerSize_;

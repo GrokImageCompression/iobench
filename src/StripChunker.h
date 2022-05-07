@@ -30,14 +30,14 @@ struct ChunkInfo{
 };
 
 struct StripChunkerInitInfo{
-	StripChunkerInitInfo() : StripChunkerInitInfo(0,0,ImageStripper())
+	StripChunkerInitInfo() : StripChunkerInitInfo(0,0,nullptr)
 	{}
-	StripChunkerInitInfo(uint64_t headerSize, uint64_t writeSize, ImageStripper imageStripper) :
+	StripChunkerInitInfo(uint64_t headerSize, uint64_t writeSize, ImageStripper* imageStripper) :
 		headerSize_(headerSize), writeSize_(writeSize), imageStripper_(imageStripper)
 	{}
 	uint64_t headerSize_;
 	uint64_t writeSize_;
-	ImageStripper imageStripper_;
+	ImageStripper* imageStripper_;
 };
 
 class StripChunker {
@@ -49,7 +49,7 @@ private:
 	uint64_t stripOffset(uint32_t strip);
 	uint64_t stripEnd(uint32_t strip);
 	uint64_t lastBegin(uint32_t strip);
-	ImageStripper& imageStripper(void);
+	ImageStripper* imageStripper(void);
 	StripChunkerInitInfo init_;
 	uint32_t finalStrip_;
 };

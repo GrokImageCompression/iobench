@@ -31,7 +31,7 @@ class TIFFFormat {
 public:
 	TIFFFormat();
 	virtual ~TIFFFormat();
-	bool encodeInit(ImageStripper image, std::string filename, bool asynch, uint32_t concurrency);
+	bool encodeInit(ImageStripper *image, std::string filename, bool asynch, uint32_t concurrency);
 	bool encodePixels(uint32_t threadId, SerializeBuf serializeBuf);
 	bool encodeFinish(void);
 	bool close(void);
@@ -45,7 +45,7 @@ private:
 	TIFF* tif_;
 	uint32_t encodeState_;
 	Serializer serializer_;
-	ImageStripper image_;
+	ImageStripper* imageStripper_;
 	std::string filename_;
 	std::string mode_;
 	TIFFFormatHeaderClassic header_;

@@ -89,17 +89,17 @@ SerializeBuf TIFFFormat::getPoolBuffer(uint32_t threadId,uint32_t index){
 
 	return serializeBuf;
 }
-bool TIFFFormat::encodeInit(ImageStripper image,
+bool TIFFFormat::encodeInit(ImageStripper *imageStripper,
 							std::string filename,
 							bool asynch,
 							uint32_t concurrency){
 	StripChunkerInitInfo
-		seamCacheInitInfo(sizeof(header_), WRTSIZE, image);
+		seamCacheInitInfo(sizeof(header_), WRTSIZE, imageStripper);
 	stripChunker_ = new StripChunker(seamCacheInitInfo);
-	image_ = image;
+	imageStripper_ = imageStripper;
 	filename_ = filename;
 	concurrency_ = concurrency;
-	auto maxRequests = image.numStrips();
+	auto maxRequests = imageStripper->numStrips();
 	serializer_.setMaxPooledRequests(maxRequests);
 	bool rc;
 	mode_ = "w";
@@ -145,13 +145,13 @@ bool TIFFFormat::encodeHeader(void){
 	if(isHeaderEncoded())
 		return true;
 
-	TIFFSetField(tif_, TIFFTAG_IMAGEWIDTH, image_.width_);
-	TIFFSetField(tif_, TIFFTAG_IMAGELENGTH, image_.height_);
-	TIFFSetField(tif_, TIFFTAG_SAMPLESPERPIXEL, image_.numcomps_);
+	TIFFSetField(tif_, TIFFTAG_IMAGEWIDTH, imageStripper_->width_);
+	TIFFSetField(tif_, TIFFTAG_IMAGELENGTH, imageStripper_->height_);
+	TIFFSetField(tif_, TIFFTAG_SAMPLESPERPIXEL, imageStripper_->numcomps_);
 	TIFFSetField(tif_, TIFFTAG_BITSPERSAMPLE, 8);
-	TIFFSetField(tif_, TIFFTAG_PHOTOMETRIC, image_.numcomps_ == 3 ? PHOTOMETRIC_RGB : PHOTOMETRIC_MINISBLACK);
+	TIFFSetField(tif_, TIFFTAG_PHOTOMETRIC, imageStripper_->numcomps_ == 3 ? PHOTOMETRIC_RGB : PHOTOMETRIC_MINISBLACK);
 	TIFFSetField(tif_, TIFFTAG_PLANARCONFIG, PLANARCONFIG_CONTIG);
-	TIFFSetField(tif_, TIFFTAG_ROWSPERSTRIP, image_.nominalStripHeight_);
+	TIFFSetField(tif_, TIFFTAG_ROWSPERSTRIP, imageStripper_->nominalStripHeight_);
 
 	encodeState_ = IMAGE_FORMAT_ENCODED_HEADER;
 
@@ -182,9 +182,9 @@ bool TIFFFormat::encodeFinish(void)
 
 
 	//2. simulate strip writes
-	for(uint32_t j = 0; j < image_.numStrips(); ++j){
+	for(uint32_t j = 0; j < imageStripper_->numStrips(); ++j){
 		tmsize_t written =
-			TIFFWriteEncodedStrip(tif_, j, nullptr, (tmsize_t)image_.getStrip(j).len_);
+			TIFFWriteEncodedStrip(tif_, j, nullptr, (tmsize_t)imageStripper_->getStrip(j).len_);
 		if (written == -1){
 			printf("Error writing strip\n");
 			return false;

@@ -14,40 +14,25 @@ static void run(uint32_t width, uint32_t height,
 		TIFFFormat tiffFormat;
 		auto seamCache = tiffFormat.getStripChunker();
 		uint32_t packedBytesWidth = width * 1;
-		ImageStripper img(width, height,1,32);
+		ImageStripper imageStripper(width, height,1,32);
 		if (doStore){
 			std::string filename = "dump.tif";
 			remove(filename.c_str());
-		   tiffFormat.encodeInit(img, filename, doAsynch,concurrency);
+		   tiffFormat.encodeInit(&imageStripper, filename, doAsynch,concurrency);
 		}
 
 		printf("Run with concurrency = %d, store to disk = %d, use uring = %d\n",concurrency,doStore,doAsynch);
 		tf::Executor exec(concurrency);
 		tf::Taskflow taskflow;
-		tf::Task* encodeStrips = new tf::Task[img.numStrips()];
-		for (uint32_t strip = 0; strip < img.numStrips(); ++strip)
+		tf::Task* encodeStrips = new tf::Task[imageStripper.numStrips()];
+		for (uint32_t strip = 0; strip < imageStripper.numStrips(); ++strip)
 			encodeStrips[strip] = taskflow.placeholder();
-		tf::Task* encodeSeams = new tf::Task[img.numStrips()-1];
-		for (uint32_t seam = 0; seam < img.numStrips()-1; ++seam){
-			encodeSeams[seam] = taskflow.placeholder();
-			encodeStrips[seam].precede(encodeSeams[seam]);
-			encodeStrips[seam+1].precede(encodeSeams[seam]);
-		}
-		for(uint32_t seam = 0; seam < img.numStrips()-1; ++seam)
-		{
-			uint32_t currentSeam = seam;
-			encodeSeams[seam].work([currentSeam,seamCache, &tiffFormat] {
-				// write seam buffer
-				//bool ret = tiffFormat.encodePixels(exec.this_worker_id(),b);
-				//assert(ret);
-			});
-		}
-		for(uint32_t strip = 0; strip < img.numStrips(); ++strip)
+		for(uint32_t strip = 0; strip < imageStripper.numStrips(); ++strip)
 		{
 			uint32_t currentStrip = strip;
-			encodeStrips[strip].work([seamCache, &tiffFormat, currentStrip,doAsynch,doStore,img,&exec] {
+			encodeStrips[strip].work([seamCache, &tiffFormat, currentStrip,doAsynch,doStore,imageStripper,&exec] {
 				if (!doStore) {
-					auto strip = img.getStrip(currentStrip);
+					auto strip = imageStripper.getStrip(currentStrip);
 					uint64_t len =  strip.len_;
 					uint8_t b[len] __attribute__((__aligned__(ALIGNMENT)));
 					for (uint64_t k = 0; k < 2*len; ++k)
@@ -72,7 +57,6 @@ static void run(uint32_t width, uint32_t height,
 		timer.start();
 		exec.run(taskflow).wait();
 		delete[] encodeStrips;
-		delete[] encodeSeams;
 		if (storeAsynch){
 			timer.finish("scheduling");
 			timer.start();

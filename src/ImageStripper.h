@@ -53,9 +53,23 @@ struct StripBuffer : public Chunk {
 		Chunk(offset,offset,len),
 		chunks_(nullptr), numChunks_(0), nextChunkIndex_(-1)
 	{}
-	ChunkBuffer nextChunk(IBufferPool *pool){
+	bool nextChunk(IBufferPool *pool, ChunkBuffer &chunkBuffer){
 		int32_t ind = ++nextChunkIndex_;
-		return (ind < numChunks_) ? chunks_[ind] : ChunkBuffer();
+		if (ind >= numChunks_)
+			return false;
+
+		chunkBuffer = chunks_[ind];
+		if (chunkBuffer.aligned()){
+			chunkBuffer.alloc(pool);
+		} else {
+			if (ind == 0){
+
+			} else {
+
+			}
+		}
+
+		return true;
 	}
 	ChunkBuffer* chunks_;
 	uint32_t numChunks_;
@@ -96,4 +110,5 @@ private:
 	uint32_t finalStripHeight_;
 	uint64_t finalStripLen_;
 	uint32_t numStrips_;
+	StripBuffer *stripBuffers_;
 };
