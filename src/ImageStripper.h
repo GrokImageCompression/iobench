@@ -40,41 +40,69 @@ struct SerializeChunkInfo{
 };
 struct SerializeChunkBuffer{
 	SerializeChunkBuffer(uint64_t offset,uint64_t len, bool shared) :
-		offset_(offset), len_(len),
 		refCount_(1),writeCount_(0), writeTarget_(1),
 		shared_(shared)
-	{}
+	{
+		buf_.offset = offset;
+		buf_.dataLen = len;
+	}
 	uint32_t ref(void){
-		return refCount_++;
+		return ++refCount_;
 	}
 	uint32_t unref(void){
-		return refCount_--;
+		return --refCount_;
 	}
-	void submit(ISerializeBufWriter *writer){
-		if (!writer)
-			return;
-		if (++writeCount_ == writeTarget_){
-			writer->write(buf_);
-		}
+	bool submit(ISerializeBufWriter *writer){
+		assert(writer);
+		if (++writeCount_ == writeTarget_)
+			return writer->write(buf_) == buf_.dataLen;
+		return true;
 	}
 	void alloc(IBufferPool* pool){
+		if (!buf_.data)
+			return;
+		// cache offset
+		uint64_t offset = buf_.offset;
 		if (shared_){
 			std::unique_lock<std::mutex> locker(sharedMut_);
-			if (!buf_.data)
-				buf_ = pool->get(len_);
+			buf_ = pool->get(buf_.allocLen);
 		} else {
-			if (!buf_.data)
-				buf_ = pool->get(len_);
+			buf_ = pool->get(buf_.allocLen);
 		}
+		// restore offset
+		buf_.offset = offset;
 	}
-	uint64_t offset_;
-	uint64_t len_;
 	SerializeBuf buf_;
 	std::atomic<uint32_t> refCount_;
 	std::atomic<uint32_t> writeCount_;
 	uint32_t writeTarget_;
 	bool shared_;
 	std::mutex sharedMut_;
+};
+
+struct StripChunkBuffer {
+	StripChunkBuffer(SerializeChunkBuffer *serializeChunkBuffer,
+			uint64_t writeOffset, uint64_t writeLen) :
+		serializeChunkBuffer_(serializeChunkBuffer),
+		writeOffset_(writeOffset),
+		writeLen_(writeLen)
+	{
+		assert(writeOffset < serializeChunkBuffer_->buf_.dataLen);
+		assert(writeLen < serializeChunkBuffer_->buf_.dataLen);
+	}
+	~StripChunkBuffer(){
+		auto ct = serializeChunkBuffer_->unref();
+		if (ct == 0)
+			delete serializeChunkBuffer_;
+	}
+	void alloc(IBufferPool* pool){
+		serializeChunkBuffer_->alloc(pool);
+	}
+	SerializeChunkBuffer *serializeChunkBuffer_;
+	// relative write offset into buffer data
+	uint64_t writeOffset_;
+	// writeable length
+	uint64_t writeLen_;
 };
 
 // independant of header size
@@ -89,23 +117,22 @@ struct StripBuffer  {
 	{}
 	~StripBuffer(void){
 		if (chunks_){
-			for (uint32_t i = 0; i < numChunks_; ++i){
-				auto ct = chunks_[i]->unref();
-				if (ct == 0)
-					delete chunks_[i];
-			}
+			for (uint32_t i = 0; i < numChunks_; ++i)
+				delete chunks_[i];
 			delete[] chunks_;
 		}
 	}
 	void setSerializeChunkInfo(SerializeChunkInfo chunkInfo){
 		chunkInfo_ = chunkInfo;
 		numChunks_ = chunkInfo_.numChunks();
-		chunks_ = new SerializeChunkBuffer*[numChunks_];
+		chunks_ = new StripChunkBuffer*[numChunks_];
 		for (uint32_t i = 0; i < numChunks_; ++i ){
-			bool firstSeam = i == 0 && chunkInfo.hasFirst();
-			bool lastSeam = (i == numChunks_-1) && chunkInfo.hasLast();
-			uint64_t offset=i * chunkInfo_.writeSize_;
-			uint64_t len=chunkInfo_.writeSize_;
+			bool firstSeam   = i == 0 && chunkInfo.hasFirst();
+			bool lastSeam    = (i == numChunks_-1) && chunkInfo.hasLast();
+			uint64_t offset  = i * chunkInfo_.writeSize_;
+			uint64_t len     = chunkInfo_.writeSize_;
+			uint64_t writeLength = len;
+			uint64_t writeOffset = 0;
 			if (firstSeam){
 				offset = chunkInfo_.firstBegin_;
 				len = chunkInfo_.firstEnd_ - chunkInfo_.firstBegin_;
@@ -115,36 +142,31 @@ struct StripBuffer  {
 			} else 	if (chunkInfo.hasFirst()) {
 				offset = chunkInfo_.firstEnd_ + (i-1) * chunkInfo_.writeSize_;
 			}
-			chunks_[i] = new SerializeChunkBuffer(offset,len,false);
+			chunks_[i] = new StripChunkBuffer(
+									new SerializeChunkBuffer(offset,len,false),
+									writeOffset,writeLength);
 		}
 	}
-	bool nextChunk(IBufferPool *pool, SerializeChunkBuffer **chunkBuffer){
+	bool nextChunk(IBufferPool *pool, StripChunkBuffer **chunkBuffer){
 		assert(pool);
 		assert(chunkBuffer);
-		int32_t ind = ++nextChunkIndex_;
-		if (ind >= numChunks_)
+		if (nextChunkIndex_ >= numChunks_)
 			return false;
-
-		*chunkBuffer = chunks_[ind];
-		/*
-		if (chunkBuffer->aligned()){
-			chunkBuffer->alloc(pool);
-		} else {
-			if (ind == 0){
-				assert(leftNeighbour_);
-				// get left neighbour last chunk
-			} else {
-
-			}
-		}
-		*/
+		uint32_t chunk = ++nextChunkIndex_;
+		if (chunk >= numChunks_)
+			return false;
+		chunks_[chunk]->alloc(pool);
+		*chunkBuffer = chunks_[chunk];
 
 		return true;
 	}
 
+	// temporary
 	uint64_t offset_;
 	uint64_t len_;
-	SerializeChunkBuffer** chunks_;
+
+
+	StripChunkBuffer** chunks_;
 	uint32_t numChunks_;
 	std::atomic<int32_t> nextChunkIndex_;
 	std::mutex seamMutex_;
