@@ -55,6 +55,7 @@ static uint64_t TiffSize(thandle_t handle)
 }
 
 TIFFFormat::TIFFFormat() : tif_(nullptr), encodeState_(IMAGE_FORMAT_UNENCODED),
+							imageStripper_(nullptr),
 							concurrency_(0), asynchSerializers_(nullptr),
 							numPixelWrites_(0), stripChunker_(nullptr)
 {}
@@ -67,9 +68,17 @@ TIFFFormat::~TIFFFormat() {
 		delete[] asynchSerializers_;
 	}
 	delete stripChunker_;
+	delete imageStripper_;
 }
-StripChunker* TIFFFormat::getStripChunker(void){
-	return stripChunker_;
+void TIFFFormat::init(uint32_t width, uint32_t height,
+						uint16_t numcomps, uint32_t nominalStripHeight){
+	imageStripper_ = new ImageStripper(width, height,1,32);
+	StripChunkerInitInfo
+		seamCacheInitInfo(sizeof(header_), WRTSIZE, imageStripper_);
+	stripChunker_ = new StripChunker(seamCacheInitInfo);
+}
+ImageStripper* TIFFFormat::getImageStripper(void){
+	return imageStripper_;
 }
 SerializeBuf TIFFFormat::getPoolBuffer(uint32_t threadId,uint32_t index){
 	auto chunkInfo = stripChunker_->getChunkInfo(index);
@@ -89,17 +98,12 @@ SerializeBuf TIFFFormat::getPoolBuffer(uint32_t threadId,uint32_t index){
 
 	return serializeBuf;
 }
-bool TIFFFormat::encodeInit(ImageStripper *imageStripper,
-							std::string filename,
+bool TIFFFormat::encodeInit(std::string filename,
 							bool asynch,
 							uint32_t concurrency){
-	StripChunkerInitInfo
-		seamCacheInitInfo(sizeof(header_), WRTSIZE, imageStripper);
-	stripChunker_ = new StripChunker(seamCacheInitInfo);
-	imageStripper_ = imageStripper;
 	filename_ = filename;
 	concurrency_ = concurrency;
-	auto maxRequests = imageStripper->numStrips();
+	auto maxRequests = imageStripper_->numStrips();
 	serializer_.setMaxPooledRequests(maxRequests);
 	bool rc;
 	mode_ = "w";

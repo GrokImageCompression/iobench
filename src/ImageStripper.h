@@ -80,6 +80,12 @@ struct StripBuffer : public Chunk {
 struct ImageStripper{
 	ImageStripper() : ImageStripper(0,0,0,0)
 	{}
+	~ImageStripper(void){
+		if (stripBuffers_){
+
+			delete[] stripBuffers_;
+		}
+	}
 	ImageStripper(uint32_t width, uint32_t height, uint16_t numcomps, uint32_t nominalStripHeight) :
 		width_(width), height_(height),numcomps_(numcomps), nominalStripHeight_(nominalStripHeight),
 		numStrips_(nominalStripHeight ? (height  + nominalStripHeight - 1)/ nominalStripHeight : 0),
@@ -88,7 +94,8 @@ struct ImageStripper{
 		finalStripHeight_( (nominalStripHeight && (height % nominalStripHeight != 0)) ?
 							height - ((height / nominalStripHeight) * nominalStripHeight) :
 								nominalStripHeight),
-		finalStripLen_ (finalStripHeight_ * stripPackedByteWidth_)
+		finalStripLen_ (finalStripHeight_ * stripPackedByteWidth_),
+		stripBuffers_(nullptr)
 	{}
 	StripBuffer getStrip(uint32_t strip) const{
 		return StripBuffer(strip * nominalStripHeight_ * stripPackedByteWidth_,

@@ -12,27 +12,26 @@ static void run(uint32_t width, uint32_t height,
 	bool storeAsynch = doStore && doAsynch;
 	{
 		TIFFFormat tiffFormat;
-		auto seamCache = tiffFormat.getStripChunker();
-		uint32_t packedBytesWidth = width * 1;
-		ImageStripper imageStripper(width, height,1,32);
+		tiffFormat.init(width, height, 1, 32);
+		auto imageStripper = tiffFormat.getImageStripper();
 		if (doStore){
 			std::string filename = "dump.tif";
 			remove(filename.c_str());
-		   tiffFormat.encodeInit(&imageStripper, filename, doAsynch,concurrency);
+		   tiffFormat.encodeInit(filename, doAsynch,concurrency);
 		}
 
 		printf("Run with concurrency = %d, store to disk = %d, use uring = %d\n",concurrency,doStore,doAsynch);
 		tf::Executor exec(concurrency);
 		tf::Taskflow taskflow;
-		tf::Task* encodeStrips = new tf::Task[imageStripper.numStrips()];
-		for (uint32_t strip = 0; strip < imageStripper.numStrips(); ++strip)
+		tf::Task* encodeStrips = new tf::Task[imageStripper->numStrips()];
+		for (uint32_t strip = 0; strip < imageStripper->numStrips(); ++strip)
 			encodeStrips[strip] = taskflow.placeholder();
-		for(uint32_t strip = 0; strip < imageStripper.numStrips(); ++strip)
+		for(uint32_t strip = 0; strip < imageStripper->numStrips(); ++strip)
 		{
 			uint32_t currentStrip = strip;
-			encodeStrips[strip].work([seamCache, &tiffFormat, currentStrip,doAsynch,doStore,imageStripper,&exec] {
+			encodeStrips[strip].work([&tiffFormat, currentStrip,doAsynch,doStore,imageStripper,&exec] {
 				if (!doStore) {
-					auto strip = imageStripper.getStrip(currentStrip);
+					auto strip = imageStripper->getStrip(currentStrip);
 					uint64_t len =  strip.len_;
 					uint8_t b[len] __attribute__((__aligned__(ALIGNMENT)));
 					for (uint64_t k = 0; k < 2*len; ++k)
