@@ -74,18 +74,13 @@ struct SerializeChunkBuffer{
 		return true;
 	}
 	void alloc(IBufferPool* pool){
-		if (!buf_.data)
-			return;
-		// cache offset
-		uint64_t offset = buf_.offset;
+		assert(pool);
 		if (shared_){
 			std::unique_lock<std::mutex> locker(sharedMut_);
-			buf_ = pool->get(buf_.allocLen);
+			allocInternal(pool);
 		} else {
-			buf_ = pool->get(buf_.allocLen);
+			allocInternal(pool);
 		}
-		// restore offset
-		buf_.offset = offset;
 	}
 	SerializeBuf buf_;
 	std::atomic<uint32_t> refCount_;
@@ -93,6 +88,18 @@ struct SerializeChunkBuffer{
 	uint32_t writeTarget_;
 	bool shared_;
 	std::mutex sharedMut_;
+private:
+	void allocInternal(IBufferPool* pool){
+		assert(pool);
+		if (buf_.data)
+			return;
+		// cache offset
+		uint64_t offset = buf_.offset;
+		// allocate
+		buf_ = pool->get(buf_.allocLen);
+		// restore offset
+		buf_.offset = offset;
+	}
 };
 
 /**
@@ -254,9 +261,10 @@ struct ImageStripper{
 	}
 	SerializeChunkInfo getSerializeChunkInfo(uint32_t strip){
 		SerializeChunkInfo ret;
+		ret.isFinalStrip_ = strip == finalStrip_;
 		ret.writeSize_ = writeSize_;
 		ret.lastBegin_ = correctedLastBegin(strip);
-		assert(strip ==  finalStrip_ || (ret.lastBegin_% writeSize_ == 0));
+		assert(ret.isFinalStrip_ || (ret.lastBegin_% writeSize_ == 0));
 		ret.lastEnd_   = correctedStripEnd(strip);
 		ret.firstBegin_ = correctedStripOffset(strip);
 		// no lower seam
@@ -265,10 +273,9 @@ struct ImageStripper{
 		else
 			ret.firstEnd_ = correctedLastBegin(strip-1) + writeSize_;
 		assert(ret.firstEnd_% writeSize_ == 0);
-		assert((strip ==  finalStrip_) ||
+		assert(ret.isFinalStrip_||
 				((ret.lastBegin_ - ret.firstEnd_) % writeSize_ == 0) );
 		ret.numWholeChunks_ = (ret.lastBegin_ - ret.firstEnd_) / writeSize_;
-		ret.isFinalStrip_ = strip == finalStrip_;
 
 		return ret;
 	}
