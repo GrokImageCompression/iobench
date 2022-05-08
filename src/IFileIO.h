@@ -36,17 +36,17 @@ struct SerializeBuf : public serialize_buf
 		allocLen = rhs.allocLen;
 		pooled = rhs.pooled;
 	}
-	static bool isAligned(uint64_t off){
-		return (off & (ALIGNMENT-1)) == 0;
+	static bool isAlignedToWriteSize(uint64_t off){
+		return (off & (WRTSIZE-1)) == 0;
 	}
 	bool aligned(void){
 		return alignedOffset() && alignedLength();
 	}
 	bool alignedOffset(void){
-		return isAligned(offset);
+		return isAlignedToWriteSize(offset);
 	}
 	bool alignedLength(void){
-		return isAligned(dataLen);
+		return isAlignedToWriteSize(dataLen);
 	}
 	bool alloc(uint64_t len)
 	{

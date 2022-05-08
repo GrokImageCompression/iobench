@@ -17,13 +17,13 @@
  * strip.
  *
  * Serialize chunks can be shared between neighbouring strips if they
- * share a common seam, which happens when the strip's corrected offset
+ * share a common seam, which happens when the boundary between two strips
  * is not aligned.
  */
 
 struct SerializeChunkInfo{
 	SerializeChunkInfo(void) :    firstBegin_(0), firstEnd_(0),
-					lastBegin_(0), lastEnd_(0), numWholeChunks_(0),
+					lastBegin_(0), lastEnd_(0),
 					writeSize_(0), isFirstStrip_(false),
 					isFinalStrip_(false)
 	{}
@@ -31,7 +31,7 @@ struct SerializeChunkInfo{
 		return lastEnd_ - firstBegin_;
 	}
 	uint32_t numChunks(void){
-		uint32_t rc = numWholeChunks_;
+		uint32_t rc = (lastBegin_ - firstEnd_) / writeSize_;
 		if (hasFirst())
 			rc++;
 		if (hasLast())
@@ -40,16 +40,15 @@ struct SerializeChunkInfo{
 		return rc;
 	}
 	bool hasFirst(void){
-		return !isFirstStrip_ && !SerializeBuf::isAligned(firstBegin_);
+		return !isFirstStrip_ && !SerializeBuf::isAlignedToWriteSize(firstBegin_);
 	}
 	bool hasLast(void){
-		return !isFinalStrip_ && !SerializeBuf::isAligned(lastEnd_);
+		return !isFinalStrip_ && !SerializeBuf::isAlignedToWriteSize(lastEnd_);
 	}
 	uint64_t firstBegin_;
 	uint64_t firstEnd_;
 	uint64_t lastBegin_;
 	uint64_t lastEnd_;
-	uint32_t numWholeChunks_;
 	uint64_t writeSize_;
 	bool isFirstStrip_;
 	bool isFinalStrip_;
@@ -162,33 +161,36 @@ struct StripBuffer  {
 		numChunks_ = chunkInfo_.numChunks();
 		chunks_ = new StripChunkBuffer*[numChunks_];
 		for (uint32_t i = 0; i < numChunks_; ++i ){
-			bool lastChunkOfAll  = chunkInfo.isFinalStrip_ && (i == numChunks_-1);
-			bool firstSeam   = i == 0 && chunkInfo.hasFirst();
-			bool lastSeam    = !lastChunkOfAll && (i == numChunks_-1) && chunkInfo.hasLast();
-			uint64_t offset  = (i == 0) ? chunkInfo_.firstBegin_ :
-									chunkInfo_.firstEnd_ + (i-1) * chunkInfo_.writeSize_;
+			uint64_t offset  = i * chunkInfo_.writeSize_;
 			uint64_t len     = chunkInfo_.writeSize_;
 			uint64_t writeOffset = 0;
 			uint64_t writeLen = len;
 			bool shared = false;
+
+			bool lastChunkOfAll  = chunkInfo.isFinalStrip_ && (i == numChunks_-1);
+			bool firstSeam       = (i == 0) && chunkInfo.hasFirst();
+			bool lastSeam        = !lastChunkOfAll && (i == numChunks_-1) && chunkInfo.hasLast();
 			if (firstSeam){
 				assert(leftNeighbour_);
+
 				offset = leftNeighbour_->finalChunk()->serializeChunkBuffer_->buf_.offset;
 				assert(chunkInfo_.firstBegin_  > offset);
+
 				writeOffset = chunkInfo_.firstBegin_ - offset;
-				writeLen = chunkInfo_.firstEnd_ - chunkInfo_.firstBegin_;
-				assert(writeLen);
+				writeLen    = chunkInfo_.firstEnd_ - chunkInfo_.firstBegin_;
+				assert(writeLen && writeLen < chunkInfo_.writeSize_);
+
 				shared = true;
 			} else if (lastSeam){
-				offset = chunkInfo_.lastBegin_;
+				offset   = chunkInfo_.lastBegin_;
 				writeLen = chunkInfo_.lastEnd_ - chunkInfo_.lastBegin_;
+				assert(writeLen < chunkInfo_.writeSize_);
 				if (lastChunkOfAll)
 					len = writeLen;
 				else
 					shared = true;
-			} else 	if (chunkInfo.hasFirst()) {
-				offset = chunkInfo_.firstEnd_ + (i-1) * chunkInfo_.writeSize_;
 			}
+
 			SerializeChunkBuffer* serializeChunkBuffer;
 			if (firstSeam) {
 				serializeChunkBuffer = leftNeighbour_->finalChunk()->serializeChunkBuffer_;
@@ -276,14 +278,12 @@ struct ImageStripper{
 		ret.isFinalStrip_ = strip == finalStrip_;
 		ret.writeSize_    = writeSize_;
 		ret.lastBegin_    = correctedLastBegin(strip);
-		assert(ret.isFinalStrip_ || (ret.lastBegin_% writeSize_ == 0));
+		assert(ret.lastBegin_% writeSize_ == 0);
 		ret.lastEnd_      = correctedStripEnd(strip);
 		ret.firstBegin_   = correctedStripOffset(strip);
 		ret.firstEnd_     = (strip == 0 ? 0 : correctedLastBegin(strip-1)) + writeSize_;
 		assert(ret.firstEnd_% writeSize_ == 0);
-		assert(ret.isFinalStrip_||
-				((ret.lastBegin_ - ret.firstEnd_) % writeSize_ == 0) );
-		ret.numWholeChunks_ = (ret.lastBegin_ - ret.firstEnd_) / writeSize_;
+		assert((ret.lastBegin_ - ret.firstEnd_) % writeSize_ == 0);
 
 		return ret;
 	}
