@@ -106,14 +106,15 @@ bool TIFFFormat::submit(uint32_t threadId, StripChunkBuffer *chunkBuffer){
 	return chunkBuffer->serializeChunkBuffer_->submit(serializer);
 }
 bool TIFFFormat::encodeInit(std::string filename,
-							bool asynch,
-							uint32_t concurrency){
+							bool direct,
+							uint32_t concurrency,
+							bool asynch){
 	filename_ = filename;
 	concurrency_ = concurrency;
 	auto maxRequests = imageStripper_->numStrips();
 	serializer_.setMaxPooledRequests(maxRequests);
 	bool rc;
-	mode_ = "w";
+	mode_ = direct ? "wd" : "w";
 	if(!serializer_.open(filename_, mode_,asynch))
 		return false;
 	serializer_.registerApplicationClient();

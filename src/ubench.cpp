@@ -6,7 +6,7 @@
 #define TCLAP_NAMESTARTSTRING "-"
 #include "tclap/CmdLine.h"
 
-static void run(uint32_t width, uint32_t height,
+static void run(uint32_t width, uint32_t height,bool direct,
 		uint32_t concurrency, bool doStore, bool doAsynch){
 	ChronoTimer timer;
 	bool storeAsynch = doStore && doAsynch;
@@ -17,7 +17,7 @@ static void run(uint32_t width, uint32_t height,
 		if (doStore){
 			std::string filename = "dump.tif";
 			remove(filename.c_str());
-		   tiffFormat.encodeInit(filename, doAsynch,concurrency);
+		   tiffFormat.encodeInit(filename,direct,concurrency,doAsynch);
 		}
 
 		printf("Run with concurrency = %d, store to disk = %d, use uring = %d\n",concurrency,doStore,doAsynch);
@@ -64,10 +64,10 @@ static void run(uint32_t width, uint32_t height,
 	}
 	timer.finish(storeAsynch ? "flush" : "");
 }
-static void run(uint32_t width, uint32_t height,uint8_t concurrency){
-	   run(width,height,concurrency,false,false);
-	   run(width,height,concurrency,true,false);
-	   run(width,height,concurrency,true,true);
+static void run(uint32_t width, uint32_t height,bool direct,uint8_t concurrency){
+	   run(width,height,direct,concurrency,false,false);
+	   run(width,height,direct,concurrency,true,false);
+	   run(width,height,direct,concurrency,true,true);
 	   printf("\\\\\\\\\\\\\\\\\\\\\\\\\\\n");
 }
 
@@ -78,6 +78,7 @@ int main(int argc, char** argv)
 	uint32_t concurrency = 0;
 	bool useUring = true;
 	bool fullRun = true;
+	bool direct = false;
 	try
 	{
 		TCLAP::CmdLine cmd("uring test bench command line", ' ', "1.0");
@@ -89,6 +90,7 @@ int main(int argc, char** argv)
 												  "image height",
 												  false, 0, "unsigned integer", cmd);
 		TCLAP::SwitchArg synchArg("s", "synchronous", "synchronous writes", cmd);
+		TCLAP::SwitchArg directArg("d", "direct", "use O_DIRECT", cmd);
 		TCLAP::ValueArg<uint32_t> concurrencyArg("c", "concurrency",
 												  "concurrency",
 												  false, 0, "unsigned integer", cmd);
@@ -98,6 +100,7 @@ int main(int argc, char** argv)
 			width = widthArg.getValue();
 		if (heightArg.isSet())
 			height = heightArg.getValue();
+		direct = directArg.isSet();
 		if (concurrencyArg.isSet()) {
 			concurrency = concurrencyArg.getValue();
 			fullRun = false;
@@ -113,13 +116,13 @@ int main(int argc, char** argv)
 	if (fullRun) {
 		for (uint8_t concurrency = 2;
 				concurrency <= std::thread::hardware_concurrency(); concurrency+=2){
-		   run(width,height,concurrency);
+		   run(width,height,direct,concurrency);
 	   }
 	} else {
 		if (concurrency > 0)
-			run(width,height,concurrency, true, useUring);
+			run(width,height,direct, concurrency, true, useUring);
 		else
-			run(width,height,std::thread::hardware_concurrency(),true,useUring);
+			run(width,height,direct,std::thread::hardware_concurrency(),true,useUring);
 	}
 
    return 0;

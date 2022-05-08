@@ -32,7 +32,7 @@ public:
 	virtual ~TIFFFormat();
 	void init(uint32_t width, uint32_t height,
 							uint16_t numcomps, uint32_t nominalStripHeight);
-	bool encodeInit(std::string filename, bool asynch, uint32_t concurrency);
+	bool encodeInit(std::string filename,bool direct, uint32_t concurrency,bool asynch);
 	bool encodePixels(uint32_t threadId, SerializeBuf serializeBuf);
 	bool encodeFinish(void);
 	bool close(void);
