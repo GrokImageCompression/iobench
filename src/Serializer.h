@@ -22,6 +22,7 @@ struct Serializer : public ISerializeBufWriter
 	size_t write(uint8_t* buf, uint64_t size);
 	uint64_t seek(int64_t off, int32_t whence);
 	SerializeBuf getPoolBuffer(uint64_t len);
+	BufferPool* getPool(void);
 	void enableSimulateWrite(void);
   private:
 	FileUringIO uring;

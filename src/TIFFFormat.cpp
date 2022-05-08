@@ -77,15 +77,15 @@ ImageStripper* TIFFFormat::getImageStripper(void){
 	return imageStripper_;
 }
 // corrected for header
-SerializeBuf TIFFFormat::getPoolBuffer(uint32_t threadId,uint32_t index){
-	auto chunkInfo = imageStripper_->getSerializeChunkInfo(index);
+SerializeBuf TIFFFormat::getPoolBuffer(uint32_t threadId,uint32_t strip){
+	auto chunkInfo = imageStripper_->getSerializeChunkInfo(strip);
 	uint64_t len = chunkInfo.len();
 	SerializeBuf  serializeBuf =
 			asynchSerializers_ ? asynchSerializers_[threadId]->getPoolBuffer(len) :
 					serializer_.getPoolBuffer(len);
-	serializeBuf.index = index;
+	serializeBuf.index = strip;
 	serializeBuf.offset = chunkInfo.firstBegin_;
-	uint64_t headerSize = ((index == 0) ? sizeof(header_) : 0);
+	uint64_t headerSize = ((strip == 0) ? sizeof(header_) : 0);
 	if (headerSize) {
 		memcpy(serializeBuf.data , &header_, headerSize);
 		serializeBuf.skip = headerSize;
@@ -93,6 +93,17 @@ SerializeBuf TIFFFormat::getPoolBuffer(uint32_t threadId,uint32_t index){
 	serializeBuf.pooled = true;
 
 	return serializeBuf;
+}
+bool TIFFFormat::nextChunk(uint32_t threadId,uint32_t strip,StripChunkBuffer **chunkBuffer){
+	auto serializer =
+			asynchSerializers_ ? asynchSerializers_[threadId] : &serializer_;
+	auto pool = serializer->getPool();
+	return imageStripper_->getStrip(strip)->nextChunk(pool, chunkBuffer);
+}
+bool TIFFFormat::submit(uint32_t threadId, StripChunkBuffer *chunkBuffer){
+	auto serializer =
+			asynchSerializers_ ? asynchSerializers_[threadId] : &serializer_;
+	return chunkBuffer->serializeChunkBuffer_->submit(serializer);
 }
 bool TIFFFormat::encodeInit(std::string filename,
 							bool asynch,

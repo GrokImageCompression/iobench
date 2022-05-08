@@ -63,8 +63,9 @@ struct SerializeChunkBuffer{
 		assert(buf_.alignedOffset());
 		assert(finalChunk || buf_.alignedLength());
 	}
-	uint32_t ref(void){
-		return ++refCount_;
+	SerializeChunkBuffer* ref(void){
+		++refCount_;
+		return this;
 	}
 	uint32_t unref(void){
 		return --refCount_;
@@ -77,6 +78,7 @@ struct SerializeChunkBuffer{
 	}
 	void alloc(IBufferPool* pool){
 		assert(pool);
+		assert(buf_.dataLen);
 		if (shared_){
 			std::unique_lock<std::mutex> locker(sharedMut_);
 			allocInternal(pool);
@@ -98,7 +100,7 @@ private:
 		// cache offset
 		uint64_t offset = buf_.offset;
 		// allocate
-		buf_ = pool->get(buf_.allocLen);
+		buf_ = pool->get(buf_.dataLen);
 		// restore offset
 		buf_.offset = offset;
 	}
@@ -192,12 +194,11 @@ struct StripBuffer  {
 			}
 
 			SerializeChunkBuffer* serializeChunkBuffer;
-			if (firstSeam) {
-				serializeChunkBuffer = leftNeighbour_->finalChunk()->serializeChunkBuffer_;
-				serializeChunkBuffer->ref();
-			} else {
+			if (firstSeam)
+				serializeChunkBuffer = leftNeighbour_->finalChunk()->serializeChunkBuffer_->ref();
+			else
 				serializeChunkBuffer = new SerializeChunkBuffer(offset,len,shared,lastChunkOfAll);
-			}
+
 			chunks_[i] = new StripChunkBuffer(serializeChunkBuffer,
 												writeOffset,
 												writeLen);
@@ -206,8 +207,6 @@ struct StripBuffer  {
 	bool nextChunk(IBufferPool *pool, StripChunkBuffer **chunkBuffer){
 		assert(pool);
 		assert(chunkBuffer);
-		if (nextChunkIndex_ >= numChunks_)
-			return false;
 		uint32_t chunk = ++nextChunkIndex_;
 		if (chunk >= numChunks_)
 			return false;

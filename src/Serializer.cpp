@@ -45,6 +45,9 @@ void Serializer::registerClientCallback(serialize_callback reclaim_callback,
 SerializeBuf Serializer::getPoolBuffer(uint64_t len){
 	return pool_.get(len);
 }
+BufferPool* Serializer::getPool(void){
+	return &pool_;
+}
 bool Serializer::attach(Serializer *parent){
 	fd_ = parent->fd_;
 

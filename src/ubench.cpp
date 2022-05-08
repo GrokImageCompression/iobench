@@ -37,17 +37,17 @@ static void run(uint32_t width, uint32_t height,
 					for (uint64_t k = 0; k < 2*len; ++k)
 						b[k/2] = k;
 				} else {
+					/*
+					// iterate through all blocks, allocating memory and submitting to writer
+					StripChunkBuffer *chunkBuffer = nullptr;
+					while (tiffFormat.nextChunk(exec.this_worker_id(), currentStrip, &chunkBuffer)){
+						tiffFormat.submit(exec.this_worker_id(), chunkBuffer);
+					}
+					*/
 					auto b = tiffFormat.getPoolBuffer(exec.this_worker_id(), currentStrip);
 					auto ptr = b.data + b.skip;
 					for (uint64_t k = 0; k < 2*(b.dataLen-b.skip); ++k)
 						ptr[k/2] = k;
-
-					// use seam cache to break strip down into write blocks + seams
-					//1. write bottom seam
-
-					//2. write full blocks
-
-					//3. write top seam
 					bool ret = tiffFormat.encodePixels(exec.this_worker_id(),b);
 					assert(ret);
 				}
