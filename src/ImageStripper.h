@@ -7,11 +7,24 @@
 #include "IBufferPool.h"
 #include <mutex>
 
-// corrected for header size
+/*
+ * Each strip is divided into a collection of serialize chunks,
+ * which are designed for serialization to disk. Their offset is always
+ * aligned, and their length is always equal to WRTSIZE (4k),
+ * except possibly the final chunk of the final strip. Also, they are corrected
+ * for the header bytes which are located right before the beginning of the
+ * first strip - the header bytes are included in the first chunk of the first
+ * strip.
+ *
+ * Serialize chunks can be shared between neighbouring strips if they
+ * share a common seam, which happens when the strip's corrected offset
+ * is not aligned.
+ */
+
 struct SerializeChunkInfo{
 	SerializeChunkInfo(void) :    firstBegin_(0), firstEnd_(0),
 					lastBegin_(0), lastEnd_(0), numWholeChunks_(0),
-					writeSize_(0)
+					writeSize_(0), isFinalStrip_(false)
 	{}
 	uint64_t len(){
 		return lastEnd_ - firstBegin_;
@@ -37,6 +50,7 @@ struct SerializeChunkInfo{
 	uint64_t lastEnd_;
 	uint32_t numWholeChunks_;
 	uint64_t writeSize_;
+	bool isFinalStrip_;
 };
 struct SerializeChunkBuffer{
 	SerializeChunkBuffer(uint64_t offset,uint64_t len, bool shared) :
@@ -45,6 +59,7 @@ struct SerializeChunkBuffer{
 	{
 		buf_.offset = offset;
 		buf_.dataLen = len;
+		assert(buf_.aligned());
 	}
 	uint32_t ref(void){
 		return ++refCount_;
@@ -80,6 +95,13 @@ struct SerializeChunkBuffer{
 	std::mutex sharedMut_;
 };
 
+/**
+ * A strip chunk wraps a serialize chunk (which may be shared with the
+ * strip's neighbour), and it also stores a write offset and write length
+ * for its assigned portion of a shared serialize chunk.
+ * If there is no sharing, then  write offset is zero,
+ * and write length equals WRTSIZE.
+ */
 struct StripChunkBuffer {
 	StripChunkBuffer(SerializeChunkBuffer *serializeChunkBuffer,
 			uint64_t writeOffset, uint64_t writeLen) :
@@ -88,7 +110,7 @@ struct StripChunkBuffer {
 		writeLen_(writeLen)
 	{
 		assert(writeOffset < serializeChunkBuffer_->buf_.dataLen);
-		assert(writeLen < serializeChunkBuffer_->buf_.dataLen);
+		assert(writeLen <= serializeChunkBuffer_->buf_.dataLen);
 	}
 	~StripChunkBuffer(){
 		if (serializeChunkBuffer_->unref() == 0)
@@ -104,8 +126,13 @@ struct StripChunkBuffer {
 	uint64_t writeLen_;
 };
 
+/**
+ * A strip buffer contains a sequence of strip chunks, and is able to iterate
+ * through this sequence, feeding strip chunks to be consumed by the caller.
+ *
+ */
 struct StripBuffer  {
-	StripBuffer(StripBuffer* neighbour, uint64_t offset,uint64_t len) :
+	StripBuffer(uint64_t offset,uint64_t len,StripBuffer* neighbour) :
 		offset_(offset),
 		len_(len),
 		chunks_(nullptr),
@@ -133,12 +160,14 @@ struct StripBuffer  {
 			bool shared = false;
 			if (firstSeam){
 				offset = chunkInfo_.firstBegin_;
-				len = chunkInfo_.firstEnd_ - chunkInfo_.firstBegin_;
 				shared = true;
 			} else if (lastSeam){
 				offset = chunkInfo_.lastBegin_;
-				len = chunkInfo_.lastEnd_ - chunkInfo_.lastBegin_;
-				shared = true;
+				// only for final strip
+				if (chunkInfo.isFinalStrip_)
+					len = chunkInfo_.lastEnd_ - chunkInfo_.lastBegin_;
+				else
+					shared = true;
 			} else 	if (chunkInfo.hasFirst()) {
 				offset = chunkInfo_.firstEnd_ + (i-1) * chunkInfo_.writeSize_;
 			}
@@ -211,9 +240,9 @@ struct ImageStripper{
 	{
 		for (uint32_t i = 0; i < numStrips_; ++i){
 			auto neighbour = (i > 0) ? stripBuffers_[i-1] : nullptr;
-			stripBuffers_[i] = new StripBuffer(neighbour,
-										i * nominalStripHeight_ * stripPackedByteWidth_,
-										stripHeight(i) * stripPackedByteWidth_);
+			stripBuffers_[i] = new StripBuffer(i * nominalStripHeight_ * stripPackedByteWidth_,
+										stripHeight(i) * stripPackedByteWidth_,
+										neighbour);
 			stripBuffers_[i]->init(getSerializeChunkInfo(i));
 		}
 	}
@@ -223,7 +252,6 @@ struct ImageStripper{
 	uint32_t numStrips(void) const{
 		return numStrips_;
 	}
-	// corrected
 	SerializeChunkInfo getSerializeChunkInfo(uint32_t strip){
 		SerializeChunkInfo ret;
 		ret.writeSize_ = writeSize_;
@@ -240,6 +268,7 @@ struct ImageStripper{
 		assert((strip ==  finalStrip_) ||
 				((ret.lastBegin_ - ret.firstEnd_) % writeSize_ == 0) );
 		ret.numWholeChunks_ = (ret.lastBegin_ - ret.firstEnd_) / writeSize_;
+		ret.isFinalStrip_ = strip == finalStrip_;
 
 		return ret;
 	}
