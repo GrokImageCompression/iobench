@@ -24,7 +24,8 @@
 struct SerializeChunkInfo{
 	SerializeChunkInfo(void) :    firstBegin_(0), firstEnd_(0),
 					lastBegin_(0), lastEnd_(0), numWholeChunks_(0),
-					writeSize_(0), isFinalStrip_(false)
+					writeSize_(0), isFirstStrip_(false),
+					isFinalStrip_(false)
 	{}
 	uint64_t len(){
 		return lastEnd_ - firstBegin_;
@@ -39,10 +40,10 @@ struct SerializeChunkInfo{
 		return rc;
 	}
 	bool hasFirst(void){
-		return firstEnd_ != firstBegin_;
+		return !isFirstStrip_ && !SerializeBuf::isAligned(firstBegin_);
 	}
 	bool hasLast(void){
-		return lastEnd_ != lastBegin_;
+		return !isFinalStrip_ && !SerializeBuf::isAligned(lastEnd_);
 	}
 	uint64_t firstBegin_;
 	uint64_t firstEnd_;
@@ -50,6 +51,7 @@ struct SerializeChunkInfo{
 	uint64_t lastEnd_;
 	uint32_t numWholeChunks_;
 	uint64_t writeSize_;
+	bool isFirstStrip_;
 	bool isFinalStrip_;
 };
 struct SerializeChunkBuffer{
@@ -160,10 +162,11 @@ struct StripBuffer  {
 		numChunks_ = chunkInfo_.numChunks();
 		chunks_ = new StripChunkBuffer*[numChunks_];
 		for (uint32_t i = 0; i < numChunks_; ++i ){
+			bool lastChunkOfAll  = chunkInfo.isFinalStrip_ && (i == numChunks_-1);
 			bool firstSeam   = i == 0 && chunkInfo.hasFirst();
-			bool lastSeam    = !chunkInfo.isFinalStrip_ && (i == numChunks_-1) && chunkInfo.hasLast();
+			bool lastSeam    = !lastChunkOfAll && (i == numChunks_-1) && chunkInfo.hasLast();
 			uint64_t offset  = (i == 0) ? chunkInfo_.firstBegin_ :
-									chunkInfo_.firstEnd_ + i * chunkInfo_.writeSize_;
+									chunkInfo_.firstEnd_ + (i-1) * chunkInfo_.writeSize_;
 			uint64_t len     = chunkInfo_.writeSize_;
 			uint64_t writeOffset = 0;
 			uint64_t writeLen = len;
@@ -178,21 +181,20 @@ struct StripBuffer  {
 				shared = true;
 			} else if (lastSeam){
 				offset = chunkInfo_.lastBegin_;
-				// only for final strip
-				if (chunkInfo.isFinalStrip_)
-					len = chunkInfo_.lastEnd_ - chunkInfo_.lastBegin_;
+				writeLen = chunkInfo_.lastEnd_ - chunkInfo_.lastBegin_;
+				if (lastChunkOfAll)
+					len = writeLen;
 				else
 					shared = true;
 			} else 	if (chunkInfo.hasFirst()) {
 				offset = chunkInfo_.firstEnd_ + (i-1) * chunkInfo_.writeSize_;
 			}
 			SerializeChunkBuffer* serializeChunkBuffer;
-			bool finalChunk = chunkInfo.isFinalStrip_ &&  i == numChunks_-1;
 			if (firstSeam) {
 				serializeChunkBuffer = leftNeighbour_->finalChunk()->serializeChunkBuffer_;
 				serializeChunkBuffer->ref();
 			} else {
-				serializeChunkBuffer = new SerializeChunkBuffer(offset,len,shared,finalChunk);
+				serializeChunkBuffer = new SerializeChunkBuffer(offset,len,shared,lastChunkOfAll);
 			}
 			chunks_[i] = new StripChunkBuffer(serializeChunkBuffer,
 												writeOffset,
@@ -270,6 +272,7 @@ struct ImageStripper{
 	}
 	SerializeChunkInfo getSerializeChunkInfo(uint32_t strip){
 		SerializeChunkInfo ret;
+		ret.isFirstStrip_ = strip == 0;
 		ret.isFinalStrip_ = strip == finalStrip_;
 		ret.writeSize_    = writeSize_;
 		ret.lastBegin_    = correctedLastBegin(strip);
