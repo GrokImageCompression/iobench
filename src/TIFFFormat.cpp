@@ -98,7 +98,18 @@ bool TIFFFormat::nextChunk(uint32_t threadId,uint32_t strip,StripChunkBuffer **c
 	auto serializer =
 			asynchSerializers_ ? asynchSerializers_[threadId] : &serializer_;
 	auto pool = serializer->getPool();
-	return imageStripper_->getStrip(strip)->nextChunk(pool, chunkBuffer);
+	bool rc =  imageStripper_->getStrip(strip)->nextChunk(pool, chunkBuffer);
+	if (rc){
+		auto ser = (*chunkBuffer)->serializeChunkBuffer_;
+		uint64_t headerSize = ((strip == 0) ? sizeof(header_) : 0);
+		if (headerSize) {
+			memcpy(ser->buf_.data , &header_, headerSize);
+			ser->buf_.skip = headerSize;
+		}
+		ser->buf_.pooled = true;
+	}
+
+	return rc;
 }
 bool TIFFFormat::submit(uint32_t threadId, StripChunkBuffer *chunkBuffer){
 	auto serializer =
