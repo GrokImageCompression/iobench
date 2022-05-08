@@ -279,11 +279,7 @@ struct ImageStripper{
 		assert(ret.isFinalStrip_ || (ret.lastBegin_% writeSize_ == 0));
 		ret.lastEnd_      = correctedStripEnd(strip);
 		ret.firstBegin_   = correctedStripOffset(strip);
-		// no lower seam
-		if (strip == 0 ||  (ret.firstBegin_ % writeSize_ == 0))
-			ret.firstEnd_ = ret.firstBegin_;
-		else
-			ret.firstEnd_ = correctedLastBegin(strip-1) + writeSize_;
+		ret.firstEnd_     = (strip == 0 ? 0 : correctedLastBegin(strip-1)) + writeSize_;
 		assert(ret.firstEnd_% writeSize_ == 0);
 		assert(ret.isFinalStrip_||
 				((ret.lastBegin_ - ret.firstEnd_) % writeSize_ == 0) );
