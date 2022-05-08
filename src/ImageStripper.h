@@ -163,7 +163,9 @@ struct StripBuffer  {
 		numChunks_ = chunkInfo_.numChunks();
 		chunks_ = new StripChunkBuffer*[numChunks_];
 		for (uint32_t i = 0; i < numChunks_; ++i ){
-			uint64_t offset  = i * chunkInfo_.writeSize_;
+			uint64_t off = 0;
+			if (!chunkInfo_.isFirstStrip_)
+				off = (chunkInfo.firstEnd_ - chunkInfo_.writeSize_) + i * chunkInfo_.writeSize_;
 			uint64_t len     = chunkInfo_.writeSize_;
 			uint64_t writeOffset = 0;
 			uint64_t writeLen = len;
@@ -171,37 +173,38 @@ struct StripBuffer  {
 
 			bool lastChunkOfAll  = chunkInfo.isFinalStrip_ && (i == numChunks_-1);
 			bool firstSeam       = (i == 0) && chunkInfo.hasFirst();
-			bool lastSeam        = !lastChunkOfAll && (i == numChunks_-1) && chunkInfo.hasLast();
+			bool lastSeam        = (i == numChunks_-1) && !lastChunkOfAll && chunkInfo.hasLast();
 			if (firstSeam){
 				assert(leftNeighbour_);
+				off = leftNeighbour_->finalChunk()->serializeChunkBuffer_->buf_.offset;
+				assert(chunkInfo_.firstBegin_  > off);
 
-				offset = leftNeighbour_->finalChunk()->serializeChunkBuffer_->buf_.offset;
-				assert(chunkInfo_.firstBegin_  > offset);
-
-				writeOffset = chunkInfo_.firstBegin_ - offset;
+				writeOffset = chunkInfo_.firstBegin_ - off;
 				writeLen    = chunkInfo_.firstEnd_ - chunkInfo_.firstBegin_;
 				assert(writeLen && writeLen < chunkInfo_.writeSize_);
+				assert(writeOffset && writeOffset < chunkInfo_.writeSize_);
 
 				shared = true;
 			} else if (lastSeam){
-				offset   = chunkInfo_.lastBegin_;
+				off   = chunkInfo_.lastBegin_;
 				writeLen = chunkInfo_.lastEnd_ - chunkInfo_.lastBegin_;
-				assert(writeLen < chunkInfo_.writeSize_);
+				assert(writeLen && writeLen < chunkInfo_.writeSize_);
 				if (lastChunkOfAll)
 					len = writeLen;
 				else
 					shared = true;
 			}
-
+			assert(SerializeBuf::isAlignedToWriteSize(off));
 			SerializeChunkBuffer* serializeChunkBuffer;
 			if (firstSeam)
 				serializeChunkBuffer = leftNeighbour_->finalChunk()->serializeChunkBuffer_->ref();
 			else
-				serializeChunkBuffer = new SerializeChunkBuffer(offset,len,shared,lastChunkOfAll);
+				serializeChunkBuffer = new SerializeChunkBuffer(off,len,shared,lastChunkOfAll);
 
 			chunks_[i] = new StripChunkBuffer(serializeChunkBuffer,
 												writeOffset,
 												writeLen);
+			//printf("%ld %ld, %ld %ld\n",chunkInfo.firstBegin_, i, off,len);
 		}
 	}
 	bool nextChunk(IBufferPool *pool, StripChunkBuffer **chunkBuffer){
