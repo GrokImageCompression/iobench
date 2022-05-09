@@ -43,8 +43,8 @@ static void run(uint32_t width, uint32_t height,bool direct,
 						// and submit to disk
 						StripChunkBuffer *chunkBuffer = nullptr;
 						while (tiffFormat.nextChunk(exec.this_worker_id(), currentStrip, &chunkBuffer)){
-							assert(chunkBuffer->serializeChunkBuffer_->buf_.data);
-							auto ptr = chunkBuffer->serializeChunkBuffer_->buf_.data;
+							auto ptr = chunkBuffer->data();
+							assert(ptr);
 							memset(ptr + chunkBuffer->writeableOffset_, 0, chunkBuffer->writeableLen_);
 
 							bool ret = tiffFormat.submit(exec.this_worker_id(), chunkBuffer);

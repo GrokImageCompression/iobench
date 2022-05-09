@@ -116,11 +116,11 @@ struct StripChunkBuffer {
 		writeableOffset_(writeableOffset),
 		writeableLen_(writeableLen)
 	{
-		assert(writeableOffset < serializeChunkBuffer_->buf_.dataLen);
-		assert(writeableLen <= serializeChunkBuffer_->buf_.dataLen);
+		assert(writeableOffset < len());
+		assert(writeableLen <= len());
 	}
 	~StripChunkBuffer(){
-		if (serializeChunkBuffer_->unref() == 0)
+		if (unref() == 0)
 			delete serializeChunkBuffer_;
 	}
 	void alloc(IBufferPool* pool){
@@ -132,11 +132,31 @@ struct StripChunkBuffer {
 	uint64_t len(void){
 		return serializeChunkBuffer_->buf_.dataLen;
 	}
-	SerializeChunkBuffer *serializeChunkBuffer_;
+	SerializeChunkBuffer* ref(void){
+		return serializeChunkBuffer_->ref();
+	}
+	uint32_t unref(void){
+		return serializeChunkBuffer_->unref();
+	}
+	bool submit(ISerializeBufWriter *writer){
+		return serializeChunkBuffer_->submit(writer);
+	}
+	uint8_t* data(void){
+		return serializeChunkBuffer_->buf_.data;
+	}
+	void setHeader(uint8_t *headerData, uint64_t headerSize){
+		memcpy(data() , headerData, headerSize);
+		serializeChunkBuffer_->buf_.skip = headerSize;
+	}
+	void setPooled(void){
+		serializeChunkBuffer_->buf_.pooled = true;
+	}
 	// write offset relative to beginning of data
 	uint64_t writeableOffset_;
 	// writeable length
 	uint64_t writeableLen_;
+private:
+	SerializeChunkBuffer *serializeChunkBuffer_;
 };
 
 /**
@@ -204,7 +224,7 @@ struct StripBuffer  {
 			assert(SerializeBuf::isAlignedToWriteSize(off));
 			SerializeChunkBuffer* serializeChunkBuffer;
 			if (firstSeam)
-				serializeChunkBuffer = leftNeighbour_->finalChunk()->serializeChunkBuffer_->ref();
+				serializeChunkBuffer = leftNeighbour_->finalChunk()->ref();
 			else
 				serializeChunkBuffer =
 						new SerializeChunkBuffer(off,len,shared ? pool : nullptr,lastChunkOfAll);

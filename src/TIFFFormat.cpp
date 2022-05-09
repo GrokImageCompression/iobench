@@ -101,13 +101,10 @@ bool TIFFFormat::nextChunk(uint32_t threadId,uint32_t strip,StripChunkBuffer **c
 	auto pool = serializer->getPool();
 	bool rc =  imageStripper_->getStrip(strip)->nextChunk(pool, chunkBuffer);
 	if (rc){
-		auto ser = (*chunkBuffer)->serializeChunkBuffer_;
 		uint64_t headerSize = ((strip == 0) ? sizeof(header_) : 0);
-		if (headerSize) {
-			memcpy(ser->buf_.data , &header_, headerSize);
-			ser->buf_.skip = headerSize;
-		}
-		ser->buf_.pooled = true;
+		if (headerSize)
+			(*chunkBuffer)->setHeader((uint8_t*)&header_, headerSize);
+		(*chunkBuffer)->setPooled();
 	}
 
 	return rc;
@@ -115,7 +112,7 @@ bool TIFFFormat::nextChunk(uint32_t threadId,uint32_t strip,StripChunkBuffer **c
 bool TIFFFormat::submit(uint32_t threadId, StripChunkBuffer *chunkBuffer){
 	auto serializer =
 			asynchSerializers_ ? asynchSerializers_[threadId] : &serializer_;
-	return chunkBuffer->serializeChunkBuffer_->submit(serializer);
+	return chunkBuffer->submit(serializer);
 }
 bool TIFFFormat::encodeInit(std::string filename,
 							bool direct,
