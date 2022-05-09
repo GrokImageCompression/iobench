@@ -53,6 +53,6 @@ private:
 	std::string mode_;
 	TIFFFormatHeaderClassic header_;
 	uint32_t concurrency_;
-	Serializer **asynchSerializers_;
+	Serializer **workerSerializers_;
 	std::atomic<uint32_t> numPixelWrites_;
 };

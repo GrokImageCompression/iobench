@@ -22,9 +22,7 @@ Serializer::Serializer(bool lockedPool) :
 	  fd_(invalid_fd),
 	  numPooledRequests_(0), maxPooledRequests_(0), off_(0),
 	  reclaim_callback_(nullptr), reclaim_user_data_(nullptr),
-	  pool_(lockedPool ?
-			  	 (IBufferPool*)(new BufferPool<Locker>()) :
-				 	 (IBufferPool*)(new BufferPool<FakeLocker>())),
+	  pool_((IBufferPool*)(new BufferPool())),
 	  ownsFileDescriptor_(false), simulateWrite_(false)
 {
 }

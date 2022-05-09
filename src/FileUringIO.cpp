@@ -47,7 +47,8 @@ bool FileUringIO::attach(std::string fileName, std::string mode, int fd, int sha
 }
 
 bool FileUringIO::attach(FileUringIO *parent){
-
+	if (!parent->active())
+		return true;
 	return attach(parent->fileName_, parent->mode_, parent->fd_,parent->ring.ring_fd);
 }
 

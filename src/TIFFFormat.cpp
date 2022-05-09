@@ -56,16 +56,16 @@ static uint64_t TiffSize(thandle_t handle)
 
 TIFFFormat::TIFFFormat(bool asynch) : tif_(nullptr), encodeState_(IMAGE_FORMAT_UNENCODED),
 							serializer_(!asynch), imageStripper_(nullptr),
-							concurrency_(0), asynchSerializers_(nullptr),
+							concurrency_(0), workerSerializers_(nullptr),
 							numPixelWrites_(0)
 {}
 
 TIFFFormat::~TIFFFormat() {
 	close();
-	if (asynchSerializers_){
+	if (workerSerializers_){
 		for (uint32_t i = 0; i < concurrency_; ++i)
-			delete asynchSerializers_[i];
-		delete[] asynchSerializers_;
+			delete workerSerializers_[i];
+		delete[] workerSerializers_;
 	}
 	delete imageStripper_;
 }
@@ -81,9 +81,7 @@ ImageStripper* TIFFFormat::getImageStripper(void){
 SerializeBuf TIFFFormat::getPoolBuffer(uint32_t threadId,uint32_t strip){
 	auto chunkInfo = imageStripper_->getSerializeChunkInfo(strip);
 	uint64_t len = chunkInfo.len();
-	SerializeBuf  serializeBuf =
-			asynchSerializers_ ? asynchSerializers_[threadId]->getPoolBuffer(len) :
-					serializer_.getPoolBuffer(len);
+	SerializeBuf  serializeBuf = workerSerializers_[threadId]->getPoolBuffer(len);
 	serializeBuf.index = strip;
 	serializeBuf.offset = chunkInfo.firstBegin_;
 	uint64_t headerSize = ((strip == 0) ? sizeof(header_) : 0);
@@ -96,8 +94,7 @@ SerializeBuf TIFFFormat::getPoolBuffer(uint32_t threadId,uint32_t strip){
 	return serializeBuf;
 }
 bool TIFFFormat::nextChunk(uint32_t threadId,uint32_t strip,StripChunkBuffer **chunkBuffer){
-	auto serializer =
-			asynchSerializers_ ? asynchSerializers_[threadId] : &serializer_;
+	auto serializer = workerSerializers_[threadId];
 	auto pool = serializer->getPool();
 	bool rc =  imageStripper_->getStrip(strip)->nextChunk(pool, chunkBuffer);
 	if (rc){
@@ -111,7 +108,7 @@ bool TIFFFormat::nextChunk(uint32_t threadId,uint32_t strip,StripChunkBuffer **c
 }
 bool TIFFFormat::submit(uint32_t threadId, StripChunkBuffer *chunkBuffer){
 	auto serializer =
-			asynchSerializers_ ? asynchSerializers_[threadId] : &serializer_;
+			workerSerializers_ ? workerSerializers_[threadId] : &serializer_;
 	return chunkBuffer->submit(serializer);
 }
 bool TIFFFormat::encodeInit(std::string filename,
@@ -127,19 +124,17 @@ bool TIFFFormat::encodeInit(std::string filename,
 	if(!serializer_.open(filename_, mode_,asynch))
 		return false;
 	serializer_.registerApplicationClient();
-	if (asynch){
-		// create one serializer per thread and attach to parent serializer
-		asynchSerializers_ = new Serializer*[concurrency];
-		for (uint32_t i = 0; i < concurrency_; ++i){
-			asynchSerializers_[i] = new Serializer(true);
-			asynchSerializers_[i]->attach(&serializer_);
-		}
+	// create one serializer per thread and attach to parent serializer
+	workerSerializers_ = new Serializer*[concurrency];
+	for (uint32_t i = 0; i < concurrency_; ++i){
+		workerSerializers_[i] = new Serializer(false);
+		workerSerializers_[i]->attach(&serializer_);
 	}
 
 	return true;
 }
 bool TIFFFormat::encodePixels(uint32_t threadId, SerializeBuf serializeBuf){
-	Serializer *ser = asynchSerializers_ ? asynchSerializers_[threadId] : &serializer_;
+	Serializer *ser = workerSerializers_[threadId];
 	size_t toWrite = serializeBuf.dataLen;
 	size_t written = ser->write(serializeBuf);
 	if (written != toWrite){
@@ -151,10 +146,8 @@ bool TIFFFormat::encodePixels(uint32_t threadId, SerializeBuf serializeBuf){
 
 }
 bool TIFFFormat::close(void){
-	if (asynchSerializers_){
-		for (uint32_t i = 0; i < concurrency_; ++i)
-			asynchSerializers_[i]->close();
-	}
+	for (uint32_t i = 0; i < concurrency_; ++i)
+		workerSerializers_[i]->close();
 	if(tif_) {
 		TIFFClose(tif_);
 		tif_ = nullptr;
