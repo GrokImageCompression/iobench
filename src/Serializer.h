@@ -10,7 +10,7 @@ const int32_t invalid_fd = -1;
 
 struct Serializer : public ISerializeBufWriter
 {
-	Serializer(void);
+	Serializer(bool lockedPool);
 	~Serializer(void);
 	void setMaxPooledRequests(uint32_t maxRequests);
 	void registerApplicationClient(void);
@@ -22,7 +22,7 @@ struct Serializer : public ISerializeBufWriter
 	size_t write(uint8_t* buf, uint64_t size);
 	uint64_t seek(int64_t off, int32_t whence);
 	SerializeBuf getPoolBuffer(uint64_t len);
-	BufferPool* getPool(void);
+	IBufferPool* getPool(void);
 	void enableSimulateWrite(void);
   private:
 	FileUringIO uring;
@@ -36,7 +36,7 @@ struct Serializer : public ISerializeBufWriter
 	void* reclaim_user_data_;
 	std::string filename_;
 	std::string mode_;
-	BufferPool pool_;
+	IBufferPool *pool_;
 	bool ownsFileDescriptor_;
 	bool simulateWrite_;
 };

@@ -18,14 +18,19 @@ static bool applicationReclaimCallback(serialize_buf buffer, void* serialize_use
 	return true;
 }
 
-Serializer::Serializer(void) :
+Serializer::Serializer(bool lockedPool) :
 	  fd_(invalid_fd),
 	  numPooledRequests_(0), maxPooledRequests_(0), off_(0),
 	  reclaim_callback_(nullptr), reclaim_user_data_(nullptr),
+	  pool_(lockedPool ?
+			  	 (IBufferPool*)(new BufferPool<Locker>()) :
+				 	 (IBufferPool*)(new BufferPool<FakeLocker>())),
 	  ownsFileDescriptor_(false), simulateWrite_(false)
-{}
+{
+}
 Serializer::~Serializer(void){
 	close();
+	delete pool_;
 }
 void Serializer::setMaxPooledRequests(uint32_t maxRequests)
 {
@@ -33,7 +38,7 @@ void Serializer::setMaxPooledRequests(uint32_t maxRequests)
 }
 void Serializer::registerApplicationClient(void)
 {
-	registerClientCallback(applicationReclaimCallback, &pool_);
+	registerClientCallback(applicationReclaimCallback, pool_);
 }
 void Serializer::registerClientCallback(serialize_callback reclaim_callback,
 												 void* user_data)
@@ -43,10 +48,10 @@ void Serializer::registerClientCallback(serialize_callback reclaim_callback,
 	uring.registerClientCallback(reclaim_callback, user_data);
 }
 SerializeBuf Serializer::getPoolBuffer(uint64_t len){
-	return pool_.get(len);
+	return pool_->get(len);
 }
-BufferPool* Serializer::getPool(void){
-	return &pool_;
+IBufferPool* Serializer::getPool(void){
+	return pool_;
 }
 bool Serializer::attach(Serializer *parent){
 	fd_ = parent->fd_;

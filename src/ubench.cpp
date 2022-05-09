@@ -11,7 +11,7 @@ static void run(uint32_t width, uint32_t height,bool direct,
 	ChronoTimer timer;
 	bool storeAsynch = doStore && doAsynch;
 	{
-		TIFFFormat tiffFormat;
+		TIFFFormat tiffFormat(doAsynch);
 		tiffFormat.init(width, height, 1, 32);
 		auto imageStripper = tiffFormat.getImageStripper();
 		if (doStore){

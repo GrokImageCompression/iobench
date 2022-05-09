@@ -54,8 +54,8 @@ static uint64_t TiffSize(thandle_t handle)
 	return 0U;
 }
 
-TIFFFormat::TIFFFormat() : tif_(nullptr), encodeState_(IMAGE_FORMAT_UNENCODED),
-							imageStripper_(nullptr),
+TIFFFormat::TIFFFormat(bool asynch) : tif_(nullptr), encodeState_(IMAGE_FORMAT_UNENCODED),
+							serializer_(!asynch), imageStripper_(nullptr),
 							concurrency_(0), asynchSerializers_(nullptr),
 							numPixelWrites_(0)
 {}
@@ -131,7 +131,7 @@ bool TIFFFormat::encodeInit(std::string filename,
 		// create one serializer per thread and attach to parent serializer
 		asynchSerializers_ = new Serializer*[concurrency];
 		for (uint32_t i = 0; i < concurrency_; ++i){
-			asynchSerializers_[i] = new Serializer();
+			asynchSerializers_[i] = new Serializer(true);
 			asynchSerializers_[i]->attach(&serializer_);
 		}
 	}
