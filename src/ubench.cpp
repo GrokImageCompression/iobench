@@ -37,24 +37,20 @@ static void run(uint32_t width, uint32_t height,bool direct,
 					for (uint64_t k = 0; k < 2*len; ++k)
 						b[k/2] = k;
 				} else {
-					bool writeChunks = true;
+					bool writeChunks = false;
 					if (writeChunks) {
 						// iterate through all blocks, allocate memory, write to memory,
 						// and submit to disk
 						StripChunkBuffer *chunkBuffer = nullptr;
 						while (tiffFormat.nextChunk(exec.this_worker_id(), currentStrip, &chunkBuffer)){
 							assert(chunkBuffer->serializeChunkBuffer_->buf_.data);
-							/*
-							uint64_t len =  strip->len_;
-							uint8_t b[len] __attribute__((__aligned__(ALIGNMENT)));
-							for (uint64_t k = 0; k < 2*len; ++k)
-								b[k/2] = k;
-								*/
-							/*
-							auto ptr = chunkBuffer->serializeChunkBuffer_->buf_.data;
-							memset(ptr + chunkBuffer->writeableOffset_,
-									0, std::min((uint64_t)256*K,chunkBuffer->writeableLen_));
-									*/
+							//uint64_t len =  chunkBuffer->writeableLen_;
+							//uint8_t b[len] __attribute__((__aligned__(ALIGNMENT)));
+							//for (uint64_t k = 0; k < 2*len; ++k)
+							//	b[k/2] = k;
+							//auto ptr = chunkBuffer->serializeChunkBuffer_->buf_.data;
+							//memset(ptr + chunkBuffer->writeableOffset_, 0, chunkBuffer->writeableLen_);
+
 							bool ret = tiffFormat.submit(exec.this_worker_id(), chunkBuffer);
 							assert(ret);
 						}
