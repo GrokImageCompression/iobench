@@ -3,6 +3,7 @@
 #include <string>
 #include "library.h"
 #include <cstdlib>
+#include <cstring>
 
 #define K 1024
 #define ALIGNMENT (512)
@@ -56,6 +57,7 @@ struct SerializeBuf : public serialize_buf
 		{
 			dataLen = len;
 			allocLen = len;
+			memset(data,0,allocLen);
 		}
 
 		return data != nullptr;
