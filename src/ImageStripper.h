@@ -172,7 +172,7 @@ struct StripBuffer  {
 				off = (chunkInfo.firstEnd_ - chunkInfo_.writeSize_) + i * chunkInfo_.writeSize_;
 			bool lastChunkOfAll  = chunkInfo.isFinalStrip_ && (i == numChunks_-1);
 			uint64_t len     = lastChunkOfAll ?
-								(chunkInfo_.lastEnd_ - chunkInfo_.firstBegin_) :
+								(chunkInfo_.lastEnd_ - chunkInfo_.lastBegin_) :
 									chunkInfo_.writeSize_;
 			uint64_t writeableOffset = 0;
 			uint64_t writeableLen = len;
@@ -182,7 +182,7 @@ struct StripBuffer  {
 			bool lastSeam        = (i == numChunks_-1) && !lastChunkOfAll && chunkInfo.hasLast();
 			if (firstSeam){
 				assert(leftNeighbour_);
-				off = leftNeighbour_->finalChunk()->serializeChunkBuffer_->buf_.offset;
+				off = leftNeighbour_->finalChunk()->offset();
 				assert(chunkInfo_.firstBegin_  > off);
 				writeableOffset = chunkInfo_.firstBegin_ - off;
 				writeableLen    = chunkInfo_.firstEnd_ - chunkInfo_.firstBegin_;
@@ -215,13 +215,13 @@ struct StripBuffer  {
 		}
 		uint64_t stripWriteEnd = chunks_[numChunks_-1]->offset() +
 				+ chunks_[numChunks_-1]->writeableLen_;
-		assert(chunkInfo_.isFinalStrip_ || stripWriteEnd == chunkInfo_.lastEnd_);
+		assert(stripWriteEnd == chunkInfo_.lastEnd_);
 
 		uint64_t stripWriteBegin = chunks_[0]->offset() + chunks_[0]->writeableOffset_;
 		assert(stripWriteBegin == chunkInfo_.firstBegin_ + (chunkInfo_.isFirstStrip_ ? chunkInfo_.headerSize_ : 0));
 
-		assert(chunkInfo_.isFinalStrip_ ||  stripWriteEnd - stripWriteBegin == len_);
-		assert(chunkInfo_.isFinalStrip_ ||  len_ == writeableTotal);
+		assert(stripWriteEnd - stripWriteBegin == len_);
+		assert(len_ == writeableTotal);
 	}
 	bool nextChunk(IBufferPool *pool, StripChunkBuffer **chunkBuffer){
 		assert(pool);
@@ -238,7 +238,8 @@ struct StripBuffer  {
 		return chunks_[numChunks_-1];
 	}
 
-	// temporary
+	// independant of header size
+	// (temporary)
 	uint64_t offset_;
 	uint64_t len_;
 	////////////////
