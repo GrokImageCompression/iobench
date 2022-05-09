@@ -32,11 +32,11 @@ struct SerializeChunkInfo{
 		return lastEnd_ - firstBegin_;
 	}
 	uint32_t numChunks(void){
-		uint64_t wholeChunkBegin = hasFirst() ? firstEnd_ : firstBegin_;
-		uint64_t wholeChunkEnd   = hasLast() ? lastBegin_ : lastEnd_;
-		assert(SerializeBuf::isAlignedToWriteSize(wholeChunkBegin));
-		assert(isFinalStrip_ || SerializeBuf::isAlignedToWriteSize(wholeChunkEnd));
-		uint64_t rc = (wholeChunkEnd - wholeChunkBegin + writeSize_ - 1) / writeSize_;
+		uint64_t nonSeamBegin = hasFirst() ? firstEnd_ : firstBegin_;
+		uint64_t nonSeamEnd   = hasLast() ? lastBegin_ : lastEnd_;
+		assert(SerializeBuf::isAlignedToWriteSize(nonSeamBegin));
+		assert(isFinalStrip_ || SerializeBuf::isAlignedToWriteSize(nonSeamEnd));
+		uint64_t rc = (nonSeamEnd - nonSeamBegin + writeSize_ - 1) / writeSize_;
 		if (hasFirst())
 			rc++;
 		if (hasLast())
