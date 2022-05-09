@@ -7,7 +7,7 @@
 
 #define K 1024
 #define ALIGNMENT (512)
-#define WRTSIZE (K*K)
+#define WRTSIZE (4*K)
 
 struct SerializeBuf : public serialize_buf
 {

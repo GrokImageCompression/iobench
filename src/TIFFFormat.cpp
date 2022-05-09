@@ -71,7 +71,8 @@ TIFFFormat::~TIFFFormat() {
 }
 void TIFFFormat::init(uint32_t width, uint32_t height,
 						uint16_t numcomps, uint32_t nominalStripHeight){
-	imageStripper_ = new ImageStripper(width, height,1,32,sizeof(header_), WRTSIZE);
+	imageStripper_ = new ImageStripper(width, height,1,32,
+									sizeof(header_), WRTSIZE, serializer_.getPool());
 }
 ImageStripper* TIFFFormat::getImageStripper(void){
 	return imageStripper_;
