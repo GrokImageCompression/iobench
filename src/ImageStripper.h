@@ -147,6 +147,7 @@ struct StripChunkBuffer {
 	void setHeader(uint8_t *headerData, uint64_t headerSize){
 		memcpy(data() , headerData, headerSize);
 		serializeChunkBuffer_->buf_.skip = headerSize;
+		writeableOffset_ = headerSize;
 	}
 	void setPooled(void){
 		serializeChunkBuffer_->buf_.pooled = true;
@@ -236,6 +237,7 @@ struct StripBuffer  {
 		uint64_t stripWriteEnd = chunks_[numChunks_-1]->offset() +
 				+ chunks_[numChunks_-1]->writeableLen_;
 		assert(stripWriteEnd == chunkInfo_.lastEnd_);
+		assert(!chunkInfo.isFirstStrip_ || chunks_[0]->offset() == 0);
 
 		uint64_t stripWriteBegin = chunks_[0]->offset() + chunks_[0]->writeableOffset_;
 		assert(stripWriteBegin == chunkInfo_.firstBegin_ + (chunkInfo_.isFirstStrip_ ? chunkInfo_.headerSize_ : 0));

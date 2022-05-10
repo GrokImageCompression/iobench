@@ -37,16 +37,16 @@ static void run(uint32_t width, uint32_t height,bool direct,
 					for (uint64_t k = 0; k < 2*len; ++k)
 						b[k/2] = k;
 				} else {
-					bool writeChunks = false;
+					bool writeChunks = true;
 					if (writeChunks) {
 						// iterate through all blocks, allocate memory, write to memory,
 						// and submit to disk
 						StripChunkBuffer *chunkBuffer = nullptr;
 						while (tiffFormat.nextChunk(exec.this_worker_id(), currentStrip, &chunkBuffer)){
-							auto ptr = chunkBuffer->data();
+							auto ptr = chunkBuffer->data() + chunkBuffer->writeableOffset_;
 							assert(ptr);
-							memset(ptr + chunkBuffer->writeableOffset_, 0, chunkBuffer->writeableLen_);
-
+							for (uint64_t k = 0; k < 2*chunkBuffer->writeableLen_; ++k)
+								ptr[k/2] = k;
 							bool ret = tiffFormat.submit(exec.this_worker_id(), chunkBuffer);
 							assert(ret);
 						}
