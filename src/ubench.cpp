@@ -11,65 +11,66 @@ static void run(uint32_t width, uint32_t height,bool direct,
 	ChronoTimer timer;
 	bool storeAsynch = doStore && doAsynch;
 	{
-		TIFFFormat tiffFormat(doAsynch);
-		tiffFormat.init(width, height, 1, 32);
-		auto imageStripper = tiffFormat.getImageStripper();
-		if (doStore){
-			std::string filename = "dump.tif";
-			remove(filename.c_str());
-		   tiffFormat.encodeInit(filename,direct,concurrency,doAsynch);
-		}
+	TIFFFormat tiffFormat(doAsynch);
+	tiffFormat.init(width, height, 1, 32);
+	auto imageStripper = tiffFormat.getImageStripper();
+	if (doStore){
+		std::string filename = "dump.tif";
+		remove(filename.c_str());
+	   tiffFormat.encodeInit(filename,direct,concurrency,doAsynch);
+	}
 
-		printf("Run with concurrency = %d, store to disk = %d, use uring = %d\n",concurrency,doStore,doAsynch);
-		tf::Executor exec(concurrency);
-		tf::Taskflow taskflow;
-		tf::Task* encodeStrips = new tf::Task[imageStripper->numStrips()];
-		for (uint32_t strip = 0; strip < imageStripper->numStrips(); ++strip)
-			encodeStrips[strip] = taskflow.placeholder();
-		for(uint32_t strip = 0; strip < imageStripper->numStrips(); ++strip)
-		{
-			uint32_t currentStrip = strip;
-			encodeStrips[strip].work([&tiffFormat, currentStrip,doAsynch,doStore,imageStripper,&exec] {
-				if (!doStore) {
-					auto strip = imageStripper->getStrip(currentStrip);
-					uint64_t len =  strip->len_;
-					uint8_t b[len] __attribute__((__aligned__(ALIGNMENT)));
-					for (uint64_t k = 0; k < 2*len; ++k)
-						b[k/2] = k;
-				} else {
-					bool writeChunks = true;
-					if (writeChunks) {
-						StripChunkBuffer *chunkBuffer = nullptr;
-						while (tiffFormat.nextChunk(exec.this_worker_id(), currentStrip, &chunkBuffer)){
-							auto ptr = chunkBuffer->data() + chunkBuffer->writeableOffset_;
-							assert(ptr);
-							for (uint64_t k = 0; k < 2*chunkBuffer->writeableLen_; ++k)
-								ptr[k/2] = k;
-							bool ret = tiffFormat.submit(exec.this_worker_id(), chunkBuffer);
-							assert(ret);
-						}
-					} else {
-						auto b =
-							new SerializeBuf(tiffFormat.getPoolBuffer(exec.this_worker_id(), currentStrip));
-						auto ptr = b->data + b->skip;
-						for (uint64_t k = 0; k < 2*(b->dataLen-b->skip); ++k)
+	printf("Run with concurrency = %d, store to disk = %d, use uring = %d\n",
+			concurrency,doStore,doAsynch);
+	tf::Executor exec(concurrency);
+	tf::Taskflow taskflow;
+	tf::Task* encodeStrips = new tf::Task[imageStripper->numStrips()];
+	for (uint32_t strip = 0; strip < imageStripper->numStrips(); ++strip)
+		encodeStrips[strip] = taskflow.placeholder();
+	for(uint32_t strip = 0; strip < imageStripper->numStrips(); ++strip)
+	{
+		uint32_t currentStrip = strip;
+		encodeStrips[strip].work([&tiffFormat, currentStrip,doAsynch,doStore,imageStripper,&exec] {
+			if (!doStore) {
+				auto strip = imageStripper->getStrip(currentStrip);
+				uint64_t len =  strip->len_;
+				uint8_t b[len] __attribute__((__aligned__(ALIGNMENT)));
+				for (uint64_t k = 0; k < 2*len; ++k)
+					b[k/2] = k;
+			} else {
+				bool writeChunks = true;
+				if (writeChunks) {
+					StripChunkBuffer *chunkBuffer = nullptr;
+					while (tiffFormat.nextChunk(exec.this_worker_id(), currentStrip, &chunkBuffer)){
+						auto ptr = chunkBuffer->data() + chunkBuffer->writeableOffset_;
+						assert(ptr);
+						for (uint64_t k = 0; k < 2*chunkBuffer->writeableLen_; ++k)
 							ptr[k/2] = k;
-						bool ret = tiffFormat.encodePixels(exec.this_worker_id(),b,1);
-						delete b;
+						bool ret = tiffFormat.submit(exec.this_worker_id(), chunkBuffer);
 						assert(ret);
 					}
-
+				} else {
+					auto b =
+						new SerializeBuf(tiffFormat.getPoolBuffer(exec.this_worker_id(), currentStrip));
+					auto ptr = b->data + b->skip;
+					for (uint64_t k = 0; k < 2*(b->dataLen-b->skip); ++k)
+						ptr[k/2] = k;
+					bool ret = tiffFormat.encodePixels(exec.this_worker_id(),b,1);
+					delete b;
+					assert(ret);
 				}
-			});
-		}
+
+			}
+		});
+	}
+	timer.start();
+	exec.run(taskflow).wait();
+	delete[] encodeStrips;
+	if (storeAsynch){
+		timer.finish("scheduling");
 		timer.start();
-		exec.run(taskflow).wait();
-		delete[] encodeStrips;
-		if (storeAsynch){
-			timer.finish("scheduling");
-			timer.start();
-		}
-		tiffFormat.encodeFinish();
+	}
+	tiffFormat.encodeFinish();
 	}
 	timer.finish(storeAsynch ? "flush" : "");
 }
