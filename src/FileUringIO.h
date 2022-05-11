@@ -7,8 +7,14 @@
 
 struct io_data
 {
-	io_data() : iov{0, 0} {}
-	SerializeBuf buf;
+	io_data() : offset_(0) , numBuffers_(0),buffers_(nullptr)
+	{}
+	~io_data(){
+		delete buffers_;
+	}
+	uint64_t offset_;
+	uint32_t numBuffers_;
+	SerializeBuf *buffers_;
 	iovec iov;
 };
 
@@ -21,7 +27,7 @@ class FileUringIO : public IFileIO
 	bool attach(std::string fileName, std::string mode, int fd, int shared_ring_fd);
 	bool attach(FileUringIO *parent);
 	bool close(void) override;
-	uint64_t write(SerializeBuf buffer) override;
+	uint64_t write(uint64_t offset, SerializeBuf *buffers, uint32_t numBuffers) override;
 	io_data* retrieveCompletion(bool peek, bool& success);
 	bool active(void);
 

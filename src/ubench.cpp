@@ -55,7 +55,7 @@ static void run(uint32_t width, uint32_t height,bool direct,
 						auto ptr = b.data + b.skip;
 						for (uint64_t k = 0; k < 2*(b.dataLen-b.skip); ++k)
 							ptr[k/2] = k;
-						bool ret = tiffFormat.encodePixels(exec.this_worker_id(),b);
+						bool ret = tiffFormat.encodePixels(exec.this_worker_id(),&b,1);
 						assert(ret);
 					}
 

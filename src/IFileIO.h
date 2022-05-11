@@ -28,14 +28,27 @@ struct SerializeBuf : public serialize_buf
 		this->allocLen = allocLen;
 		this->pooled = pooled;
 	}
-	explicit SerializeBuf(const serialize_buf rhs)
+	SerializeBuf(const SerializeBuf &rhs) : SerializeBuf(&rhs)
+	{}
+	SerializeBuf(const SerializeBuf *rhs)
 	{
-		skip = rhs.skip;
-		offset = rhs.offset;
-		data = rhs.data;
-		dataLen = rhs.dataLen;
-		allocLen = rhs.allocLen;
-		pooled = rhs.pooled;
+		skip = rhs->skip;
+		offset = rhs->offset;
+		data = rhs->data;
+		dataLen = rhs->dataLen;
+		allocLen = rhs->allocLen;
+		pooled = rhs->pooled;
+	}
+	explicit SerializeBuf(const serialize_buf &rhs) : SerializeBuf(&rhs)
+	{}
+	explicit SerializeBuf(const serialize_buf *rhs)
+	{
+		skip = rhs->skip;
+		offset = rhs->offset;
+		data = rhs->data;
+		dataLen = rhs->dataLen;
+		allocLen = rhs->allocLen;
+		pooled = rhs->pooled;
 	}
 	static bool isAlignedToWriteSize(uint64_t off){
 		return (off & (WRTSIZE-1)) == 0;
@@ -74,7 +87,7 @@ struct SerializeBuf : public serialize_buf
 class ISerializeBufWriter{
 public:
 	virtual ~ISerializeBufWriter() = default;
-	virtual size_t write(SerializeBuf buf) = 0;
+	virtual uint64_t write(uint64_t offset, SerializeBuf *buffers, uint32_t numBuffers) = 0;
 };
 
 class IFileIO
@@ -82,5 +95,5 @@ class IFileIO
   public:
 	virtual ~IFileIO() = default;
 	virtual bool close(void) = 0;
-	virtual uint64_t write(SerializeBuf buffer) = 0;
+	virtual uint64_t write(uint64_t offset, SerializeBuf *buffers, uint32_t numBuffers) = 0;
 };

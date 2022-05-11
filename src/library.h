@@ -14,8 +14,8 @@ typedef struct _serialize_buf
 	bool pooled;
 } serialize_buf;
 
-typedef bool (*serialize_callback)(serialize_buf buffer, void* serialize_user_data);
+typedef bool (*serialize_callback)(serialize_buf *buffer, void* serialize_user_data);
 typedef void (*serialize_register_client_callback)(serialize_callback reclaim_callback,
 													   void* serialize_user_data,
 													   void* reclaim_user_data);
-typedef bool (*serialize_pixels_callback)(serialize_buf buffer, void* user_data);
+typedef bool (*serialize_pixels_callback)(serialize_buf *buffer, void* user_data);

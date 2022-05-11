@@ -9,7 +9,7 @@
 #include <fcntl.h>
 #include <cstring>
 
-static bool applicationReclaimCallback(serialize_buf buffer, void* serialize_user_data)
+static bool applicationReclaimCallback(serialize_buf *buffer, void* serialize_user_data)
 {
 	auto pool = (IBufferPool*)serialize_user_data;
 	if(pool)
@@ -144,27 +144,27 @@ uint64_t Serializer::seek(int64_t off, int32_t whence)
 void Serializer::enableSimulateWrite(void){
 	simulateWrite_ = true;
 }
-size_t Serializer::write(SerializeBuf serializeBuf){
+uint64_t Serializer::write(uint64_t offset, SerializeBuf *buffers, uint32_t numBuffers){
 	if (uring.active())
-		return uring.write(serializeBuf);
+		return uring.write(offset, buffers, numBuffers);
 
 	ssize_t count = 0;
-	size_t bytes_written = 0;
-	for(; bytes_written < serializeBuf.dataLen; bytes_written += (size_t)count)
+	uint64_t bytes_written = 0;
+	for(; bytes_written < buffers->dataLen; bytes_written += (uint64_t)count)
 	{
-		off_t offset = serializeBuf.offset  + bytes_written;
-		size_t io_size = (size_t)(serializeBuf.dataLen - bytes_written);
-		count = pwrite(fd_, serializeBuf.data, io_size, offset);
+		off_t offset = buffers->offset  + bytes_written;
+		uint64_t io_size = (uint64_t)(buffers->dataLen - bytes_written);
+		count = pwrite(fd_, buffers->data, io_size, offset);
 		if(count <= 0)
 			break;
 	}
 
-	if (serializeBuf.pooled && reclaim_callback_)
-		reclaim_callback_(serializeBuf, reclaim_user_data_);
+	if (buffers->pooled && reclaim_callback_)
+		reclaim_callback_(buffers, reclaim_user_data_);
 
 	return bytes_written;
 }
-size_t Serializer::write(uint8_t* buf, uint64_t bytes_total)
+uint64_t Serializer::write(uint8_t* buf, uint64_t bytes_total)
 {
 	if (simulateWrite_){
 		// offset 0 write is for file header
@@ -176,11 +176,11 @@ size_t Serializer::write(uint8_t* buf, uint64_t bytes_total)
 		return bytes_total;
 	}
 	ssize_t count = 0;
-	size_t bytes_written = 0;
-	for(; bytes_written < bytes_total; bytes_written += (size_t)count)
+	uint64_t bytes_written = 0;
+	for(; bytes_written < bytes_total; bytes_written += (uint64_t)count)
 	{
 		const char* buf_offset = (char*)buf + bytes_written;
-		size_t io_size = (size_t)(bytes_total - bytes_written);
+		uint64_t io_size = (uint64_t)(bytes_total - bytes_written);
 		if(io_size > IO_MAX)
 			io_size = IO_MAX;
 		count = ::write(fd_, buf_offset, io_size);
@@ -188,5 +188,5 @@ size_t Serializer::write(uint8_t* buf, uint64_t bytes_total)
 			break;
 	}
 
-	return (size_t)bytes_written;
+	return bytes_written;
 }

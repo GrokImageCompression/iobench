@@ -13,7 +13,7 @@ static tmsize_t TiffRead(thandle_t handle, void* buf, tmsize_t size)
 static tmsize_t TiffWrite(thandle_t handle, void* buf, tmsize_t size)
 {
 	auto* serializer_ = (Serializer*)handle;
-	const size_t bytes_total = (size_t)size;
+	const uint64_t bytes_total = (uint64_t)size;
 	if((tmsize_t)bytes_total != size)
 	{
 		errno = EINVAL;
@@ -133,10 +133,10 @@ bool TIFFFormat::encodeInit(std::string filename,
 
 	return true;
 }
-bool TIFFFormat::encodePixels(uint32_t threadId, SerializeBuf serializeBuf){
+bool TIFFFormat::encodePixels(uint32_t threadId, SerializeBuf *buffers, uint32_t numBuffers){
 	Serializer *ser = workerSerializers_[threadId];
-	size_t toWrite = serializeBuf.dataLen;
-	size_t written = ser->write(serializeBuf);
+	uint64_t toWrite = buffers->dataLen;
+	uint64_t written = ser->write(buffers->offset, buffers,numBuffers);
 	if (written != toWrite){
 		printf("encodePixels: write error\n");
 		return false;

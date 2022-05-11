@@ -33,7 +33,7 @@ public:
 	void init(uint32_t width, uint32_t height,
 							uint16_t numcomps, uint32_t nominalStripHeight);
 	bool encodeInit(std::string filename,bool direct, uint32_t concurrency,bool asynch);
-	bool encodePixels(uint32_t threadId, SerializeBuf serializeBuf);
+	bool encodePixels(uint32_t threadId, SerializeBuf *buffers, uint32_t numBuffers);
 	bool encodeFinish(void);
 	bool close(void);
 	SerializeBuf getPoolBuffer(uint32_t threadId,uint32_t strip);

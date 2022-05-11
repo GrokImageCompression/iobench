@@ -82,7 +82,7 @@ struct SerializeChunkBuffer{
 	bool submit(ISerializeBufWriter *writer){
 		assert(writer);
 		if (++writeCount_ == writeTarget_)
-			return writer->write(buf_) == buf_.dataLen;
+			return writer->write(buf_.offset,&buf_,1) == buf_.dataLen;
 		return true;
 	}
 	void alloc(IBufferPool* pool){
