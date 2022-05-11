@@ -145,24 +145,28 @@ void Serializer::enableSimulateWrite(void){
 	simulateWrite_ = true;
 }
 uint64_t Serializer::write(uint64_t offset, SerializeBuf *buffers, uint32_t numBuffers){
+	if (!buffers || !numBuffers)
+		return 0;
+
 	if (uring.active())
 		return uring.write(offset, buffers, numBuffers);
 
+	auto io = new io_data(offset,buffers,numBuffers);
 	ssize_t count = 0;
-	uint64_t bytes_written = 0;
-	for(; bytes_written < buffers->dataLen; bytes_written += (uint64_t)count)
+	uint64_t bytesWritten = 0;
+	for(; bytesWritten < io->totalBytes_; bytesWritten += (uint64_t)count)
 	{
-		off_t offset = buffers->offset  + bytes_written;
-		uint64_t io_size = (uint64_t)(buffers->dataLen - bytes_written);
-		count = pwrite(fd_, buffers->data, io_size, offset);
+		uint64_t bytesRemaining = (uint64_t)(io->totalBytes_ - bytesWritten);
+		count = pwritev(fd_, io->iov_, numBuffers, offset);
 		if(count <= 0)
 			break;
 	}
+	delete io;
 
 	if (buffers->pooled && reclaim_callback_)
 		reclaim_callback_(buffers, reclaim_user_data_);
 
-	return bytes_written;
+	return bytesWritten;
 }
 uint64_t Serializer::write(uint8_t* buf, uint64_t bytes_total)
 {

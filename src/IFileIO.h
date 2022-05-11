@@ -4,10 +4,12 @@
 #include "library.h"
 #include <cstdlib>
 #include <cstring>
+#include <fcntl.h>
 
 #define K 1024
 #define ALIGNMENT (512)
 #define WRTSIZE (64*K)
+
 
 struct SerializeBuf : public serialize_buf
 {
@@ -82,6 +84,34 @@ struct SerializeBuf : public serialize_buf
 		dataLen = 0;
 		allocLen = 0;
 	}
+};
+
+struct io_data
+{
+	io_data(uint64_t offset, SerializeBuf *buffers, uint32_t numBuffers) :
+		offset_(offset) , numBuffers_(numBuffers),buffers_(nullptr),
+		iov_(numBuffers ? new iovec[numBuffers] : nullptr), totalBytes_(0)
+	{
+		if (buffers)
+			buffers_ = new SerializeBuf[numBuffers];
+		for (uint32_t i = 0; i < numBuffers_; ++i){
+			buffers_[i] = buffers[i];
+			auto b = buffers_ + i;
+			auto v = iov_ + i;
+			iov_->iov_base = b->data;
+			iov_->iov_len = b->dataLen;
+			totalBytes_ += b->dataLen;
+		}
+	}
+	~io_data(){
+		delete[] buffers_;
+		delete[] iov_;
+	}
+	uint64_t offset_;
+	uint32_t numBuffers_;
+	SerializeBuf *buffers_;
+	iovec *iov_;
+	uint64_t totalBytes_;
 };
 
 class ISerializeBufWriter{
