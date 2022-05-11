@@ -84,9 +84,9 @@ void FileUringIO::enqueue(io_uring* ring, io_data* data, bool readop, int fd)
 	auto sqe = io_uring_get_sqe(ring);
 	assert(sqe);
 	if(readop)
-		io_uring_prep_readv(sqe, fd, data->iov_, 1, data->buffers_->offset);
+		io_uring_prep_readv(sqe, fd, data->iov_, data->numBuffers_, data->offset_);
 	else
-		io_uring_prep_writev(sqe, fd, data->iov_, 1, data->buffers_->offset);
+		io_uring_prep_writev(sqe, fd, data->iov_, data->numBuffers_, data->offset_);
 	io_uring_sqe_set_data(sqe, data);
 	int ret = io_uring_submit(ring);
 	assert(ret == 1);
@@ -99,10 +99,13 @@ void FileUringIO::enqueue(io_uring* ring, io_data* data, bool readop, int fd)
 		auto data = retrieveCompletion(true, success);
 		if(!success || !data)
 			break;
-		if(data->buffers_->pooled && reclaim_callback_)
-			reclaim_callback_(data->buffers_, reclaim_user_data_);
-		else
-			data->buffers_->dealloc();
+		for (uint32_t i = 0; i < data->numBuffers_; ++i){
+			auto b = data->buffers_[i];
+			if(b->pooled && reclaim_callback_)
+				reclaim_callback_(b, reclaim_user_data_);
+			else
+				b->dealloc();
+		}
 		delete data;
 	}
 }
@@ -162,7 +165,8 @@ bool FileUringIO::close(void)
 				break;
 			if(data)
 			{
-				data->buffers_->dealloc();
+				for (uint32_t j = 0; j < data->numBuffers_; ++j)
+					data->buffers_[j]->dealloc();
 				delete data;
 			}
 		}
@@ -178,10 +182,10 @@ bool FileUringIO::close(void)
 	return rc;
 }
 
-uint64_t FileUringIO::write(uint64_t offset, SerializeBuf *buffers, uint32_t numBuffers)
+uint64_t FileUringIO::write(uint64_t offset, SerializeBuf **buffers, uint32_t numBuffers)
 {
 	io_data* data = new io_data(offset,buffers,numBuffers);
 	enqueue(&ring, data, false, fd_);
 
-	return buffers->dataLen;
+	return buffers[0]->dataLen;
 }

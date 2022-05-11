@@ -144,7 +144,7 @@ uint64_t Serializer::seek(int64_t off, int32_t whence)
 void Serializer::enableSimulateWrite(void){
 	simulateWrite_ = true;
 }
-uint64_t Serializer::write(uint64_t offset, SerializeBuf *buffers, uint32_t numBuffers){
+uint64_t Serializer::write(uint64_t offset, SerializeBuf **buffers, uint32_t numBuffers){
 	if (!buffers || !numBuffers)
 		return 0;
 
@@ -163,9 +163,13 @@ uint64_t Serializer::write(uint64_t offset, SerializeBuf *buffers, uint32_t numB
 	}
 	delete io;
 
-	if (buffers->pooled && reclaim_callback_)
-		reclaim_callback_(buffers, reclaim_user_data_);
-
+	for (uint32_t i = 0; i < numBuffers; ++i){
+		auto b = buffers[i];
+		if (b->pooled){
+			assert(reclaim_callback_);
+			reclaim_callback_(b, reclaim_user_data_);
+		}
+	}
 	return bytesWritten;
 }
 uint64_t Serializer::write(uint8_t* buf, uint64_t bytes_total)

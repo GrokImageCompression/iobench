@@ -70,9 +70,10 @@ TIFFFormat::~TIFFFormat() {
 	delete imageStripper_;
 }
 void TIFFFormat::init(uint32_t width, uint32_t height,
-						uint16_t numcomps, uint32_t nominalStripHeight){
+						uint16_t numcomps, uint32_t nominalStripHeight,
+						bool chunked){
 	imageStripper_ = new ImageStripper(width, height,1,32,
-									sizeof(header_), WRTSIZE, serializer_.getPool());
+						sizeof(header_), WRTSIZE, chunked ? serializer_.getPool(): nullptr);
 }
 ImageStripper* TIFFFormat::getImageStripper(void){
 	return imageStripper_;
@@ -128,15 +129,19 @@ bool TIFFFormat::encodeInit(std::string filename,
 	workerSerializers_ = new Serializer*[concurrency];
 	for (uint32_t i = 0; i < concurrency_; ++i){
 		workerSerializers_[i] = new Serializer(false);
+		workerSerializers_[i]->registerApplicationClient();
 		workerSerializers_[i]->attach(&serializer_);
 	}
 
 	return true;
 }
-bool TIFFFormat::encodePixels(uint32_t threadId, SerializeBuf *buffers, uint32_t numBuffers){
+bool TIFFFormat::encodePixels(uint32_t threadId, SerializeBuf **buffers,
+													uint32_t numBuffers){
 	Serializer *ser = workerSerializers_[threadId];
-	uint64_t toWrite = buffers->dataLen;
-	uint64_t written = ser->write(buffers->offset, buffers,numBuffers);
+	uint64_t toWrite = 0;
+	for (uint32_t i = 0; i < numBuffers; ++i)
+		toWrite += buffers[i]->dataLen;
+	uint64_t written = ser->write(buffers[0]->offset, buffers,numBuffers);
 	if (written != toWrite){
 		printf("encodePixels: write error\n");
 		return false;

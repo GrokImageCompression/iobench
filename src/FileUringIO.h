@@ -14,7 +14,7 @@ class FileUringIO : public IFileIO
 	bool attach(std::string fileName, std::string mode, int fd, int shared_ring_fd);
 	bool attach(FileUringIO *parent);
 	bool close(void) override;
-	uint64_t write(uint64_t offset, SerializeBuf *buffers, uint32_t numBuffers) override;
+	uint64_t write(uint64_t offset, SerializeBuf **buffers, uint32_t numBuffers) override;
 	io_data* retrieveCompletion(bool peek, bool& success);
 	bool active(void);
 
