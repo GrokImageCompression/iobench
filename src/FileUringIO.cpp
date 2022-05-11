@@ -83,11 +83,10 @@ void FileUringIO::enqueue(io_uring* ring, io_data* data, bool readop, int fd)
 {
 	auto sqe = io_uring_get_sqe(ring);
 	assert(sqe);
-	assert(data->buffers_->data == data->iov.iov_base);
 	if(readop)
-		io_uring_prep_readv(sqe, fd, &data->iov, 1, data->buffers_->offset);
+		io_uring_prep_readv(sqe, fd, data->iov_, 1, data->buffers_->offset);
 	else
-		io_uring_prep_writev(sqe, fd, &data->iov, 1, data->buffers_->offset);
+		io_uring_prep_writev(sqe, fd, data->iov_, 1, data->buffers_->offset);
 	io_uring_sqe_set_data(sqe, data);
 	int ret = io_uring_submit(ring);
 	assert(ret == 1);
@@ -181,11 +180,7 @@ bool FileUringIO::close(void)
 
 uint64_t FileUringIO::write(uint64_t offset, SerializeBuf *buffers, uint32_t numBuffers)
 {
-	io_data* data = new io_data();
-	data->offset_ = offset;
-	data->buffers_ = new SerializeBuf(buffers);
-	data->iov.iov_base = buffers->data;
-	data->iov.iov_len = buffers->dataLen;
+	io_data* data = new io_data(offset,buffers,numBuffers);
 	enqueue(&ring, data, false, fd_);
 
 	return buffers->dataLen;

@@ -81,8 +81,10 @@ struct SerializeChunkBuffer{
 	}
 	bool submit(ISerializeBufWriter *writer){
 		assert(writer);
-		if (++writeCount_ == writeTarget_)
-			return writer->write(buf_.offset,&buf_,1) == buf_.dataLen;
+		if (++writeCount_ == writeTarget_){
+			auto b = std::make_unique<SerializeBuf>(buf_);
+			return writer->write(buf_.offset,b.get(),1) == buf_.dataLen;
+		}
 		return true;
 	}
 	void alloc(IBufferPool* pool){

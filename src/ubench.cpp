@@ -39,8 +39,6 @@ static void run(uint32_t width, uint32_t height,bool direct,
 				} else {
 					bool writeChunks = true;
 					if (writeChunks) {
-						// iterate through all blocks, allocate memory, write to memory,
-						// and submit to disk
 						StripChunkBuffer *chunkBuffer = nullptr;
 						while (tiffFormat.nextChunk(exec.this_worker_id(), currentStrip, &chunkBuffer)){
 							auto ptr = chunkBuffer->data() + chunkBuffer->writeableOffset_;
@@ -51,11 +49,13 @@ static void run(uint32_t width, uint32_t height,bool direct,
 							assert(ret);
 						}
 					} else {
-						auto b = tiffFormat.getPoolBuffer(exec.this_worker_id(), currentStrip);
-						auto ptr = b.data + b.skip;
-						for (uint64_t k = 0; k < 2*(b.dataLen-b.skip); ++k)
+						auto b =
+							new SerializeBuf(tiffFormat.getPoolBuffer(exec.this_worker_id(), currentStrip));
+						auto ptr = b->data + b->skip;
+						for (uint64_t k = 0; k < 2*(b->dataLen-b->skip); ++k)
 							ptr[k/2] = k;
-						bool ret = tiffFormat.encodePixels(exec.this_worker_id(),&b,1);
+						bool ret = tiffFormat.encodePixels(exec.this_worker_id(),b,1);
+						delete b;
 						assert(ret);
 					}
 
