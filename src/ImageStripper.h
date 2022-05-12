@@ -7,6 +7,22 @@
 #include "IBufferPool.h"
 #include <mutex>
 
+struct SerializeBufArray{
+	SerializeBufArray(SerializeBuf **buffers, uint32_t numBuffers, IBufferPool *pool)
+		: buffers_(buffers), numBuffers_(numBuffers), pool_(pool)
+	{}
+	~SerializeBufArray(void){
+		for (uint32_t i = 0; i < numBuffers_; ++i){
+			pool_->put(*buffers_[i]);
+			delete buffers_[i];
+		}
+		delete[] buffers_;
+	}
+	SerializeBuf ** buffers_;
+	uint32_t numBuffers_;
+	IBufferPool *pool_;
+};
+
 /*
  * Each strip is divided into a collection of serialize chunks,
  * which are designed for serialization to disk. Their offset is always
@@ -257,8 +273,10 @@ struct StripBuffer  {
 			assert(SerializeBuf::isAlignedToWriteSize(off));
 			assert(lastChunkOfAll || SerializeBuf::isAlignedToWriteSize(len));
 			SerializeChunkBuffer* serializeChunkBuffer;
-			if (firstSeam)
+			if (firstSeam){
 				serializeChunkBuffer = leftNeighbour_->finalChunk()->ref();
+				assert(serializeChunkBuffer->buf_.data);
+			}
 			else
 				serializeChunkBuffer =
 						new SerializeChunkBuffer(off,len,(shared ? pool : nullptr));
@@ -267,6 +285,7 @@ struct StripBuffer  {
 												writeableOffset,
 												writeableLen,
 												shared);
+			assert(!shared || chunks_[i]->serializeChunkBuffer_->buf_.data);
 		}
 		uint64_t stripWriteEnd = chunks_[numChunks_-1]->offset() +
 				+ chunks_[numChunks_-1]->writeableLen_;
@@ -290,23 +309,27 @@ struct StripBuffer  {
 
 		return true;
 	}
-	SerializeBuf** genBufferArray(IBufferPool *pool, uint32_t *size){
+	SerializeBufArray* genBufferArray(IBufferPool *pool){
 		auto first = chunks_[0];
 		bool acquiredFirst = true;
 		if (first->shared_){
 			acquiredFirst = first->acquire();
 		}
-		auto ret = new SerializeBuf*[numChunks_ - (acquiredFirst ? 1 : 0)];
+		auto ret = new SerializeBuf*[numChunks_ - (acquiredFirst ? 0 : 1)];
 		uint32_t count = 0;
 		for (uint32_t i = 0; i < numChunks_; ++i){
 			if (!acquiredFirst)
 				continue;
-			chunks_[i]->alloc(pool);
-			ret[count++] = new SerializeBuf(chunks_[i]->serializeChunkBuffer_->buf_);
+			auto ch = chunks_[i];
+			ch->alloc(pool);
+			assert(ch->serializeChunkBuffer_->buf_.data);
+			auto b = new SerializeBuf(ch->serializeChunkBuffer_->buf_);
+			ch->serializeChunkBuffer_->buf_.data = nullptr;
+			assert(b->data);
+			ret[count++] = b;
 		}
-		*size = count;
 
-		return ret;
+		return new SerializeBufArray(ret,count,pool);
 	}
 
 	StripChunkBuffer* finalChunk(void){

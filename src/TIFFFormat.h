@@ -38,7 +38,7 @@ public:
 	bool encodeFinish(void);
 	bool close(void);
 	SerializeBuf getPoolBuffer(uint32_t threadId,uint32_t strip);
-	SerializeBuf** genBufferArray(uint32_t threadId,uint32_t strip, uint32_t *size);
+	SerializeBufArray* genBufferArray(uint32_t threadId,uint32_t strip);
 	bool nextChunk(uint32_t threadId,uint32_t strip,StripChunkBuffer **chunkBuffer);
 	bool submit(uint32_t threadId, StripChunkBuffer *chunkBuffer);
 	ImageStripper* getImageStripper(void);

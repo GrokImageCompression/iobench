@@ -8,7 +8,7 @@
 
 #define K 1024
 #define ALIGNMENT (512)
-#define WRTSIZE (64*K)
+#define WRTSIZE (32*K)
 
 
 struct SerializeBuf : public serialize_buf
@@ -90,10 +90,10 @@ struct io_data
 {
 	io_data(uint64_t offset, SerializeBuf **buffers, uint32_t numBuffers) :
 		offset_(offset) , numBuffers_(numBuffers),buffers_(nullptr),
-		iov_(numBuffers ? new iovec[numBuffers] : nullptr), totalBytes_(0)
+		iov_(numBuffers_ ? new iovec[numBuffers_] : nullptr), totalBytes_(0)
 	{
-		if (buffers)
-			buffers_ = new SerializeBuf*[numBuffers];
+		assert(numBuffers);
+		buffers_ = new SerializeBuf*[numBuffers];
 		for (uint32_t i = 0; i < numBuffers_; ++i){
 			buffers_[i] = new SerializeBuf(buffers[i]);
 			auto b = buffers_[i];
