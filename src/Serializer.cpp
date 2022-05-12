@@ -13,7 +13,7 @@ static bool applicationReclaimCallback(io_buf *buffer, void* io_user_data)
 {
 	auto pool = (IBufferPool*)io_user_data;
 	if(pool)
-		pool->put(IOBuf(buffer));
+		pool->put((IOBuf*)buffer);
 
 	return true;
 }
@@ -22,7 +22,7 @@ Serializer::Serializer(bool lockedPool) :
 	  fd_(invalid_fd),
 	  numPooledRequests_(0), maxPooledRequests_(0), off_(0),
 	  reclaim_callback_(nullptr), reclaim_user_data_(nullptr),
-	  pool_((IBufferPool*)(new BufferPool())),
+	  pool_(new BufferPool()),
 	  ownsFileDescriptor_(false), simulateWrite_(false)
 {
 }
@@ -45,7 +45,7 @@ void Serializer::registerClientCallback(io_callback reclaim_callback,
 	reclaim_user_data_ = user_data;
 	uring.registerClientCallback(reclaim_callback, user_data);
 }
-IOBuf Serializer::getPoolBuffer(uint64_t len){
+IOBuf* Serializer::getPoolBuffer(uint64_t len){
 	return pool_->get(len);
 }
 IBufferPool* Serializer::getPool(void){
@@ -152,13 +152,13 @@ uint64_t Serializer::write(uint64_t offset, IOBuf **buffers, uint32_t numBuffers
 		return uring.write(offset, buffers, numBuffers);
 
 	auto io = new IOScheduleData(offset,buffers,numBuffers);
-	ssize_t count = 0;
+	ssize_t writtenInCall = 0;
 	uint64_t bytesWritten = 0;
-	for(; bytesWritten < io->totalBytes_; bytesWritten += (uint64_t)count)
+	for(; bytesWritten < io->totalBytes_; bytesWritten += (uint64_t)writtenInCall)
 	{
 		uint64_t bytesRemaining = (uint64_t)(io->totalBytes_ - bytesWritten);
-		count = pwritev(fd_, io->iov_, numBuffers, offset);
-		if(count <= 0)
+		writtenInCall = pwritev(fd_, io->iov_, numBuffers, offset);
+		if(writtenInCall <= 0)
 			break;
 	}
 	delete io;

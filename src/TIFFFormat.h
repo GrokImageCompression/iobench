@@ -37,10 +37,8 @@ public:
 	bool encodePixels(uint32_t threadId, IOBuf **buffers, uint32_t numBuffers);
 	bool encodeFinish(void);
 	bool close(void);
-	IOBuf getPoolBuffer(uint32_t threadId,uint32_t strip);
+	IOBuf* getPoolBuffer(uint32_t threadId,uint32_t strip);
 	IOBufArray* genBufferArray(uint32_t threadId,uint32_t strip);
-	bool nextChunk(uint32_t threadId,uint32_t strip,StripChunk **chunkBuffer);
-	bool submit(uint32_t threadId, StripChunk *chunkBuffer);
 	ImageStripper* getImageStripper(void);
 
 private:

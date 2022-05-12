@@ -8,40 +8,21 @@
 
 #define K 1024
 #define ALIGNMENT (512)
-#define WRTSIZE (32*K)
+#define WRTSIZE (4*K)
 
 
 struct IOBuf : public io_buf
 {
   public:
-	IOBuf() : IOBuf(0,nullptr,0, 0, 0, 0, false) {}
-	IOBuf(uint8_t* data,uint64_t allocLen) :
-		IOBuf(0,data,0,0,0,allocLen,false)
-	{}
-	IOBuf(uint32_t index, uint8_t* data, uint64_t skip,
-				uint64_t offset, uint64_t dataLen, uint64_t allocLen,
-					bool pooled)
-	{
-		this->index = index;
-		this->skip = skip;
-		this->offset = offset;
-		this->data = data;
-		this->dataLen = dataLen;
-		this->allocLen = allocLen;
-		this->pooled = pooled;
-	}
-	IOBuf(const IOBuf &rhs) : IOBuf(&rhs)
-	{}
-	explicit IOBuf(const io_buf &rhs) : IOBuf(&rhs)
-	{}
-	explicit IOBuf(const io_buf *rhs)
-	{
-		skip = rhs->skip;
-		offset = rhs->offset;
-		data = rhs->data;
-		dataLen = rhs->dataLen;
-		allocLen = rhs->allocLen;
-		pooled = rhs->pooled;
+	IOBuf() {
+		this->index = 0;
+		this->skip = 0;
+		this->offset = 0;
+		this->data = 0;
+		this->dataLen = 0;
+		this->allocLen = 0;
+		this->pooled = false;
+
 	}
 	static bool isAlignedToWriteSize(uint64_t off){
 		return (off & (WRTSIZE-1)) == 0;
@@ -63,9 +44,8 @@ struct IOBuf : public io_buf
 		{
 			dataLen = len;
 			allocLen = len;
-			memset(data,0,allocLen);
 		}
-
+		assert(data);
 		return data != nullptr;
 	}
 	void dealloc()
@@ -81,22 +61,20 @@ struct IOScheduleData
 {
 	IOScheduleData(uint64_t offset, IOBuf **buffers, uint32_t numBuffers) :
 		offset_(offset) , numBuffers_(numBuffers),buffers_(nullptr),
-		iov_(numBuffers_ ? new iovec[numBuffers_] : nullptr), totalBytes_(0)
+		iov_(new iovec[numBuffers_]), totalBytes_(0)
 	{
 		assert(numBuffers);
 		buffers_ = new IOBuf*[numBuffers];
 		for (uint32_t i = 0; i < numBuffers_; ++i){
-			buffers_[i] = new IOBuf(buffers[i]);
+			buffers_[i] = buffers[i];
 			auto b = buffers_[i];
 			auto v = iov_ + i;
-			iov_->iov_base = b->data;
-			iov_->iov_len = b->dataLen;
-			totalBytes_ += b->dataLen;
+			v->iov_base = b->data;
+			v->iov_len  = b->dataLen;
+			totalBytes_   += b->dataLen;
 		}
 	}
 	~IOScheduleData(){
-		for (uint32_t i = 0; i < numBuffers_; ++i)
-			delete buffers_[i];
 		delete[] buffers_;
 		delete[] iov_;
 	}

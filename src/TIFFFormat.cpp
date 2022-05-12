@@ -79,43 +79,30 @@ ImageStripper* TIFFFormat::getImageStripper(void){
 	return imageStripper_;
 }
 // corrected for header
-IOBuf TIFFFormat::getPoolBuffer(uint32_t threadId,uint32_t strip){
+IOBuf* TIFFFormat::getPoolBuffer(uint32_t threadId,uint32_t strip){
 	auto chunkInfo = imageStripper_->getChunkInfo(strip);
 	uint64_t len = chunkInfo.len();
-	IOBuf  ioBuf = workerSerializers_[threadId]->getPoolBuffer(len);
-	ioBuf.index = strip;
-	ioBuf.offset = chunkInfo.firstBegin_;
+	auto ioBuf = workerSerializers_[threadId]->getPoolBuffer(len);
+	ioBuf->index = strip;
+	ioBuf->offset = chunkInfo.firstBegin_;
 	uint64_t headerSize = ((strip == 0) ? sizeof(header_) : 0);
+	ioBuf->skip = 0;
 	if (headerSize) {
-		memcpy(ioBuf.data , &header_, headerSize);
-		ioBuf.skip = headerSize;
+		memcpy(ioBuf->data , &header_, headerSize);
+		ioBuf->skip = headerSize;
 	}
-	ioBuf.pooled = true;
+	ioBuf->pooled = true;
+	assert(ioBuf->data);
 
 	return ioBuf;
 }
 IOBufArray* TIFFFormat::genBufferArray(uint32_t threadId,uint32_t strip){
 	auto serializer = workerSerializers_[threadId];
 	auto pool = serializer->getPool();
-	return imageStripper_->getStrip(strip)->genBufferArray(pool);
-}
-bool TIFFFormat::nextChunk(uint32_t threadId,uint32_t strip,StripChunk **chunkBuffer){
-	auto serializer = workerSerializers_[threadId];
-	auto pool = serializer->getPool();
-	bool rc =  imageStripper_->getStrip(strip)->nextChunk(pool, chunkBuffer);
-	if (rc){
-		uint64_t headerSize = ((strip == 0) ? sizeof(header_) : 0);
-		if (headerSize)
-			(*chunkBuffer)->setHeader((uint8_t*)&header_, headerSize);
-		(*chunkBuffer)->setPooled();
-	}
-
-	return rc;
-}
-bool TIFFFormat::submit(uint32_t threadId, StripChunk *chunkBuffer){
-	auto serializer =
-			workerSerializers_ ? workerSerializers_[threadId] : &serializer_;
-	return chunkBuffer->submit(serializer);
+	return
+		imageStripper_->getStrip(strip)->genBufferArray(
+				pool,strip == 0 ? (uint8_t*)&header_ : nullptr,
+						strip == 0 ? sizeof(header_) : 0);
 }
 bool TIFFFormat::encodeInit(std::string filename,
 							bool direct,
@@ -148,7 +135,11 @@ bool TIFFFormat::encodePixels(uint32_t threadId, IOBuf **buffers,
 		toWrite += buffers[i]->dataLen;
 	uint64_t written = ser->write(buffers[0]->offset, buffers,numBuffers);
 	if (written != toWrite){
-		printf("encodePixels: write error\n");
+		printf("encodePixels: "
+				"attempted to write %d, "
+				"actually wrote %d, difference %d\n",
+				toWrite,written,
+				toWrite - written);
 		return false;
 	}
 

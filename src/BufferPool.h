@@ -15,29 +15,32 @@ class BufferPool : public IBufferPool
 	BufferPool() = default;
 	virtual ~BufferPool(){
 		for(auto& p : pool)
-			p.second.dealloc();
+			p.second->dealloc();
 	}
-	IOBuf get(uint64_t len) override{
+	IOBuf* get(uint64_t len) override{
 		for(auto iter = pool.begin(); iter != pool.end(); ++iter)
 		{
-			if(iter->second.allocLen >= len)
+			if(iter->second->allocLen >= len)
 			{
 				auto b = iter->second;
-				b.dataLen = len;
+				assert(b->data);
 				pool.erase(iter);
+				assert(b->data);
 				return b;
 			}
 		}
-		IOBuf rc;
-		rc.alloc(len);
-
-		return rc;
+		auto buf = new IOBuf();
+		buf->alloc(len);
+		assert(buf->data);
+		return buf;
 	}
-	void put(IOBuf b) override{
-		assert(b.data);
-		assert(pool.find(b.data) == pool.end());
-		pool[b.data] = b;
+	void put(IOBuf *b) override{
+		assert(b->data);
+		//assert(pool.find(b->data) == pool.end());
+		if (pool.find(b->data) != pool.end())
+			return;
+		pool[b->data] = b;
 	}
   private:
-	std::map<uint8_t*, IOBuf> pool;
+	std::map<uint8_t*, IOBuf*> pool;
 };

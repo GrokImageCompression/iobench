@@ -132,8 +132,7 @@ IOScheduleData* FileUringIO::retrieveCompletion(bool peek, bool& success)
 	}
 	if(cqe->res < 0)
 	{
-		printf("The system call invoked asynchronously has failed with the following error:"
-					  " \n%s",
+		printf("Asynchronous system call failed with error:\n%s\n",
 					  strerror(cqe->res));
 		success = false;
 		return nullptr;

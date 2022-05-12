@@ -21,7 +21,7 @@ struct Serializer : public ISerializeBufWriter
 	uint64_t write(uint64_t offset, IOBuf **buffers, uint32_t numBuffers) override;
 	uint64_t write(uint8_t* buf, uint64_t size);
 	uint64_t seek(int64_t off, int32_t whence);
-	IOBuf getPoolBuffer(uint64_t len);
+	IOBuf* getPoolBuffer(uint64_t len);
 	IBufferPool* getPool(void);
 	void enableSimulateWrite(void);
   private:

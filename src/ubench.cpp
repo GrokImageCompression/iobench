@@ -32,8 +32,8 @@ static void run(uint32_t width, uint32_t height,bool direct,
 		uint32_t currentStrip = strip;
 		encodeStrips[strip].work([&tiffFormat, chunked,
 								  currentStrip,doAsynch,doStore,imageStripper,&exec] {
+			auto strip = imageStripper->getStrip(currentStrip);
 			if (!doStore) {
-				auto strip = imageStripper->getStrip(currentStrip);
 				uint64_t len =  strip->len_;
 				uint8_t b[len] __attribute__((__aligned__(ALIGNMENT)));
 				for (uint64_t k = 0; k < 2*len; ++k)
@@ -44,34 +44,23 @@ static void run(uint32_t width, uint32_t height,bool direct,
 					auto bufArray =
 							tiffFormat.genBufferArray(exec.this_worker_id(),
 									currentStrip);
+					uint64_t len =  strip->len_;
+					uint8_t b[len] __attribute__((__aligned__(ALIGNMENT)));
+					for (uint64_t k = 0; k < 2*len; ++k)
+						b[k/2] = k;
+					bool ret =
+							tiffFormat.encodePixels(
+									exec.this_worker_id(),bufArray->buffers_,bufArray->numBuffers_);
+					assert(ret);
+
 					delete bufArray;
-
-					//for (uint32_t i = 0; i < len; ++i){
-					//	delete bufArray[i];
-					//}
-					//delete[] bufArray;
-					//bool ret =
-					//		tiffFormat.encodePixels(exec.this_worker_id(),bufArray,len);
-					//assert(ret);
-
-					/*
-					StripChunk *chunkBuffer = nullptr;
-					while (tiffFormat.nextChunk(exec.this_worker_id(), currentStrip, &chunkBuffer)){
-						auto ptr = chunkBuffer->data() + chunkBuffer->writeableOffset_;
-						assert(ptr);
-						for (uint64_t k = 0; k < 2*chunkBuffer->writeableLen_; ++k)
-							ptr[k/2] = k;
-						bool ret = tiffFormat.submit(exec.this_worker_id(), chunkBuffer);
-						assert(ret);
-					}
-					*/
 				} else {
 					auto b = tiffFormat.getPoolBuffer(exec.this_worker_id(), currentStrip);
-					auto ptr = b.data + b.skip;
-					for (uint64_t k = 0; k < 2*(b.dataLen-b.skip); ++k)
+					auto ptr = b->data + b->skip;
+					for (uint64_t k = 0; k < 2*(b->dataLen-b->skip); ++k)
 						ptr[k/2] = k;
 					auto bArray = new IOBuf*[1];
-					bArray[0] = &b;
+					bArray[0] = b;
 					bool ret = tiffFormat.encodePixels(exec.this_worker_id(),bArray,1);
 					assert(ret);
 					delete[] bArray;
