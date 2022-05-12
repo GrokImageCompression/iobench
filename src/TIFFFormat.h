@@ -34,17 +34,17 @@ public:
 				uint16_t numcomps, uint32_t nominalStripHeight,
 				bool chunked);
 	bool encodeInit(std::string filename,bool direct, uint32_t concurrency,bool asynch);
-	bool encodePixels(uint32_t threadId, SerializeBuf **buffers, uint32_t numBuffers);
+	bool encodePixels(uint32_t threadId, IOBuf **buffers, uint32_t numBuffers);
 	bool encodeFinish(void);
 	bool close(void);
-	SerializeBuf getPoolBuffer(uint32_t threadId,uint32_t strip);
-	SerializeBufArray* genBufferArray(uint32_t threadId,uint32_t strip);
-	bool nextChunk(uint32_t threadId,uint32_t strip,StripChunkBuffer **chunkBuffer);
-	bool submit(uint32_t threadId, StripChunkBuffer *chunkBuffer);
+	IOBuf getPoolBuffer(uint32_t threadId,uint32_t strip);
+	IOBufArray* genBufferArray(uint32_t threadId,uint32_t strip);
+	bool nextChunk(uint32_t threadId,uint32_t strip,StripChunk **chunkBuffer);
+	bool submit(uint32_t threadId, StripChunk *chunkBuffer);
 	ImageStripper* getImageStripper(void);
 
 private:
-	bool encodePixels(serialize_buf pixels);
+	bool encodePixels(io_buf pixels);
 	bool encodeHeader(void);
 	bool isHeaderEncoded(void);
 	TIFF* tif_;

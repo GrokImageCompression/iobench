@@ -29,7 +29,7 @@ FileUringIO::~FileUringIO()
 bool FileUringIO::active(void){
 	return ring.ring_fd != 0;
 }
-void FileUringIO::registerClientCallback(serialize_callback reclaim_callback,
+void FileUringIO::registerClientCallback(io_callback reclaim_callback,
 												  void* user_data)
 {
 	reclaim_callback_ = reclaim_callback;
@@ -79,7 +79,7 @@ bool FileUringIO::initQueue(int shared_ring_fd)
 	return true;
 }
 
-void FileUringIO::enqueue(io_uring* ring, io_data* data, bool readop, int fd)
+void FileUringIO::enqueue(io_uring* ring, IOScheduleData* data, bool readop, int fd)
 {
 	auto sqe = io_uring_get_sqe(ring);
 	assert(sqe);
@@ -110,7 +110,7 @@ void FileUringIO::enqueue(io_uring* ring, io_data* data, bool readop, int fd)
 	}
 }
 
-io_data* FileUringIO::retrieveCompletion(bool peek, bool& success)
+IOScheduleData* FileUringIO::retrieveCompletion(bool peek, bool& success)
 {
 	io_uring_cqe* cqe;
 	int ret;
@@ -139,7 +139,7 @@ io_data* FileUringIO::retrieveCompletion(bool peek, bool& success)
 		return nullptr;
 	}
 
-	auto data = (io_data*)io_uring_cqe_get_data(cqe);
+	auto data = (IOScheduleData*)io_uring_cqe_get_data(cqe);
 	if(data)
 	{
 		io_uring_cqe_seen(&ring, cqe);
@@ -182,9 +182,9 @@ bool FileUringIO::close(void)
 	return rc;
 }
 
-uint64_t FileUringIO::write(uint64_t offset, SerializeBuf **buffers, uint32_t numBuffers)
+uint64_t FileUringIO::write(uint64_t offset, IOBuf **buffers, uint32_t numBuffers)
 {
-	io_data* data = new io_data(offset,buffers,numBuffers);
+	IOScheduleData* data = new IOScheduleData(offset,buffers,numBuffers);
 	enqueue(&ring, data, false, fd_);
 
 	return data->totalBytes_;

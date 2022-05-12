@@ -17,7 +17,7 @@ class BufferPool : public IBufferPool
 		for(auto& p : pool)
 			p.second.dealloc();
 	}
-	SerializeBuf get(uint64_t len) override{
+	IOBuf get(uint64_t len) override{
 		for(auto iter = pool.begin(); iter != pool.end(); ++iter)
 		{
 			if(iter->second.allocLen >= len)
@@ -28,16 +28,16 @@ class BufferPool : public IBufferPool
 				return b;
 			}
 		}
-		SerializeBuf rc;
+		IOBuf rc;
 		rc.alloc(len);
 
 		return rc;
 	}
-	void put(SerializeBuf b) override{
+	void put(IOBuf b) override{
 		assert(b.data);
 		assert(pool.find(b.data) == pool.end());
 		pool[b.data] = b;
 	}
   private:
-	std::map<uint8_t*, SerializeBuf> pool;
+	std::map<uint8_t*, IOBuf> pool;
 };

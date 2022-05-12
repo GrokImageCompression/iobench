@@ -9,11 +9,11 @@
 #include <fcntl.h>
 #include <cstring>
 
-static bool applicationReclaimCallback(serialize_buf *buffer, void* serialize_user_data)
+static bool applicationReclaimCallback(io_buf *buffer, void* io_user_data)
 {
-	auto pool = (IBufferPool*)serialize_user_data;
+	auto pool = (IBufferPool*)io_user_data;
 	if(pool)
-		pool->put(SerializeBuf(buffer));
+		pool->put(IOBuf(buffer));
 
 	return true;
 }
@@ -38,14 +38,14 @@ void Serializer::registerApplicationClient(void)
 {
 	registerClientCallback(applicationReclaimCallback, pool_);
 }
-void Serializer::registerClientCallback(serialize_callback reclaim_callback,
+void Serializer::registerClientCallback(io_callback reclaim_callback,
 												 void* user_data)
 {
 	reclaim_callback_ = reclaim_callback;
 	reclaim_user_data_ = user_data;
 	uring.registerClientCallback(reclaim_callback, user_data);
 }
-SerializeBuf Serializer::getPoolBuffer(uint64_t len){
+IOBuf Serializer::getPoolBuffer(uint64_t len){
 	return pool_->get(len);
 }
 IBufferPool* Serializer::getPool(void){
@@ -144,14 +144,14 @@ uint64_t Serializer::seek(int64_t off, int32_t whence)
 void Serializer::enableSimulateWrite(void){
 	simulateWrite_ = true;
 }
-uint64_t Serializer::write(uint64_t offset, SerializeBuf **buffers, uint32_t numBuffers){
+uint64_t Serializer::write(uint64_t offset, IOBuf **buffers, uint32_t numBuffers){
 	if (!buffers || !numBuffers)
 		return 0;
 
 	if (uring.active())
 		return uring.write(offset, buffers, numBuffers);
 
-	auto io = new io_data(offset,buffers,numBuffers);
+	auto io = new IOScheduleData(offset,buffers,numBuffers);
 	ssize_t count = 0;
 	uint64_t bytesWritten = 0;
 	for(; bytesWritten < io->totalBytes_; bytesWritten += (uint64_t)count)

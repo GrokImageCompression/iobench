@@ -6,6 +6,6 @@ class IBufferPool
 {
   public:
 	virtual ~IBufferPool() = default;
-	virtual SerializeBuf get(uint64_t len) = 0;
-	virtual void put(SerializeBuf b) = 0;
+	virtual IOBuf get(uint64_t len) = 0;
+	virtual void put(IOBuf b) = 0;
 };

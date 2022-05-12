@@ -55,7 +55,7 @@ static void run(uint32_t width, uint32_t height,bool direct,
 					//assert(ret);
 
 					/*
-					StripChunkBuffer *chunkBuffer = nullptr;
+					StripChunk *chunkBuffer = nullptr;
 					while (tiffFormat.nextChunk(exec.this_worker_id(), currentStrip, &chunkBuffer)){
 						auto ptr = chunkBuffer->data() + chunkBuffer->writeableOffset_;
 						assert(ptr);
@@ -70,7 +70,7 @@ static void run(uint32_t width, uint32_t height,bool direct,
 					auto ptr = b.data + b.skip;
 					for (uint64_t k = 0; k < 2*(b.dataLen-b.skip); ++k)
 						ptr[k/2] = k;
-					auto bArray = new SerializeBuf*[1];
+					auto bArray = new IOBuf*[1];
 					bArray[0] = &b;
 					bool ret = tiffFormat.encodePixels(exec.this_worker_id(),bArray,1);
 					assert(ret);

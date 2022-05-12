@@ -11,14 +11,14 @@
 #define WRTSIZE (32*K)
 
 
-struct SerializeBuf : public serialize_buf
+struct IOBuf : public io_buf
 {
   public:
-	SerializeBuf() : SerializeBuf(0,nullptr,0, 0, 0, 0, false) {}
-	SerializeBuf(uint8_t* data,uint64_t allocLen) :
-		SerializeBuf(0,data,0,0,0,allocLen,false)
+	IOBuf() : IOBuf(0,nullptr,0, 0, 0, 0, false) {}
+	IOBuf(uint8_t* data,uint64_t allocLen) :
+		IOBuf(0,data,0,0,0,allocLen,false)
 	{}
-	SerializeBuf(uint32_t index, uint8_t* data, uint64_t skip,
+	IOBuf(uint32_t index, uint8_t* data, uint64_t skip,
 				uint64_t offset, uint64_t dataLen, uint64_t allocLen,
 					bool pooled)
 	{
@@ -30,20 +30,11 @@ struct SerializeBuf : public serialize_buf
 		this->allocLen = allocLen;
 		this->pooled = pooled;
 	}
-	SerializeBuf(const SerializeBuf &rhs) : SerializeBuf(&rhs)
+	IOBuf(const IOBuf &rhs) : IOBuf(&rhs)
 	{}
-	SerializeBuf(const SerializeBuf *rhs)
-	{
-		skip = rhs->skip;
-		offset = rhs->offset;
-		data = rhs->data;
-		dataLen = rhs->dataLen;
-		allocLen = rhs->allocLen;
-		pooled = rhs->pooled;
-	}
-	explicit SerializeBuf(const serialize_buf &rhs) : SerializeBuf(&rhs)
+	explicit IOBuf(const io_buf &rhs) : IOBuf(&rhs)
 	{}
-	explicit SerializeBuf(const serialize_buf *rhs)
+	explicit IOBuf(const io_buf *rhs)
 	{
 		skip = rhs->skip;
 		offset = rhs->offset;
@@ -86,16 +77,16 @@ struct SerializeBuf : public serialize_buf
 	}
 };
 
-struct io_data
+struct IOScheduleData
 {
-	io_data(uint64_t offset, SerializeBuf **buffers, uint32_t numBuffers) :
+	IOScheduleData(uint64_t offset, IOBuf **buffers, uint32_t numBuffers) :
 		offset_(offset) , numBuffers_(numBuffers),buffers_(nullptr),
 		iov_(numBuffers_ ? new iovec[numBuffers_] : nullptr), totalBytes_(0)
 	{
 		assert(numBuffers);
-		buffers_ = new SerializeBuf*[numBuffers];
+		buffers_ = new IOBuf*[numBuffers];
 		for (uint32_t i = 0; i < numBuffers_; ++i){
-			buffers_[i] = new SerializeBuf(buffers[i]);
+			buffers_[i] = new IOBuf(buffers[i]);
 			auto b = buffers_[i];
 			auto v = iov_ + i;
 			iov_->iov_base = b->data;
@@ -103,7 +94,7 @@ struct io_data
 			totalBytes_ += b->dataLen;
 		}
 	}
-	~io_data(){
+	~IOScheduleData(){
 		for (uint32_t i = 0; i < numBuffers_; ++i)
 			delete buffers_[i];
 		delete[] buffers_;
@@ -111,7 +102,7 @@ struct io_data
 	}
 	uint64_t offset_;
 	uint32_t numBuffers_;
-	SerializeBuf **buffers_;
+	IOBuf **buffers_;
 	iovec *iov_;
 	uint64_t totalBytes_;
 };
@@ -119,7 +110,7 @@ struct io_data
 class ISerializeBufWriter{
 public:
 	virtual ~ISerializeBufWriter() = default;
-	virtual uint64_t write(uint64_t offset, SerializeBuf **buffers, uint32_t numBuffers) = 0;
+	virtual uint64_t write(uint64_t offset, IOBuf **buffers, uint32_t numBuffers) = 0;
 };
 
 class IFileIO
@@ -127,5 +118,5 @@ class IFileIO
   public:
 	virtual ~IFileIO() = default;
 	virtual bool close(void) = 0;
-	virtual uint64_t write(uint64_t offset, SerializeBuf **buffers, uint32_t numBuffers) = 0;
+	virtual uint64_t write(uint64_t offset, IOBuf **buffers, uint32_t numBuffers) = 0;
 };

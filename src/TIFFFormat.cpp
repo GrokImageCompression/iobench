@@ -79,27 +79,27 @@ ImageStripper* TIFFFormat::getImageStripper(void){
 	return imageStripper_;
 }
 // corrected for header
-SerializeBuf TIFFFormat::getPoolBuffer(uint32_t threadId,uint32_t strip){
-	auto chunkInfo = imageStripper_->getSerializeChunkInfo(strip);
+IOBuf TIFFFormat::getPoolBuffer(uint32_t threadId,uint32_t strip){
+	auto chunkInfo = imageStripper_->getChunkInfo(strip);
 	uint64_t len = chunkInfo.len();
-	SerializeBuf  serializeBuf = workerSerializers_[threadId]->getPoolBuffer(len);
-	serializeBuf.index = strip;
-	serializeBuf.offset = chunkInfo.firstBegin_;
+	IOBuf  ioBuf = workerSerializers_[threadId]->getPoolBuffer(len);
+	ioBuf.index = strip;
+	ioBuf.offset = chunkInfo.firstBegin_;
 	uint64_t headerSize = ((strip == 0) ? sizeof(header_) : 0);
 	if (headerSize) {
-		memcpy(serializeBuf.data , &header_, headerSize);
-		serializeBuf.skip = headerSize;
+		memcpy(ioBuf.data , &header_, headerSize);
+		ioBuf.skip = headerSize;
 	}
-	serializeBuf.pooled = true;
+	ioBuf.pooled = true;
 
-	return serializeBuf;
+	return ioBuf;
 }
-SerializeBufArray* TIFFFormat::genBufferArray(uint32_t threadId,uint32_t strip){
+IOBufArray* TIFFFormat::genBufferArray(uint32_t threadId,uint32_t strip){
 	auto serializer = workerSerializers_[threadId];
 	auto pool = serializer->getPool();
 	return imageStripper_->getStrip(strip)->genBufferArray(pool);
 }
-bool TIFFFormat::nextChunk(uint32_t threadId,uint32_t strip,StripChunkBuffer **chunkBuffer){
+bool TIFFFormat::nextChunk(uint32_t threadId,uint32_t strip,StripChunk **chunkBuffer){
 	auto serializer = workerSerializers_[threadId];
 	auto pool = serializer->getPool();
 	bool rc =  imageStripper_->getStrip(strip)->nextChunk(pool, chunkBuffer);
@@ -112,7 +112,7 @@ bool TIFFFormat::nextChunk(uint32_t threadId,uint32_t strip,StripChunkBuffer **c
 
 	return rc;
 }
-bool TIFFFormat::submit(uint32_t threadId, StripChunkBuffer *chunkBuffer){
+bool TIFFFormat::submit(uint32_t threadId, StripChunk *chunkBuffer){
 	auto serializer =
 			workerSerializers_ ? workerSerializers_[threadId] : &serializer_;
 	return chunkBuffer->submit(serializer);
@@ -140,7 +140,7 @@ bool TIFFFormat::encodeInit(std::string filename,
 
 	return true;
 }
-bool TIFFFormat::encodePixels(uint32_t threadId, SerializeBuf **buffers,
+bool TIFFFormat::encodePixels(uint32_t threadId, IOBuf **buffers,
 													uint32_t numBuffers){
 	Serializer *ser = workerSerializers_[threadId];
 	uint64_t toWrite = 0;

@@ -14,14 +14,14 @@ struct Serializer : public ISerializeBufWriter
 	~Serializer(void);
 	void setMaxPooledRequests(uint32_t maxRequests);
 	void registerApplicationClient(void);
-	void registerClientCallback(serialize_callback reclaim_callback, void* user_data);
+	void registerClientCallback(io_callback reclaim_callback, void* user_data);
 	bool attach(Serializer *parent);
 	bool open(std::string name, std::string mode, bool asynch);
 	bool close(void);
-	uint64_t write(uint64_t offset, SerializeBuf **buffers, uint32_t numBuffers) override;
+	uint64_t write(uint64_t offset, IOBuf **buffers, uint32_t numBuffers) override;
 	uint64_t write(uint8_t* buf, uint64_t size);
 	uint64_t seek(int64_t off, int32_t whence);
-	SerializeBuf getPoolBuffer(uint64_t len);
+	IOBuf getPoolBuffer(uint64_t len);
 	IBufferPool* getPool(void);
 	void enableSimulateWrite(void);
   private:
@@ -32,7 +32,7 @@ struct Serializer : public ISerializeBufWriter
 	// used to detect when library-orchestrated encode is complete
 	uint32_t maxPooledRequests_;
 	uint64_t off_;
-	serialize_callback reclaim_callback_;
+	io_callback reclaim_callback_;
 	void* reclaim_user_data_;
 	std::string filename_;
 	std::string mode_;
