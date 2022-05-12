@@ -94,6 +94,11 @@ SerializeBuf TIFFFormat::getPoolBuffer(uint32_t threadId,uint32_t strip){
 
 	return serializeBuf;
 }
+SerializeBuf** TIFFFormat::genBufferArray(uint32_t threadId,uint32_t strip,uint32_t *size){
+	auto serializer = workerSerializers_[threadId];
+	auto pool = serializer->getPool();
+	return imageStripper_->getStrip(strip)->genBufferArray(pool,size);
+}
 bool TIFFFormat::nextChunk(uint32_t threadId,uint32_t strip,StripChunkBuffer **chunkBuffer){
 	auto serializer = workerSerializers_[threadId];
 	auto pool = serializer->getPool();

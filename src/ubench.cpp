@@ -40,6 +40,16 @@ static void run(uint32_t width, uint32_t height,bool direct,
 					b[k/2] = k;
 			} else {
 				if (chunked) {
+					/*
+					auto stripBuf = imageStripper->getStrip(currentStrip);
+					uint32_t len;
+					auto bufArray =
+							tiffFormat.genBufferArray(exec.this_worker_id(),
+									currentStrip,&len);
+					bool ret =
+							tiffFormat.encodePixels(exec.this_worker_id(),bufArray,len);
+										assert(ret);
+*/
 					StripChunkBuffer *chunkBuffer = nullptr;
 					while (tiffFormat.nextChunk(exec.this_worker_id(), currentStrip, &chunkBuffer)){
 						auto ptr = chunkBuffer->data() + chunkBuffer->writeableOffset_;

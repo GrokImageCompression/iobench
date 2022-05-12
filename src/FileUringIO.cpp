@@ -187,5 +187,5 @@ uint64_t FileUringIO::write(uint64_t offset, SerializeBuf **buffers, uint32_t nu
 	io_data* data = new io_data(offset,buffers,numBuffers);
 	enqueue(&ring, data, false, fd_);
 
-	return buffers[0]->dataLen;
+	return data->totalBytes_;
 }

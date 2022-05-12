@@ -110,6 +110,8 @@ struct SerializeChunkBuffer{
 		assert(pool);
 		assert(buf_.dataLen);
 		assert(!buf_.data);
+		if (buf_.data)
+			return;
 		// cache offset
 		uint64_t offset = buf_.offset;
 		// allocate
@@ -288,19 +290,21 @@ struct StripBuffer  {
 
 		return true;
 	}
-	SerializeChunkBuffer** genChunkArray(void){
+	SerializeBuf** genBufferArray(IBufferPool *pool, uint32_t *size){
 		auto first = chunks_[0];
 		bool acquiredFirst = true;
 		if (first->shared_){
 			acquiredFirst = first->acquire();
 		}
-		auto ret = new SerializeChunkBuffer*[numChunks_ - (acquiredFirst ? 1 : 0)];
+		auto ret = new SerializeBuf*[numChunks_ - (acquiredFirst ? 1 : 0)];
 		uint32_t count = 0;
 		for (uint32_t i = 0; i < numChunks_; ++i){
 			if (!acquiredFirst)
 				continue;
-			ret[count++] = chunks_[i]->serializeChunkBuffer_;
+			chunks_[i]->alloc(pool);
+			ret[count++] = new SerializeBuf(chunks_[i]->serializeChunkBuffer_->buf_);
 		}
+		*size = count;
 
 		return ret;
 	}
