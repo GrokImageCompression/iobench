@@ -38,7 +38,7 @@ public:
 	bool encodeFinish(void);
 	bool close(void);
 	IOBuf* getPoolBuffer(uint32_t threadId,uint32_t strip);
-	IOBufArray* genBufferArray(uint32_t threadId,uint32_t strip);
+	IOChunkArray* getChunkArray(uint32_t threadId,uint32_t strip);
 	ImageStripper* getImageStripper(void);
 
 private:

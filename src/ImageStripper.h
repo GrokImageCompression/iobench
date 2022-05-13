@@ -7,35 +7,17 @@
 
 #include "IBufferPool.h"
 
-struct IOBufArray{
-	IOBufArray(IOBuf **buffers, uint32_t numBuffers, IBufferPool *pool)
-		: buffers_(buffers),
-		  numBuffers_(numBuffers),
-		  pool_(pool)
-	{
-		for (uint32_t i = 0; i < numBuffers_; ++i)
-			assert(buffers_[i]->data);
-	}
-	~IOBufArray(void){
-		for (uint32_t i = 0; i < numBuffers_; ++i)
-			pool_->put(buffers_[i]);
-		delete[] buffers_;
-	}
-	IOBuf ** buffers_;
-	uint32_t numBuffers_;
-	IBufferPool *pool_;
-};
 
 /*
- * Each strip is divided into a collection of serialize chunks,
- * which are designed for serialization to disk. Their offset is always
- * aligned, and their length is always equal to WRTSIZE (4k),
- * except possibly the final chunk of the final strip. Also, they are corrected
+ * Each strip is divided into a collection of IOChunks, and
+ * each IOChunk contains an IOBuffer, which is designed for disk IO.
+ * Their offset is always aligned, and their length is always equal to WRTSIZE,
+ * except possibly the final IOBuffer of the final strip. Also, they are corrected
  * for the header bytes which are located right before the beginning of the
  * first strip - the header bytes are included in the first chunk of the first
  * strip.
  *
- * Serialize chunks can be shared between neighbouring strips if they
+ * IOBuffers can be shared between neighbouring strips if they
  * share a common seam, which happens when the boundary between two strips
  * is not aligned.
  */
@@ -173,6 +155,28 @@ struct IOChunk{
 	uint32_t writeTarget_;
 };
 
+struct IOChunkArray{
+	IOChunkArray(IOChunk** chunks, IOBuf **buffers,uint32_t numBuffers, IBufferPool *pool)
+		: buffers_(buffers),
+		  chunks_(chunks),
+		  numBuffers_(numBuffers),
+		  pool_(pool)
+	{
+		for (uint32_t i = 0; i < numBuffers_; ++i)
+			assert(buffers_[i]->data);
+	}
+	~IOChunkArray(void){
+		for (uint32_t i = 0; i < numBuffers_; ++i)
+			pool_->put(buffers_[i]);
+		delete[] buffers_;
+		delete[] chunks_;
+	}
+	IOBuf ** buffers_;
+	IOChunk ** chunks_;
+	uint32_t numBuffers_;
+	IBufferPool *pool_;
+};
+
 /**
  * A strip chunk wraps a serialize chunk (which may be shared with the
  * strip's neighbour), and it also stores a write offset and write length
@@ -233,7 +237,7 @@ struct StripChunk {
 };
 
 /**
- * A strip contains an array of strip chunks
+ * A strip contains an array of StripChunks
  *
  */
 struct Strip  {
@@ -320,32 +324,37 @@ struct Strip  {
 		assert(stripWriteEnd - stripWriteBegin == len_);
 		assert(len_ == writeableTotal);
 	}
-	IOBufArray* genBufferArray(IBufferPool *pool, uint8_t *header, uint64_t headerLen){
+	IOChunkArray* getChunkArray(IBufferPool *pool, uint8_t *header, uint64_t headerLen){
 		auto first = chunks_[0];
 		bool acquiredFirst = true;
 		if (first->shared_)
 			acquiredFirst = first->acquire();
 		uint32_t numBuffers = numChunks_ - (acquiredFirst ? 0 : 1);
-		auto ret = new IOBuf*[numBuffers];
+		auto buffers = new IOBuf*[numBuffers];
+		auto chunks = new IOChunk*[numBuffers];
 		uint32_t count = 0;
 		for (uint32_t i = 0; i < numChunks_; ++i){
 			if (!acquiredFirst)
 				continue;
-			auto ch = chunks_[i];
-			assert(!ch->shared_ || ch->ioChunk_->buf_->data);
-			ch->alloc(pool);
-			assert(ch->ioChunk_->buf_->data);
+			auto stripChunk = chunks_[i];
+			auto ioChunk = stripChunk->ioChunk_;
+			assert(!stripChunk->shared_ || ioChunk->buf_->data);
+			stripChunk->alloc(pool);
+			auto ioBuf = ioChunk->buf_;
+			assert(ioBuf->data);
 			if (header)
-				ch->setHeader(header, headerLen);
-			ret[count++] = ch->ioChunk_->buf_;
+				stripChunk->setHeader(header, headerLen);
+			chunks[count] = ioChunk;
+			buffers[count] = ioBuf;
+			count++;
 		}
 		for (uint32_t i = 0; i < numBuffers; ++i){
-			assert(ret[i]->data);
-			assert(ret[i]->dataLen);
+			assert(buffers[i]->data);
+			assert(buffers[i]->dataLen);
 		}
 		assert(count == numBuffers);
 
-		return new IOBufArray(ret,numBuffers,pool);
+		return new IOChunkArray(chunks,buffers,numBuffers,pool);
 	}
 	StripChunk* finalChunk(void){
 		return chunks_[numChunks_-1];
@@ -431,22 +440,6 @@ struct ImageStripper{
 private:
 	uint32_t stripHeight(uint32_t strip) const{
 		return (strip < numStrips_-1) ? nominalStripHeight_ : finalStripHeight_;
-	}
-	uint64_t stripOffsetHeaderCorrected(uint32_t strip){
-		// header bytes added to first strip shifts all other strips
-		// by that number of bytes
-		return strip == 0 ? 0 : headerSize_ + stripBufs_[strip]->offset_;
-	}
-	uint64_t stripEndHeaderCorrected(uint32_t strip){
-		uint64_t rc = stripOffsetHeaderCorrected(strip) + stripBufs_[strip]->len_;
-		//correct for header bytes added to first strip
-		if (strip == 0)
-			rc += headerSize_;
-
-		return rc;
-	}
-	uint64_t lastBeginHeaderCorrected(uint32_t strip){
-		return (stripEndHeaderCorrected(strip)/writeSize_) * writeSize_;
 	}
 	uint64_t stripPackedByteWidth_;
 	uint64_t stripLen_;

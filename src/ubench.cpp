@@ -41,8 +41,8 @@ static void run(uint32_t width, uint32_t height,bool direct,
 			} else {
 				if (chunked) {
 					auto stripBuf = imageStripper->getStrip(currentStrip);
-					auto bufArray =
-							tiffFormat.genBufferArray(exec.this_worker_id(),
+					auto chunkArray =
+							tiffFormat.getChunkArray(exec.this_worker_id(),
 									currentStrip);
 					uint64_t len =  strip->len_;
 					uint8_t b[len] __attribute__((__aligned__(ALIGNMENT)));
@@ -50,10 +50,10 @@ static void run(uint32_t width, uint32_t height,bool direct,
 						b[k/2] = k;
 					bool ret =
 							tiffFormat.encodePixels(
-									exec.this_worker_id(),bufArray->buffers_,bufArray->numBuffers_);
+									exec.this_worker_id(),chunkArray->buffers_,chunkArray->numBuffers_);
 					assert(ret);
 
-					delete bufArray;
+					delete chunkArray;
 				} else {
 					auto b = tiffFormat.getPoolBuffer(exec.this_worker_id(), currentStrip);
 					auto ptr = b->data + b->skip;

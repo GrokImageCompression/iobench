@@ -95,11 +95,11 @@ IOBuf* TIFFFormat::getPoolBuffer(uint32_t threadId,uint32_t strip){
 
 	return ioBuf;
 }
-IOBufArray* TIFFFormat::genBufferArray(uint32_t threadId,uint32_t strip){
+IOChunkArray* TIFFFormat::getChunkArray(uint32_t threadId,uint32_t strip){
 	auto serializer = workerSerializers_[threadId];
 	auto pool = serializer->getPool();
 	return
-		imageStripper_->getStrip(strip)->genBufferArray(
+		imageStripper_->getStrip(strip)->getChunkArray(
 				pool,strip == 0 ? (uint8_t*)&header_ : nullptr,
 						strip == 0 ? sizeof(header_) : 0);
 }
