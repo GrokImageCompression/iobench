@@ -50,7 +50,7 @@ static void run(uint32_t width, uint32_t height,bool direct,
 						b[k/2] = k;
 					bool ret =
 							tiffFormat.encodePixels(
-									exec.this_worker_id(),chunkArray->buffers_,chunkArray->numBuffers_);
+									exec.this_worker_id(),chunkArray->ioBufs_,chunkArray->numBuffers_);
 					assert(ret);
 
 					delete chunkArray;
