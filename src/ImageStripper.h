@@ -58,6 +58,8 @@ struct ChunkInfo{
 						headerSize_(headerSize),
 						pool_(nullptr)
 	{
+		if (!writeSize_)
+			return;
 		lastBegin_    = lastBegin(logicalOffset,logicalLen);
 		assert(lastBegin_% writeSize_ == 0);
 		lastEnd_      = stripEnd(logicalOffset,logicalLen);
@@ -322,7 +324,8 @@ struct Strip  {
 		bool acquiredFirst = true;
 		if (first->shared_)
 			acquiredFirst = first->acquire();
-		auto ret = new IOBuf*[numChunks_ - (acquiredFirst ? 0 : 1)];
+		uint32_t numBuffers = numChunks_ - (acquiredFirst ? 0 : 1);
+		auto ret = new IOBuf*[numBuffers];
 		uint32_t count = 0;
 		for (uint32_t i = 0; i < numChunks_; ++i){
 			if (!acquiredFirst)
@@ -335,11 +338,13 @@ struct Strip  {
 				ch->setHeader(header, headerLen);
 			ret[count++] = ch->ioChunk_->buf_;
 		}
-		for (uint32_t i = 0; i < numChunks_; ++i){
+		for (uint32_t i = 0; i < numBuffers; ++i){
 			assert(ret[i]->data);
 			assert(ret[i]->dataLen);
 		}
-		return new IOBufArray(ret,count,pool);
+		assert(count == numBuffers);
+
+		return new IOBufArray(ret,numBuffers,pool);
 	}
 	StripChunk* finalChunk(void){
 		return chunks_[numChunks_-1];

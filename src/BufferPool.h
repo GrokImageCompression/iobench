@@ -36,7 +36,6 @@ class BufferPool : public IBufferPool
 	}
 	void put(IOBuf *b) override{
 		assert(b->data);
-		//assert(pool.find(b->data) == pool.end());
 		if (pool.find(b->data) != pool.end())
 			return;
 		pool[b->data] = b;

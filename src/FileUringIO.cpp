@@ -184,7 +184,11 @@ bool FileUringIO::close(void)
 uint64_t FileUringIO::write(uint64_t offset, IOBuf **buffers, uint32_t numBuffers)
 {
 	IOScheduleData* data = new IOScheduleData(offset,buffers,numBuffers);
+	uint64_t totalBytes = 0;
+	for (uint32_t i = 0; i < numBuffers; ++i){
+		totalBytes += buffers[i]->dataLen;
+	}
 	enqueue(&ring, data, false, fd_);
 
-	return data->totalBytes_;
+	return totalBytes;
 }
