@@ -38,7 +38,11 @@ struct IOBuf : public io_buf
 	}
 	bool alloc(uint64_t len)
 	{
-		dealloc();
+		if (len < allocLen)
+			return true;
+
+		if (data)
+			dealloc();
 		data = (uint8_t*)aligned_alloc(ALIGNMENT,len);
 		if(data)
 		{

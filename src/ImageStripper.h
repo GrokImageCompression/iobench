@@ -12,7 +12,10 @@ struct IOBufArray{
 		: buffers_(buffers),
 		  numBuffers_(numBuffers),
 		  pool_(pool)
-	{}
+	{
+		for (uint32_t i = 0; i < numBuffers_; ++i)
+			assert(buffers_[i]->data);
+	}
 	~IOBufArray(void){
 		for (uint32_t i = 0; i < numBuffers_; ++i)
 			pool_->put(buffers_[i]);
@@ -158,6 +161,7 @@ struct IOChunk{
 	}
 	void alloc(IBufferPool* pool){
 		assert(pool);
+		assert(!buf_ || !buf_->data);
 		buf_ = pool->get(len_);
 		buf_->offset = offset_;
 	}
@@ -219,9 +223,6 @@ struct StripChunk {
 		memcpy(data() , headerData, headerSize);
 		ioChunk_->buf_->skip = headerSize;
 		writeableOffset_ = headerSize;
-	}
-	void setPooled(void){
-		ioChunk_->buf_->pooled = true;
 	}
 	// write offset relative to beginning of data
 	uint64_t writeableOffset_;

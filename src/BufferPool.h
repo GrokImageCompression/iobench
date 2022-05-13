@@ -32,6 +32,7 @@ class BufferPool : public IBufferPool
 		auto buf = new IOBuf();
 		buf->alloc(len);
 		assert(buf->data);
+		buf->pooled = true;
 		return buf;
 	}
 	void put(IOBuf *b) override{
