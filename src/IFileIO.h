@@ -6,12 +6,14 @@
 #include <cstring>
 #include <fcntl.h>
 
+#include "RefCounted.h"
+
 #define K 1024
 #define ALIGNMENT (512)
 #define WRTSIZE (4*K)
 
 
-struct IOBuf : public io_buf
+struct IOBuf : public io_buf, public RefCounted<IOBuf>
 {
   public:
 	IOBuf() {
@@ -57,6 +59,10 @@ struct IOBuf : public io_buf
 		dataLen = 0;
 		allocLen = 0;
 	}
+  private:
+  	~IOBuf() {
+  		dealloc();
+  	}
 };
 
 struct IOScheduleData

@@ -10,14 +10,13 @@ static void run(uint32_t width, uint32_t height,bool direct,
 		uint32_t concurrency, bool doStore, bool doAsynch, bool chunked){
 	ChronoTimer timer;
 	bool storeAsynch = doStore && doAsynch;
-	{
-	TIFFFormat tiffFormat(doAsynch);
-	tiffFormat.init(width, height, 1, 32, chunked);
-	auto imageStripper = tiffFormat.getImageStripper();
+	auto tiffFormat = new TIFFFormat(doAsynch);
+	tiffFormat->init(width, height, 1, 32, chunked);
+	auto imageStripper = tiffFormat->getImageStripper();
 	if (doStore){
 		std::string filename = "dump.tif";
 		remove(filename.c_str());
-	   tiffFormat.encodeInit(filename,direct,concurrency,doAsynch);
+	   tiffFormat->encodeInit(filename,direct,concurrency,doAsynch);
 	}
 
 	printf("Run with concurrency = %d, store to disk = %d, use uring = %d\n",
@@ -42,26 +41,28 @@ static void run(uint32_t width, uint32_t height,bool direct,
 				if (chunked) {
 					auto stripBuf = imageStripper->getStrip(currentStrip);
 					auto chunkArray =
-							tiffFormat.getChunkArray(exec.this_worker_id(),
+							tiffFormat->getChunkArray(exec.this_worker_id(),
 									currentStrip);
+
 					uint64_t len =  strip->len_;
 					uint8_t b[len] __attribute__((__aligned__(ALIGNMENT)));
-					for (uint64_t k = 0; k < 2*len; ++k)
-						b[k/2] = k;
+					for (uint64_t k = 0; k < len; ++k)
+						b[k] = k % 256;
+
 					bool ret =
-							tiffFormat.encodePixels(
+							tiffFormat->encodePixels(
 									exec.this_worker_id(),chunkArray->ioBufs_,chunkArray->numBuffers_);
 					assert(ret);
 
 					delete chunkArray;
 				} else {
-					auto b = tiffFormat.getPoolBuffer(exec.this_worker_id(), currentStrip);
+					auto b = tiffFormat->getPoolBuffer(exec.this_worker_id(), currentStrip);
 					auto ptr = b->data + b->skip;
 					for (uint64_t k = 0; k < 2*(b->dataLen-b->skip); ++k)
 						ptr[k/2] = k;
 					auto bArray = new IOBuf*[1];
 					bArray[0] = b;
-					bool ret = tiffFormat.encodePixels(exec.this_worker_id(),bArray,1);
+					bool ret = tiffFormat->encodePixels(exec.this_worker_id(),bArray,1);
 					assert(ret);
 					delete[] bArray;
 				}
@@ -76,8 +77,8 @@ static void run(uint32_t width, uint32_t height,bool direct,
 		timer.finish("scheduling");
 		timer.start();
 	}
-	tiffFormat.encodeFinish();
-	}
+	tiffFormat->encodeFinish();
+	delete tiffFormat;
 	timer.finish(storeAsynch ? "flush" : "");
 }
 static void run(uint32_t width, uint32_t height,bool direct,uint8_t concurrency, bool chunked){

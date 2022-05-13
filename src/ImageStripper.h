@@ -6,7 +6,7 @@
 #include <mutex>
 
 #include "IBufferPool.h"
-
+#include "RefCounted.h"
 
 /*
  * Each strip is divided into a collection of IOChunks, and
@@ -119,42 +119,43 @@ struct ChunkInfo{
 	uint64_t headerSize_;
 	IBufferPool *pool_;
 };
-struct IOChunk{
+struct IOChunk : public RefCounted<IOChunk> {
 	IOChunk(uint64_t offset,uint64_t len, IBufferPool *pool) :
 		offset_(offset),
 		len_(len),
 		buf_(nullptr),
-		refCount_(1),
 		writeCount_(0),
 		writeTarget_(1)
 	{
 		if (pool)
 			alloc(pool);
 	}
-	IOChunk* ref(void){
-		++refCount_;
-		return this;
-	}
-	uint32_t unref(void){
-		return --refCount_;
-	}
 	bool acquire(void){
 		 return (++writeCount_ == writeTarget_);
 	}
 	void alloc(IBufferPool* pool){
+		if (buf_ && buf_->data)
+			return;
 		assert(pool);
 		assert(!buf_ || !buf_->data);
-		buf_ = pool->get(len_);
+		buf_ = pool->get(len_)->ref();
 		buf_->offset = offset_;
 	}
 	uint64_t offset_;
 	uint64_t len_;
 	IOBuf *buf_;
-	std::atomic<uint32_t> refCount_;
 	std::atomic<uint32_t> writeCount_;
 	uint32_t writeTarget_;
+private:
+	~IOChunk() {
+		RefManager<IOBuf>::unref(buf_);
+	}
 };
 
+/**
+ * Container for an array of buffers and an array of chunks
+ *
+ */
 struct IOChunkArray{
 	IOChunkArray(IOChunk** chunks, IOBuf **buffers,uint32_t numBuffers, IBufferPool *pool)
 		: ioBufs_(buffers),
@@ -166,8 +167,6 @@ struct IOChunkArray{
 			assert(ioBufs_[i]->data);
 	}
 	~IOChunkArray(void){
-		for (uint32_t i = 0; i < numBuffers_; ++i)
-			pool_->put(ioBufs_[i]);
 		delete[] ioBufs_;
 		delete[] ioChunks_;
 	}
@@ -184,7 +183,7 @@ struct IOChunkArray{
  * If there is no sharing, then  write offset is zero,
  * and write length equals WRTSIZE.
  */
-struct StripChunk {
+struct StripChunk : public RefCounted<StripChunk> {
 	StripChunk(IOChunk *ioChunk,
 				uint64_t writeableOffset,
 				uint64_t writeableLen,
@@ -192,17 +191,14 @@ struct StripChunk {
 		ioChunk_(ioChunk),
 		writeableOffset_(writeableOffset),
 		writeableLen_(writeableLen),
-		shared_(shared)
+		sharedChunk_(shared)
 	{
 		assert(writeableOffset < len());
 		assert(writeableLen <= len());
 	}
-	~StripChunk(){
-		if (unref() == 0)
-			delete ioChunk_;
-	}
 	void alloc(IBufferPool* pool){
-		if (!shared_)
+		// shared chunks are pre-allocated
+		if (!sharedChunk_)
 			ioChunk_->alloc(pool);
 	}
 	uint64_t offset(void){
@@ -211,14 +207,12 @@ struct StripChunk {
 	uint64_t len(void){
 		return ioChunk_->len_;
 	}
-	IOChunk* ref(void){
-		return ioChunk_->ref();
-	}
-	uint32_t unref(void){
-		return ioChunk_->unref();
-	}
 	bool acquire(void){
-		return ioChunk_->acquire();
+		bool acquired = ioChunk_->acquire();
+		if (acquired)
+			sharedChunk_ = false;
+
+		return acquired;
 	}
 	uint8_t* data(void){
 		return ioChunk_->buf_->data;
@@ -232,8 +226,12 @@ struct StripChunk {
 	uint64_t writeableOffset_;
 	// writeable length
 	uint64_t writeableLen_;
-	bool shared_;
+	bool sharedChunk_;
 	IOChunk *ioChunk_;
+private:
+	~StripChunk(){
+		RefManager<IOChunk>::unref(ioChunk_);
+	}
 };
 
 /**
@@ -251,7 +249,7 @@ struct Strip  {
 	~Strip(void){
 		if (stripChunks_){
 			for (uint32_t i = 0; i < numChunks_; ++i)
-				delete stripChunks_[i];
+				RefManager<StripChunk>::unref(stripChunks_[i]);
 			delete[] stripChunks_;
 		}
 	}
@@ -301,7 +299,7 @@ struct Strip  {
 			assert(lastChunkOfAll || IOBuf::isAlignedToWriteSize(len));
 			IOChunk* ioChunk = nullptr;
 			if (firstSeam){
-				ioChunk = leftNeighbour_->finalChunk()->ref();
+				ioChunk = leftNeighbour_->finalChunk()->ioChunk_->ref();
 				assert(ioChunk->buf_->data);
 			}
 			else {
@@ -327,7 +325,7 @@ struct Strip  {
 	IOChunkArray* getChunkArray(IBufferPool *pool, uint8_t *header, uint64_t headerLen){
 		auto first = stripChunks_[0];
 		bool acquiredFirst = true;
-		if (first->shared_)
+		if (first->sharedChunk_)
 			acquiredFirst = first->acquire();
 		uint32_t numBuffers = numChunks_ - (acquiredFirst ? 0 : 1);
 		auto buffers = new IOBuf*[numBuffers];
@@ -338,7 +336,7 @@ struct Strip  {
 				continue;
 			auto stripChunk = stripChunks_[i];
 			auto ioChunk = stripChunk->ioChunk_;
-			assert(!stripChunk->shared_ || ioChunk->buf_->data);
+			assert(!stripChunk->sharedChunk_ || ioChunk->buf_->data);
 			stripChunk->alloc(pool);
 			auto ioBuf = ioChunk->buf_;
 			assert(ioBuf->data);
