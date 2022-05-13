@@ -21,8 +21,6 @@ struct IOBuf : public io_buf
 		this->data = 0;
 		this->dataLen = 0;
 		this->allocLen = 0;
-		this->pooled = false;
-
 	}
 	static bool isAlignedToWriteSize(uint64_t off){
 		return (off & (WRTSIZE-1)) == 0;

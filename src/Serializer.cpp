@@ -165,10 +165,8 @@ uint64_t Serializer::write(uint64_t offset, IOBuf **buffers, uint32_t numBuffers
 
 	for (uint32_t i = 0; i < numBuffers; ++i){
 		auto b = buffers[i];
-		if (b->pooled){
-			assert(reclaim_callback_);
-			reclaim_callback_(b, reclaim_user_data_);
-		}
+		assert(reclaim_callback_);
+		reclaim_callback_(b, reclaim_user_data_);
 	}
 	return bytesWritten;
 }

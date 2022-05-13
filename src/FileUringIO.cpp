@@ -101,7 +101,7 @@ void FileUringIO::enqueue(io_uring* ring, IOScheduleData* data, bool readop, int
 			break;
 		for (uint32_t i = 0; i < data->numBuffers_; ++i){
 			auto b = data->buffers_[i];
-			if(b->pooled && reclaim_callback_)
+			if(reclaim_callback_)
 				reclaim_callback_(b, reclaim_user_data_);
 			else
 				b->dealloc();

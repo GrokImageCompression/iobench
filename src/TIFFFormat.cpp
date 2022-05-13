@@ -91,7 +91,6 @@ IOBuf* TIFFFormat::getPoolBuffer(uint32_t threadId,uint32_t strip){
 		memcpy(ioBuf->data , &header_, headerSize);
 		ioBuf->skip = headerSize;
 	}
-	ioBuf->pooled = true;
 	assert(ioBuf->data);
 
 	return ioBuf;

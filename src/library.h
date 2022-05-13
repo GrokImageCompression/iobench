@@ -11,7 +11,6 @@ typedef struct _io_buf
 	uint8_t* data;
 	uint64_t dataLen;
 	uint64_t allocLen;
-	bool pooled;
 } io_buf;
 
 typedef bool (*io_callback)(io_buf *buffer, void* io_user_data);
