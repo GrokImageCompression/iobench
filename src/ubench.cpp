@@ -41,14 +41,19 @@ static void run(uint32_t width, uint32_t height,bool direct,
 				if (chunked) {
 					auto stripBuf = imageStripper->getStrip(currentStrip);
 					auto chunkArray =
-							tiffFormat->getChunkArray(exec.this_worker_id(),
+							tiffFormat->getStripChunkArray(exec.this_worker_id(),
 									currentStrip);
 
-					uint64_t len =  strip->len_;
-					uint8_t b[len] __attribute__((__aligned__(ALIGNMENT)));
-					for (uint64_t k = 0; k < len; ++k)
-						b[k] = k % 256;
-
+					uint64_t count = 0;
+					for (uint32_t i = 0; i < chunkArray->numBuffers_; ++i){
+						auto ch = chunkArray->stripChunks_[i];
+						auto b = chunkArray->ioBufs_[i];
+						auto ptr = b->data;
+						assert(ptr);
+						ptr += ch->writeableOffset_;
+						for (uint64_t j = 0; j < ch->writeableLen_; ++j)
+							ptr[j] = count++;
+					}
 					bool ret =
 							tiffFormat->encodePixels(
 									exec.this_worker_id(),chunkArray->ioBufs_,chunkArray->numBuffers_);

@@ -10,14 +10,14 @@
 
 /*
  * Each strip is divided into a collection of IOChunks, and
- * each IOChunk contains an IOBuffer, which is designed for disk IO.
- * Their offset is always aligned, and their length is always equal to WRTSIZE,
- * except possibly the final IOBuffer of the final strip. Also, they are corrected
+ * each IOChunk contains an IOBuf, which is designed for disk IO.
+ * An IOBuf's offset is always aligned, and their length is always equal to WRTSIZE,
+ * except possibly the final IOBuf of the final strip. Also, they are corrected
  * for the header bytes which are located right before the beginning of the
- * first strip - the header bytes are included in the first chunk of the first
+ * first strip - the header bytes are included in the first IOBuf of the first
  * strip.
  *
- * IOBuffers can be shared between neighbouring strips if they
+ * IOChunks can be shared between neighbouring strips if they
  * share a common seam, which happens when the boundary between two strips
  * is not aligned.
  */
@@ -150,10 +150,10 @@ struct IOChunk : public RefCounted<IOChunk> {
 		return b;
 	}
 	void alloc(IBufferPool* pool){
+		assert(!buf_ || buf_->data);
+		assert(pool);
 		if (buf_ && buf_->data)
 			return;
-		assert(pool);
-		assert(!buf_ || !buf_->data);
 		buf_ = pool->get(len_);
 		buf_->offset = offset_;
 	}
@@ -168,29 +168,6 @@ private:
 	}
 };
 
-/**
- * Container for an array of buffers and an array of chunks
- *
- */
-struct IOChunkArray{
-	IOChunkArray(IOChunk** chunks, IOBuf **buffers,uint32_t numBuffers, IBufferPool *pool)
-		: ioBufs_(buffers),
-		  ioChunks_(chunks),
-		  numBuffers_(numBuffers),
-		  pool_(pool)
-	{
-		for (uint32_t i = 0; i < numBuffers_; ++i)
-			assert(ioBufs_[i]->data);
-	}
-	~IOChunkArray(void){
-		delete[] ioBufs_;
-		delete[] ioChunks_;
-	}
-	IOBuf ** ioBufs_;
-	IOChunk ** ioChunks_;
-	uint32_t numBuffers_;
-	IBufferPool *pool_;
-};
 
 /**
  * A strip chunk wraps a serialize chunk (which may be shared with the
@@ -235,6 +212,31 @@ private:
 	~StripChunk(){
 		RefManager<IOChunk>::unref(ioChunk_);
 	}
+};
+
+
+/**
+ * Container for an array of buffers and an array of chunks
+ *
+ */
+struct StripChunkArray{
+	StripChunkArray(StripChunk** chunks, IOBuf **buffers,uint32_t numBuffers, IBufferPool *pool)
+		: ioBufs_(buffers),
+		  stripChunks_(chunks),
+		  numBuffers_(numBuffers),
+		  pool_(pool)
+	{
+		for (uint32_t i = 0; i < numBuffers_; ++i)
+			assert(ioBufs_[i]->data);
+	}
+	~StripChunkArray(void){
+		delete[] ioBufs_;
+		delete[] stripChunks_;
+	}
+	IOBuf ** ioBufs_;
+	StripChunk ** stripChunks_;
+	uint32_t numBuffers_;
+	IBufferPool *pool_;
 };
 
 /**
@@ -327,12 +329,12 @@ struct Strip  {
 		assert(stripWriteEnd - stripWriteBegin == len_);
 		assert(len_ == writeableTotal);
 	}
-	IOChunkArray* getChunkArray(IBufferPool *pool, uint8_t *header, uint64_t headerLen){
+	StripChunkArray* getStripChunkArray(IBufferPool *pool, uint8_t *header, uint64_t headerLen){
 		auto first = stripChunks_[0];
 		bool acquiredFirstChunk = first->acquire();
 		uint32_t numBuffers = numChunks_ - (acquiredFirstChunk ? 0 : 1);
 		auto buffers = new IOBuf*[numBuffers];
-		auto chunks = new IOChunk*[numBuffers];
+		auto chunks = new StripChunk*[numBuffers];
 		uint32_t count = 0;
 		for (uint32_t i = 0; i < numChunks_; ++i){
 			if (!acquiredFirstChunk){
@@ -344,7 +346,7 @@ struct Strip  {
 			stripChunk->alloc(pool);
 			if (header)
 				stripChunk->setHeader(header, headerLen);
-			chunks[count] 	= ioChunk;
+			chunks[count] 	= stripChunk;
 			buffers[count] 	= ioChunk->acquireBuf();
 			count++;
 		}
@@ -354,7 +356,7 @@ struct Strip  {
 		}
 		assert(count == numBuffers);
 
-		return new IOChunkArray(chunks,buffers,numBuffers,pool);
+		return new StripChunkArray(chunks,buffers,numBuffers,pool);
 	}
 	StripChunk* finalChunk(void){
 		return stripChunks_[numChunks_-1];
