@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <cassert>
+#include <algorithm>
 
 struct BufDim {
 	BufDim() : BufDim(0,0)
@@ -23,6 +24,14 @@ struct BufDim {
 	bool empty(void){
 		assert(valid());
 		return x1_ == x0_;
+	}
+	BufDim intersection(BufDim &rhs){
+		if (!rhs.valid() || rhs.x1_ < x0_ ||rhs.x0_ > x1_)
+			return BufDim();
+		return BufDim(std::max(x0_,rhs.x0_), std::min(x1_, rhs.x1_));
+	}
+	bool operator==(BufDim &rhs){
+		return x0_ == rhs.x0_ && x1_ == rhs.x1_;
 	}
 	uint64_t x0_;
 	uint64_t x1_;
