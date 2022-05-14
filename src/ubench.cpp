@@ -53,10 +53,20 @@ static void run(uint32_t width, uint32_t height,bool direct,
 						ptr += ch->writeableOffset_;
 						for (uint64_t j = 0; j < ch->writeableLen_; ++j)
 							ptr[j] = count++;
+#ifdef DEBUG_VALGRIND
+						if (!valgrind_memcheck_all(b->data_, b->len_,""))
+							printf("Uninitialized memory in strip %d,"
+									" buffer %d / %d, "
+									"writeable len %d\n",
+									currentStrip,
+									i+1,
+									chunkArray->numBuffers_,
+									ch->writeableLen_);
+#endif
 					}
 					bool ret =
-							tiffFormat->encodePixels(
-									exec.this_worker_id(),chunkArray->ioBufs_,chunkArray->numBuffers_);
+							tiffFormat->encodePixels(exec.this_worker_id(),
+									chunkArray->ioBufs_,chunkArray->numBuffers_);
 					assert(ret);
 
 					delete chunkArray;

@@ -7,7 +7,7 @@
 
 const size_t valgrind_mem_ok = (size_t)-1;
 
-#define DEBUG_VALGRIND
+//#define DEBUG_VALGRIND
 template<typename T>
 size_t valgrind_memcheck(const T* buf, size_t len)
 {
@@ -24,8 +24,7 @@ bool valgrind_memcheck_all(const T* buf, size_t len, std::string msg)
 		if(val != valgrind_mem_ok)
 		{
 			std::ostringstream ss;
-			ss << msg << " "
-			   << "offset = " << i + val;
+			ss << msg << " " << "offset = " << i + val << std::endl;
 			printf("%s",ss.str().c_str());
 			rc = false;
 		}
