@@ -64,11 +64,18 @@ static void run(uint32_t width, uint32_t height,bool direct,
 									ch->writeableLen_);
 #endif
 					}
+					auto buffers = new IOBuf*[chunkArray->numBuffers_];
+					count = 0;
+					for (uint32_t i = 0; i < chunkArray->numBuffers_; ++i){
+						auto ch = chunkArray->stripChunks_[i];
+						if (ch->acquire())
+							buffers[count++] = chunkArray->ioBufs_[i];
+					}
 					bool ret =
 							tiffFormat->encodePixels(exec.this_worker_id(),
-									chunkArray->ioBufs_,chunkArray->numBuffers_);
+									     buffers,count);
 					assert(ret);
-
+					delete[] buffers;
 					delete chunkArray;
 				} else {
 					auto b = tiffFormat->getPoolBuffer(exec.this_worker_id(), currentStrip);

@@ -362,42 +362,23 @@ struct Strip  {
 		assert(logicalLen_ == writeableTotal);
 	}
 	StripChunkArray* getStripChunkArray(IBufferPool *pool, uint8_t *header, uint64_t headerLen){
-		auto first = stripChunks_[0];
-		auto last =  numChunks_ > 1 ? stripChunks_[numChunks_ - 1] : nullptr;
-		bool acquiredFirstChunk = first->acquire();
-		bool acquiredLastChunk = last && last->acquire();
-		bool skipFirst = !acquiredFirstChunk;
-		bool skipLast = last && !acquiredLastChunk;
-		uint32_t numBuffers = numChunks_ -
-								(skipFirst ? 1 : 0) -
-								  (skipLast ? 1 : 0);
-		auto buffers = new IOBuf*[numBuffers];
-		auto chunks  = new StripChunk*[numBuffers];
-		uint32_t count = 0;
+		auto buffers = new IOBuf*[numChunks_];
+		auto chunks  = new StripChunk*[numChunks_];
 		for (uint32_t i = 0; i < numChunks_; ++i){
-			if (skipFirst){
-				skipFirst = false;
-				continue;
-			}
-			if (skipLast && i == numChunks_-1){
-				break;
-			}
 			auto stripChunk = stripChunks_[i];
 			auto ioChunk 	= stripChunk->ioChunk_;
 			stripChunk->alloc(pool);
 			if (header && i == 0)
 				stripChunk->setHeader(header, headerLen);
-			chunks[count] 	= stripChunk;
-			buffers[count] 	= ioChunk->transferBuf();
-			count++;
+			chunks[i] 	= stripChunk;
+			buffers[i] 	= ioChunk->transferBuf();
 		}
-		for (uint32_t i = 0; i < numBuffers; ++i){
+		for (uint32_t i = 0; i < numChunks_; ++i){
 			assert(buffers[i]->data_);
 			assert(buffers[i]->len_);
 		}
-		assert(count == numBuffers);
 
-		return new StripChunkArray(chunks,buffers,numBuffers,pool);
+		return new StripChunkArray(chunks,buffers,numChunks_,pool);
 	}
 	StripChunk* finalChunk(void){
 		return stripChunks_[numChunks_-1];

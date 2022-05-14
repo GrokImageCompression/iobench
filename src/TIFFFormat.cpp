@@ -96,12 +96,11 @@ IOBuf* TIFFFormat::getPoolBuffer(uint32_t threadId,uint32_t strip){
 	return ioBuf;
 }
 StripChunkArray* TIFFFormat::getStripChunkArray(uint32_t threadId,uint32_t strip){
-	auto serializer = workerSerializers_[threadId];
-	auto pool = serializer->getPool();
+	auto pool = workerSerializers_[threadId]->getPool();
 	return
-		imageStripper_->getStrip(strip)->getStripChunkArray(
-				pool,strip == 0 ? (uint8_t*)&header_ : nullptr,
-						strip == 0 ? sizeof(header_) : 0);
+		imageStripper_->getStrip(strip)->getStripChunkArray(pool,
+								strip == 0 ? (uint8_t*)&header_ : nullptr,
+								strip == 0 ? sizeof(header_) : 0);
 }
 bool TIFFFormat::encodeInit(std::string filename,
 							bool direct,
