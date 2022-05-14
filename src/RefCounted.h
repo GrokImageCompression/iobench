@@ -17,6 +17,7 @@ protected:
 	virtual ~RefCounted() = default;
 private:
 	uint32_t unref(void) {
+		assert(refCount_ > 0);
 		return --refCount_;
 	}
 	std::atomic<uint32_t> refCount_;

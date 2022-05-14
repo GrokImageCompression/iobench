@@ -101,10 +101,7 @@ void FileUringIO::enqueue(io_uring* ring, IOScheduleData* data, bool readop, int
 			break;
 		for (uint32_t i = 0; i < data->numBuffers_; ++i){
 			auto b = data->buffers_[i];
-			if(reclaim_callback_)
-				reclaim_callback_(b, reclaim_user_data_);
-			else
-				b->dealloc();
+			reclaim_callback_(b, reclaim_user_data_);
 		}
 		delete data;
 	}
@@ -183,11 +180,10 @@ bool FileUringIO::close(void)
 
 uint64_t FileUringIO::write(uint64_t offset, IOBuf **buffers, uint32_t numBuffers)
 {
-	IOScheduleData* data = new IOScheduleData(offset,buffers,numBuffers);
+	auto data = new IOScheduleData(offset,buffers,numBuffers);
 	uint64_t totalBytes = 0;
-	for (uint32_t i = 0; i < numBuffers; ++i){
+	for (uint32_t i = 0; i < numBuffers; ++i)
 		totalBytes += buffers[i]->dataLen;
-	}
 	enqueue(&ring, data, false, fd_);
 
 	return totalBytes;

@@ -124,31 +124,35 @@ struct IOChunk : public RefCounted<IOChunk> {
 		offset_(offset),
 		len_(len),
 		buf_(nullptr),
-		writeCount_(0),
-		writeTarget_(1)
+		acquireCount_(0),
+		acquireTarget_(1)
 	{
 		if (pool)
 			alloc(pool);
 	}
+	IOChunk* share(void){
+		acquireTarget_++;
+
+		return ref();
+	}
 	bool acquire(void){
-		 return (++writeCount_ == writeTarget_);
+		 return (++acquireCount_ == acquireTarget_);
 	}
 	void alloc(IBufferPool* pool){
 		if (buf_ && buf_->data)
 			return;
 		assert(pool);
 		assert(!buf_ || !buf_->data);
-		buf_ = pool->get(len_)->ref();
+		buf_ = pool->get(len_);
 		buf_->offset = offset_;
 	}
 	uint64_t offset_;
 	uint64_t len_;
 	IOBuf *buf_;
-	std::atomic<uint32_t> writeCount_;
-	uint32_t writeTarget_;
+	std::atomic<uint32_t> acquireCount_;
+	uint32_t acquireTarget_;
 private:
 	~IOChunk() {
-		RefManager<IOBuf>::unref(buf_);
 	}
 };
 
@@ -186,20 +190,16 @@ struct IOChunkArray{
 struct StripChunk : public RefCounted<StripChunk> {
 	StripChunk(IOChunk *ioChunk,
 				uint64_t writeableOffset,
-				uint64_t writeableLen,
-				bool shared) :
+				uint64_t writeableLen) :
 		ioChunk_(ioChunk),
 		writeableOffset_(writeableOffset),
-		writeableLen_(writeableLen),
-		sharedChunk_(shared)
+		writeableLen_(writeableLen)
 	{
 		assert(writeableOffset < len());
 		assert(writeableLen <= len());
 	}
 	void alloc(IBufferPool* pool){
-		// shared chunks are pre-allocated
-		if (!sharedChunk_)
-			ioChunk_->alloc(pool);
+		ioChunk_->alloc(pool);
 	}
 	uint64_t offset(void){
 		return ioChunk_->offset_;
@@ -208,11 +208,7 @@ struct StripChunk : public RefCounted<StripChunk> {
 		return ioChunk_->len_;
 	}
 	bool acquire(void){
-		bool acquired = ioChunk_->acquire();
-		if (acquired)
-			sharedChunk_ = false;
-
-		return acquired;
+		return ioChunk_->acquire();
 	}
 	uint8_t* data(void){
 		return ioChunk_->buf_->data;
@@ -226,7 +222,6 @@ struct StripChunk : public RefCounted<StripChunk> {
 	uint64_t writeableOffset_;
 	// writeable length
 	uint64_t writeableLen_;
-	bool sharedChunk_;
 	IOChunk *ioChunk_;
 private:
 	~StripChunk(){
@@ -268,9 +263,10 @@ struct Strip  {
 									chunkInfo_.writeSize_;
 			uint64_t writeableOffset = 0;
 			uint64_t writeableLen = len;
-			bool shared = false;
+			bool sharedLastChunk = false;
 			bool firstSeam       = (i == 0) && chunkInfo.hasFirst();
-			bool lastSeam        = (i == numChunks_-1) && !lastChunkOfAll && chunkInfo.hasLast();
+			bool lastSeam        =
+					(i == numChunks_-1) && !lastChunkOfAll && chunkInfo.hasLast();
 			if (firstSeam){
 				assert(leftNeighbour_);
 				off = leftNeighbour_->finalChunk()->offset();
@@ -279,7 +275,6 @@ struct Strip  {
 				writeableLen    = chunkInfo_.firstEnd_ - chunkInfo_.firstBegin_;
 				assert(writeableLen && writeableLen < chunkInfo_.writeSize_);
 				assert(writeableOffset && writeableOffset < chunkInfo_.writeSize_);
-				shared = true;
 			} else if (lastSeam){
 				off   = chunkInfo_.lastBegin_;
 				writeableLen = chunkInfo_.lastEnd_ - chunkInfo_.lastBegin_;
@@ -287,7 +282,7 @@ struct Strip  {
 				if (lastChunkOfAll)
 					len = writeableLen;
 				else
-					shared = true;
+					sharedLastChunk = true;
 			} else if (chunkInfo_.isFirstStrip_ && i == 0){
 				// first chunk of first strip
 				writeableOffset += chunkInfo_.headerSize_;
@@ -299,51 +294,56 @@ struct Strip  {
 			assert(lastChunkOfAll || IOBuf::isAlignedToWriteSize(len));
 			IOChunk* ioChunk = nullptr;
 			if (firstSeam){
-				ioChunk = leftNeighbour_->finalChunk()->ioChunk_->ref();
+				ioChunk = leftNeighbour_->finalChunk()->ioChunk_->share();
 				assert(ioChunk->buf_->data);
 			}
 			else {
-				ioChunk = new IOChunk(off,len,(shared ? pool : nullptr));
+				ioChunk =
+						new IOChunk(off,len,(sharedLastChunk ? pool : nullptr));
 			}
 			stripChunks_[i] = new StripChunk(ioChunk,
-										writeableOffset,
-										writeableLen,
-										shared);
-			assert(!shared || stripChunks_[i]->ioChunk_->buf_->data);
+												writeableOffset,
+												writeableLen);
+			assert(!sharedLastChunk || stripChunks_[i]->ioChunk_->buf_->data);
 		}
 		uint64_t stripWriteEnd = stripChunks_[numChunks_-1]->offset() +
-				+ stripChunks_[numChunks_-1]->writeableLen_;
+									+ stripChunks_[numChunks_-1]->writeableLen_;
+
 		assert(stripWriteEnd == chunkInfo_.lastEnd_);
 		assert(!chunkInfo.isFirstStrip_ || stripChunks_[0]->offset() == 0);
 
-		uint64_t stripWriteBegin = stripChunks_[0]->offset() + stripChunks_[0]->writeableOffset_;
-		assert(stripWriteBegin == chunkInfo_.firstBegin_ + (chunkInfo_.isFirstStrip_ ? chunkInfo_.headerSize_ : 0));
+		uint64_t stripWriteBegin =
+				stripChunks_[0]->offset() + stripChunks_[0]->writeableOffset_;
 
+		assert(stripWriteBegin ==
+				chunkInfo_.firstBegin_ +
+					(chunkInfo_.isFirstStrip_ ? chunkInfo_.headerSize_ : 0));
 		assert(stripWriteEnd - stripWriteBegin == len_);
 		assert(len_ == writeableTotal);
 	}
 	IOChunkArray* getChunkArray(IBufferPool *pool, uint8_t *header, uint64_t headerLen){
 		auto first = stripChunks_[0];
-		bool acquiredFirst = true;
-		if (first->sharedChunk_)
-			acquiredFirst = first->acquire();
-		uint32_t numBuffers = numChunks_ - (acquiredFirst ? 0 : 1);
+		bool acquiredFirstChunk = first->acquire();
+		uint32_t numBuffers = numChunks_ - (acquiredFirstChunk ? 0 : 1);
 		auto buffers = new IOBuf*[numBuffers];
 		auto chunks = new IOChunk*[numBuffers];
 		uint32_t count = 0;
 		for (uint32_t i = 0; i < numChunks_; ++i){
-			if (!acquiredFirst)
+			if (!acquiredFirstChunk){
+				acquiredFirstChunk = true;
 				continue;
+			}
 			auto stripChunk = stripChunks_[i];
-			auto ioChunk = stripChunk->ioChunk_;
-			assert(!stripChunk->sharedChunk_ || ioChunk->buf_->data);
+			auto ioChunk 	= stripChunk->ioChunk_;
 			stripChunk->alloc(pool);
-			auto ioBuf = ioChunk->buf_;
+			assert(ioChunk->buf_->data);
+			auto ioBuf 		= ioChunk->buf_;
 			assert(ioBuf->data);
 			if (header)
 				stripChunk->setHeader(header, headerLen);
-			chunks[count] = ioChunk;
-			buffers[count] = ioBuf;
+			chunks[count] 	= ioChunk;
+			buffers[count] 	= ioBuf;
+			ioChunk->buf_ 	= nullptr;
 			count++;
 		}
 		for (uint32_t i = 0; i < numBuffers; ++i){

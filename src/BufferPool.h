@@ -36,8 +36,8 @@ class BufferPool : public IBufferPool
 	}
 	void put(IOBuf *b) override{
 		assert(b->data);
-		if (pool.find(b->data) == pool.end())
-			pool[b->data] = b;
+		assert(pool.find(b->data) == pool.end());
+		pool[b->data] = b;
 	}
   private:
 	std::map<uint8_t*, IOBuf*> pool;
