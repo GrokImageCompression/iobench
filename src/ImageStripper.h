@@ -364,7 +364,7 @@ struct Strip  {
 			auto stripChunk = stripChunks_[i];
 			auto ioChunk 	= stripChunk->ioChunk_;
 			stripChunk->alloc(pool);
-			if (header)
+			if (header && i == 0)
 				stripChunk->setHeader(header, headerLen);
 			chunks[count] 	= stripChunk;
 			buffers[count] 	= ioChunk->transferBuf();
