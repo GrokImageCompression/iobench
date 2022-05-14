@@ -168,9 +168,9 @@ private:
 
 
 /**
- * A strip chunk wraps a serialize chunk (which may be shared with the
+ * A strip chunk wraps an IOChunk (which may be shared with the
  * strip's neighbour), and it also stores a write offset and write length
- * for its assigned portion of a shared serialize chunk.
+ * for its assigned portion of a shared IOChunk.
  * If there is no sharing, then  write offset is zero,
  * and write length equals WRTSIZE.
  */
@@ -202,13 +202,15 @@ public:
 	bool acquire(void){
 		return ioChunk_->acquire();
 	}
+	bool isShared(void){
+		return ioChunk_->isShared();
+	}
 	void setHeader(uint8_t *headerData, uint64_t headerSize){
 		ioChunk_->setHeader(headerData, headerSize);
 		writeableOffset_ = headerSize;
 	}
-	// write offset relative to beginning of data
+	// relative to beginning of IOBuf data buffer
 	uint64_t writeableOffset_;
-	// writeable length
 	uint64_t writeableLen_;
 	IOChunk *ioChunk_;
 };
@@ -244,8 +246,8 @@ struct StripChunkArray{
  */
 struct Strip  {
 	Strip(uint64_t offset,uint64_t len,Strip* neighbour) :
-		offset_(offset),
-		len_(len),
+		logicalOffset_(offset),
+		logicalLen_(len),
 		stripChunks_(nullptr),
 		numChunks_(0),
 		leftNeighbour_(neighbour)
@@ -312,6 +314,8 @@ struct Strip  {
 												writeableOffset,
 												writeableLen);
 		}
+
+		// validation
 		uint64_t stripWriteEnd = stripChunks_[numChunks_-1]->offset() +
 									+ stripChunks_[numChunks_-1]->writeableLen_;
 
@@ -324,8 +328,8 @@ struct Strip  {
 		assert(stripWriteBegin ==
 				chunkInfo_.first_.x0_ +
 					(chunkInfo_.isFirstStrip_ ? chunkInfo_.headerSize_ : 0));
-		assert(stripWriteEnd - stripWriteBegin == len_);
-		assert(len_ == writeableTotal);
+		assert(stripWriteEnd - stripWriteBegin == logicalLen_);
+		assert(logicalLen_ == writeableTotal);
 	}
 	StripChunkArray* getStripChunkArray(IBufferPool *pool, uint8_t *header, uint64_t headerLen){
 		auto first = stripChunks_[0];
@@ -359,12 +363,11 @@ struct Strip  {
 	StripChunk* finalChunk(void){
 		return stripChunks_[numChunks_-1];
 	}
-
-	// independant of header size
-	uint64_t offset_;
-	uint64_t len_;
-	////////////////
-
+	StripChunk* firstChunk(void){
+		return stripChunks_[0];
+	}
+	uint64_t logicalOffset_;
+	uint64_t logicalLen_;
 	StripChunk** stripChunks_;
 	uint32_t numChunks_;
 	Strip *leftNeighbour_;
@@ -390,11 +393,9 @@ struct ImageStripper{
 		numStrips_(nominalStripHeight ?
 				(height  + nominalStripHeight - 1)/ nominalStripHeight : 0),
 		stripPackedByteWidth_(numcomps * width),
-		stripLen_(nominalStripHeight * stripPackedByteWidth_),
 		finalStripHeight_((nominalStripHeight && (height % nominalStripHeight != 0)) ?
 							height - ((height / nominalStripHeight) * nominalStripHeight) :
 								nominalStripHeight),
-		finalStripLen_ (finalStripHeight_ * stripPackedByteWidth_),
 		headerSize_(headerSize),
 		writeSize_(writeSize),
 		finalStrip_(numStrips_-1),
@@ -408,6 +409,22 @@ struct ImageStripper{
 								neighbour);
 			if (pool)
 				strips_[i]->generateChunks(getChunkInfo(i), pool);
+		}
+
+		// validation
+		if (pool && numStrips_ > 1){
+			for (uint32_t i = 0; i < numStrips_-1; ++i){
+				auto curr = strips_[i];
+				auto next = strips_[i+1];
+				auto currFinal = curr->finalChunk();
+				auto nextFirst =  next->firstChunk();
+				if (currFinal->isShared()){
+					assert(currFinal->writeableLen_ +
+							nextFirst->writeableLen_ == WRTSIZE);
+					assert(currFinal->writeableLen_ ==
+								nextFirst->writeableOffset_);
+				}
+			}
 		}
 	}
 	~ImageStripper(void){
@@ -426,10 +443,10 @@ struct ImageStripper{
 	ChunkInfo getChunkInfo(uint32_t strip){
 		return ChunkInfo(strip == 0,
 						strip == finalStrip_,
-						strips_[strip]->offset_,
-						strips_[strip]->len_,
-						strip == 0 ? 0 : strips_[strip-1]->offset_,
-						strip == 0 ? 0 : strips_[strip-1]->len_,
+						strips_[strip]->logicalOffset_,
+						strips_[strip]->logicalLen_,
+						strip == 0 ? 0 : strips_[strip-1]->logicalOffset_,
+						strip == 0 ? 0 : strips_[strip-1]->logicalLen_,
 						headerSize_,
 						writeSize_);
 	}
@@ -442,9 +459,7 @@ private:
 		return (strip < numStrips_-1) ? nominalStripHeight_ : finalStripHeight_;
 	}
 	uint64_t stripPackedByteWidth_;
-	uint64_t stripLen_;
 	uint32_t finalStripHeight_;
-	uint64_t finalStripLen_;
 	uint32_t numStrips_;
 	uint64_t headerSize_;
 	uint64_t writeSize_;

@@ -33,7 +33,7 @@ static void run(uint32_t width, uint32_t height,bool direct,
 								  currentStrip,doAsynch,doStore,imageStripper,&exec] {
 			auto strip = imageStripper->getStrip(currentStrip);
 			if (!doStore) {
-				uint64_t len =  strip->len_;
+				uint64_t len =  strip->logicalLen_;
 				uint8_t b[len] __attribute__((__aligned__(ALIGNMENT)));
 				for (uint64_t k = 0; k < 2*len; ++k)
 					b[k/2] = k;
