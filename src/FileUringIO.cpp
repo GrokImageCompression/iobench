@@ -162,7 +162,7 @@ bool FileUringIO::close(void)
 			if(data)
 			{
 				for (uint32_t j = 0; j < data->numBuffers_; ++j)
-					data->buffers_[j]->dealloc();
+					RefManager<IOBuf>::unref(data->buffers_[j]);
 				delete data;
 			}
 		}

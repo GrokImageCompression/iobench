@@ -49,16 +49,22 @@ struct ChunkInfo{
 		first_.x1_     =
 				(isFirstStrip_ ? 0 :
 						lastBegin(logicalOffsetPrev,logicalLenPrev)) + writeSize_;
-		assert(first_.x1_% writeSize_ == 0);
-		assert((last_.x0_ - first_.x1_) % writeSize_ == 0);
+		// clamp first_ end to physical strip length
+		first_.x1_ = std::min(first_.x1_,last_.x1_);
+		bool firstEqualsLast = first_.x1_ == last_.x1_;
+		assert(!firstEqualsLast || first_.x0_ == last_.x0_);
+		assert(firstEqualsLast || (last_.x0_ - first_.x1_) % writeSize_ == 0);
 		assert(first_.valid());
 		assert(last_.valid());
-		assert(first_.x1_ <= last_.x0_);
+		assert(firstEqualsLast || (first_.x1_ <= last_.x0_));
 	}
 	uint64_t len(){
 		return last_.x1_ - first_.x0_;
 	}
 	uint32_t numChunks(void){
+		bool firstEqualsLast = first_.x1_ == last_.x1_;
+		if (firstEqualsLast)
+			return 1;
 		uint64_t nonSeamBegin = hasFirst() ? first_.x1_ : first_.x0_;
 		uint64_t nonSeamEnd   = hasLast() ? last_.x0_ : last_.x1_;
 		assert(nonSeamEnd > nonSeamBegin );
@@ -265,7 +271,17 @@ struct Strip  {
 		assert(numChunks_);
 		stripChunks_ = new StripChunk*[numChunks_];
 		uint64_t writeableTotal = 0;
-		for (uint32_t i = 0; i < numChunks_; ++i ){
+		bool singleStripSingleChunk = numChunks_ == 1 && chunkInfo.isFirstStrip_;
+		if (numChunks_ == 1){
+			auto ioChunk = 	new IOChunk(0,chunkInfo.first_.x1_ ,nullptr);
+			stripChunks_[0] = new StripChunk(ioChunk,
+				chunkInfo.isFirstStrip_ ?
+					chunkInfo_.headerSize_ : chunkInfo.first_.x0_,
+				chunkInfo.isFirstStrip_ ?
+					chunkInfo.first_.x1_ - chunkInfo_.headerSize_ : chunkInfo.first_.len());
+			writeableTotal = chunkInfo.first_.x1_ - chunkInfo_.headerSize_;
+		}
+		for (uint32_t i = 0; i < numChunks_ && numChunks_>1; ++i ){
 			uint64_t off = (chunkInfo.first_.x1_ - chunkInfo_.writeSize_) +
 								i * chunkInfo_.writeSize_;
 			bool lastChunkOfAll  = chunkInfo.isFinalStrip_ && (i == numChunks_-1);
@@ -316,7 +332,9 @@ struct Strip  {
 		}
 
 		// validation
-		uint64_t stripWriteEnd = stripChunks_[numChunks_-1]->offset() +
+		uint64_t stripWriteEnd =
+				stripChunks_[numChunks_-1]->offset() +
+					(singleStripSingleChunk ? chunkInfo_.headerSize_ : 0)
 									+ stripChunks_[numChunks_-1]->writeableLen_;
 
 		assert(stripWriteEnd == chunkInfo_.last_.x1_);
