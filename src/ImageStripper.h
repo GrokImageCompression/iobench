@@ -132,11 +132,22 @@ struct IOChunk : public RefCounted<IOChunk> {
 	}
 	IOChunk* share(void){
 		acquireTarget_++;
+		assert(buf_->data);
 
 		return ref();
 	}
+	void setHeader(uint8_t *headerData, uint64_t headerSize){
+		memcpy(buf_->data , headerData, headerSize);
+		buf_->skip = headerSize;
+	}
 	bool acquire(void){
 		 return (++acquireCount_ == acquireTarget_);
+	}
+	IOBuf* acquireBuf(void){
+		auto b = buf_;
+		buf_ = nullptr;
+
+		return b;
 	}
 	void alloc(IBufferPool* pool){
 		if (buf_ && buf_->data)
@@ -148,11 +159,12 @@ struct IOChunk : public RefCounted<IOChunk> {
 	}
 	uint64_t offset_;
 	uint64_t len_;
+private:
 	IOBuf *buf_;
 	std::atomic<uint32_t> acquireCount_;
 	uint32_t acquireTarget_;
-private:
 	~IOChunk() {
+		RefManager<IOBuf>::unref(buf_);
 	}
 };
 
@@ -210,12 +222,8 @@ struct StripChunk : public RefCounted<StripChunk> {
 	bool acquire(void){
 		return ioChunk_->acquire();
 	}
-	uint8_t* data(void){
-		return ioChunk_->buf_->data;
-	}
 	void setHeader(uint8_t *headerData, uint64_t headerSize){
-		memcpy(data() , headerData, headerSize);
-		ioChunk_->buf_->skip = headerSize;
+		ioChunk_->setHeader(headerData, headerSize);
 		writeableOffset_ = headerSize;
 	}
 	// write offset relative to beginning of data
@@ -295,7 +303,6 @@ struct Strip  {
 			IOChunk* ioChunk = nullptr;
 			if (firstSeam){
 				ioChunk = leftNeighbour_->finalChunk()->ioChunk_->share();
-				assert(ioChunk->buf_->data);
 			}
 			else {
 				ioChunk =
@@ -304,7 +311,6 @@ struct Strip  {
 			stripChunks_[i] = new StripChunk(ioChunk,
 												writeableOffset,
 												writeableLen);
-			assert(!sharedLastChunk || stripChunks_[i]->ioChunk_->buf_->data);
 		}
 		uint64_t stripWriteEnd = stripChunks_[numChunks_-1]->offset() +
 									+ stripChunks_[numChunks_-1]->writeableLen_;
@@ -336,14 +342,10 @@ struct Strip  {
 			auto stripChunk = stripChunks_[i];
 			auto ioChunk 	= stripChunk->ioChunk_;
 			stripChunk->alloc(pool);
-			assert(ioChunk->buf_->data);
-			auto ioBuf 		= ioChunk->buf_;
-			assert(ioBuf->data);
 			if (header)
 				stripChunk->setHeader(header, headerLen);
 			chunks[count] 	= ioChunk;
-			buffers[count] 	= ioBuf;
-			ioChunk->buf_ 	= nullptr;
+			buffers[count] 	= ioChunk->acquireBuf();
 			count++;
 		}
 		for (uint32_t i = 0; i < numBuffers; ++i){
