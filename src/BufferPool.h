@@ -20,24 +20,24 @@ class BufferPool : public IBufferPool
 	IOBuf* get(uint64_t len) override{
 		for(auto iter = pool.begin(); iter != pool.end(); ++iter)
 		{
-			if(iter->second->allocLen >= len)
+			if(iter->second->allocLen_ >= len)
 			{
 				auto b = iter->second;
-				assert(b->data);
+				assert(b->data_);
 				pool.erase(iter);
-				assert(b->data);
+				assert(b->data_);
 				return b;
 			}
 		}
 		auto b = new IOBuf();
 		b->alloc(len);
-		assert(b->data);
+		assert(b->data_);
 		return b;
 	}
 	void put(IOBuf *b) override{
-		assert(b->data);
-		assert(pool.find(b->data) == pool.end());
-		pool[b->data] = b;
+		assert(b->data_);
+		assert(pool.find(b->data_) == pool.end());
+		pool[b->data_] = b;
 	}
   private:
 	std::map<uint8_t*, IOBuf*> pool;

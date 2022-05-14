@@ -183,7 +183,7 @@ uint64_t FileUringIO::write(uint64_t offset, IOBuf **buffers, uint32_t numBuffer
 	auto data = new IOScheduleData(offset,buffers,numBuffers);
 	uint64_t totalBytes = 0;
 	for (uint32_t i = 0; i < numBuffers; ++i)
-		totalBytes += buffers[i]->dataLen;
+		totalBytes += buffers[i]->len_;
 	enqueue(&ring, data, false, fd_);
 
 	return totalBytes;

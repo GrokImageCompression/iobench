@@ -7,6 +7,7 @@
 
 #include "IBufferPool.h"
 #include "RefCounted.h"
+#include "util.h"
 
 /*
  * Each strip is divided into a collection of IOChunks, and
@@ -33,10 +34,6 @@ struct ChunkInfo{
 			 uint64_t logicalLenPrev,
 			 uint64_t headerSize,
 			 uint64_t writeSize) 	:
-				 	 	firstBegin_(0),
-						firstEnd_(0),
-						lastBegin_(0),
-						lastEnd_(0),
 						writeSize_(writeSize),
 						isFirstStrip_(isFirstStrip),
 						isFinalStrip_(isFinalStrip),
@@ -45,25 +42,25 @@ struct ChunkInfo{
 	{
 		if (!writeSize_)
 			return;
-		lastBegin_    = lastBegin(logicalOffset,logicalLen);
-		assert(lastBegin_% writeSize_ == 0);
-		lastEnd_      = stripEnd(logicalOffset,logicalLen);
-		firstBegin_   = stripOffset(logicalOffset);
-		firstEnd_     =
+		last_.x0_      = lastBegin(logicalOffset,logicalLen);
+		assert(last_.x0_ % writeSize_ == 0);
+		last_.x1_      = stripEnd(logicalOffset,logicalLen);
+		first_.x0_     = stripOffset(logicalOffset);
+		first_.x1_     =
 				(isFirstStrip_ ? 0 :
 						lastBegin(logicalOffsetPrev,logicalLenPrev)) + writeSize_;
-		assert(firstEnd_% writeSize_ == 0);
-		assert((lastBegin_ - firstEnd_) % writeSize_ == 0);
-		assert(firstEnd_ >= firstBegin_);
-		assert(lastEnd_ >= lastBegin_);
-		assert(firstEnd_ <= lastBegin_);
+		assert(first_.x1_% writeSize_ == 0);
+		assert((last_.x0_ - first_.x1_) % writeSize_ == 0);
+		assert(first_.valid());
+		assert(last_.valid());
+		assert(first_.x1_ <= last_.x0_);
 	}
 	uint64_t len(){
-		return lastEnd_ - firstBegin_;
+		return last_.x1_ - first_.x0_;
 	}
 	uint32_t numChunks(void){
-		uint64_t nonSeamBegin = hasFirst() ? firstEnd_ : firstBegin_;
-		uint64_t nonSeamEnd   = hasLast() ? lastBegin_ : lastEnd_;
+		uint64_t nonSeamBegin = hasFirst() ? first_.x1_ : first_.x0_;
+		uint64_t nonSeamEnd   = hasLast() ? last_.x0_ : last_.x1_;
 		assert(nonSeamEnd > nonSeamBegin );
 		assert(IOBuf::isAlignedToWriteSize(nonSeamBegin));
 		assert(isFinalStrip_ || IOBuf::isAlignedToWriteSize(nonSeamEnd));
@@ -77,10 +74,10 @@ struct ChunkInfo{
 		return rc;
 	}
 	bool hasFirst(void){
-		return !isFirstStrip_ && !IOBuf::isAlignedToWriteSize(firstBegin_);
+		return !isFirstStrip_ && !IOBuf::isAlignedToWriteSize(first_.x0_);
 	}
 	bool hasLast(void){
-		return !isFinalStrip_ && !IOBuf::isAlignedToWriteSize(lastEnd_);
+		return !isFinalStrip_ && !IOBuf::isAlignedToWriteSize(last_.x1_);
 	}
 	uint64_t stripOffset(uint64_t logicalOffset){
 		// header bytes added to first strip shifts all other strips
@@ -99,20 +96,16 @@ struct ChunkInfo{
 		return (stripEnd(logicalOffset,logicalLen)/writeSize_) * writeSize_;
 	}
 	ChunkInfo(const ChunkInfo &rhs){
-		firstBegin_ = rhs.firstBegin_;
-		firstEnd_ = rhs.firstEnd_;
-		lastBegin_ = rhs.lastBegin_;
-		lastEnd_ = rhs.lastEnd_;
+		first_ = rhs.first_;
+		last_  = rhs.last_;
 		writeSize_= rhs.writeSize_;
 		isFirstStrip_ = rhs.isFinalStrip_;
 		isFinalStrip_ = rhs.isFinalStrip_;
 		headerSize_ = rhs.headerSize_;
 		pool_ = rhs.pool_;
 	}
-	uint64_t firstBegin_;
-	uint64_t firstEnd_;
-	uint64_t lastBegin_;
-	uint64_t lastEnd_;
+	BufDim first_;
+	BufDim last_;
 	uint64_t writeSize_;
 	bool isFirstStrip_;
 	bool isFinalStrip_;
@@ -130,32 +123,40 @@ struct IOChunk : public RefCounted<IOChunk> {
 		if (pool)
 			alloc(pool);
 	}
+private:
+	~IOChunk() {
+		RefManager<IOBuf>::unref(buf_);
+	}
+public:
 	IOChunk* share(void){
 		acquireTarget_++;
-		assert(buf_->data);
+		assert(buf_->data_);
 
 		return ref();
 	}
+	bool isShared(void){
+		return acquireTarget_ > 1;
+	}
 	void setHeader(uint8_t *headerData, uint64_t headerSize){
-		memcpy(buf_->data , headerData, headerSize);
-		buf_->skip = headerSize;
+		memcpy(buf_->data_ , headerData, headerSize);
+		buf_->skip_ = headerSize;
 	}
 	bool acquire(void){
 		 return (++acquireCount_ == acquireTarget_);
 	}
-	IOBuf* acquireBuf(void){
+	IOBuf* transferBuf(void){
 		auto b = buf_;
 		buf_ = nullptr;
 
 		return b;
 	}
 	void alloc(IBufferPool* pool){
-		assert(!buf_ || buf_->data);
+		assert(!buf_ || buf_->data_);
 		assert(pool);
-		if (buf_ && buf_->data)
+		if (buf_ && buf_->data_)
 			return;
 		buf_ = pool->get(len_);
-		buf_->offset = offset_;
+		buf_->offset_ = offset_;
 	}
 	uint64_t offset_;
 	uint64_t len_;
@@ -163,9 +164,6 @@ private:
 	IOBuf *buf_;
 	std::atomic<uint32_t> acquireCount_;
 	uint32_t acquireTarget_;
-	~IOChunk() {
-		RefManager<IOBuf>::unref(buf_);
-	}
 };
 
 
@@ -187,6 +185,11 @@ struct StripChunk : public RefCounted<StripChunk> {
 		assert(writeableOffset < len());
 		assert(writeableLen <= len());
 	}
+private:
+	~StripChunk(){
+		RefManager<IOChunk>::unref(ioChunk_);
+	}
+public:
 	void alloc(IBufferPool* pool){
 		ioChunk_->alloc(pool);
 	}
@@ -208,10 +211,6 @@ struct StripChunk : public RefCounted<StripChunk> {
 	// writeable length
 	uint64_t writeableLen_;
 	IOChunk *ioChunk_;
-private:
-	~StripChunk(){
-		RefManager<IOChunk>::unref(ioChunk_);
-	}
 };
 
 
@@ -227,7 +226,7 @@ struct StripChunkArray{
 		  pool_(pool)
 	{
 		for (uint32_t i = 0; i < numBuffers_; ++i)
-			assert(ioBufs_[i]->data);
+			assert(ioBufs_[i]->data_);
 	}
 	~StripChunkArray(void){
 		delete[] ioBufs_;
@@ -265,12 +264,11 @@ struct Strip  {
 		stripChunks_ = new StripChunk*[numChunks_];
 		uint64_t writeableTotal = 0;
 		for (uint32_t i = 0; i < numChunks_; ++i ){
-			uint64_t off = (chunkInfo.firstEnd_ - chunkInfo_.writeSize_) +
+			uint64_t off = (chunkInfo.first_.x1_ - chunkInfo_.writeSize_) +
 								i * chunkInfo_.writeSize_;
 			bool lastChunkOfAll  = chunkInfo.isFinalStrip_ && (i == numChunks_-1);
-			uint64_t len = lastChunkOfAll ?
-							(chunkInfo_.lastEnd_ - chunkInfo_.lastBegin_) :
-									chunkInfo_.writeSize_;
+			uint64_t len =
+					lastChunkOfAll ? (chunkInfo_.last_.len()) : chunkInfo_.writeSize_;
 			uint64_t writeableOffset = 0;
 			uint64_t writeableLen = len;
 			bool sharedLastChunk = false;
@@ -280,14 +278,14 @@ struct Strip  {
 			if (firstSeam){
 				assert(leftNeighbour_);
 				off = leftNeighbour_->finalChunk()->offset();
-				assert(chunkInfo_.firstBegin_  > off);
-				writeableOffset = chunkInfo_.firstBegin_ - off;
-				writeableLen    = chunkInfo_.firstEnd_ - chunkInfo_.firstBegin_;
+				assert(chunkInfo_.first_.x0_  > off);
+				writeableOffset = chunkInfo_.first_.x0_ - off;
+				writeableLen    = chunkInfo_.first_.len();
 				assert(writeableLen && writeableLen < chunkInfo_.writeSize_);
 				assert(writeableOffset && writeableOffset < chunkInfo_.writeSize_);
 			} else if (lastSeam){
-				off   = chunkInfo_.lastBegin_;
-				writeableLen = chunkInfo_.lastEnd_ - chunkInfo_.lastBegin_;
+				off   = chunkInfo_.last_.x0_;
+				writeableLen = chunkInfo_.last_.len();
 				assert(writeableLen && writeableLen < chunkInfo_.writeSize_);
 				if (lastChunkOfAll)
 					len = writeableLen;
@@ -317,14 +315,14 @@ struct Strip  {
 		uint64_t stripWriteEnd = stripChunks_[numChunks_-1]->offset() +
 									+ stripChunks_[numChunks_-1]->writeableLen_;
 
-		assert(stripWriteEnd == chunkInfo_.lastEnd_);
+		assert(stripWriteEnd == chunkInfo_.last_.x1_);
 		assert(!chunkInfo.isFirstStrip_ || stripChunks_[0]->offset() == 0);
 
 		uint64_t stripWriteBegin =
 				stripChunks_[0]->offset() + stripChunks_[0]->writeableOffset_;
 
 		assert(stripWriteBegin ==
-				chunkInfo_.firstBegin_ +
+				chunkInfo_.first_.x0_ +
 					(chunkInfo_.isFirstStrip_ ? chunkInfo_.headerSize_ : 0));
 		assert(stripWriteEnd - stripWriteBegin == len_);
 		assert(len_ == writeableTotal);
@@ -347,12 +345,12 @@ struct Strip  {
 			if (header)
 				stripChunk->setHeader(header, headerLen);
 			chunks[count] 	= stripChunk;
-			buffers[count] 	= ioChunk->acquireBuf();
+			buffers[count] 	= ioChunk->transferBuf();
 			count++;
 		}
 		for (uint32_t i = 0; i < numBuffers; ++i){
-			assert(buffers[i]->data);
-			assert(buffers[i]->dataLen);
+			assert(buffers[i]->data_);
+			assert(buffers[i]->len_);
 		}
 		assert(count == numBuffers);
 

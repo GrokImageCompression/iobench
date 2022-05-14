@@ -83,15 +83,15 @@ IOBuf* TIFFFormat::getPoolBuffer(uint32_t threadId,uint32_t strip){
 	auto chunkInfo = imageStripper_->getChunkInfo(strip);
 	uint64_t len = chunkInfo.len();
 	auto ioBuf = workerSerializers_[threadId]->getPoolBuffer(len);
-	ioBuf->index = strip;
-	ioBuf->offset = chunkInfo.firstBegin_;
+	ioBuf->index_ = strip;
+	ioBuf->offset_ = chunkInfo.first_.x0_;
 	uint64_t headerSize = ((strip == 0) ? sizeof(header_) : 0);
-	ioBuf->skip = 0;
+	ioBuf->skip_ = 0;
 	if (headerSize) {
-		memcpy(ioBuf->data , &header_, headerSize);
-		ioBuf->skip = headerSize;
+		memcpy(ioBuf->data_ , &header_, headerSize);
+		ioBuf->skip_ = headerSize;
 	}
-	assert(ioBuf->data);
+	assert(ioBuf->data_);
 
 	return ioBuf;
 }
@@ -131,8 +131,8 @@ bool TIFFFormat::encodePixels(uint32_t threadId, IOBuf **buffers,
 	Serializer *ser = workerSerializers_[threadId];
 	uint64_t toWrite = 0;
 	for (uint32_t i = 0; i < numBuffers; ++i)
-		toWrite += buffers[i]->dataLen;
-	uint64_t written = ser->write(buffers[0]->offset, buffers,numBuffers);
+		toWrite += buffers[i]->len_;
+	uint64_t written = ser->write(buffers[0]->offset_, buffers,numBuffers);
 	if (written != toWrite){
 		printf("encodePixels: "
 				"attempted to write %d, "

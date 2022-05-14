@@ -17,12 +17,12 @@ struct IOBuf : public io_buf, public RefCounted<IOBuf>
 {
   public:
 	IOBuf() {
-		this->index = 0;
-		this->skip = 0;
-		this->offset = 0;
-		this->data = 0;
-		this->dataLen = 0;
-		this->allocLen = 0;
+		this->index_ = 0;
+		this->skip_ = 0;
+		this->offset_ = 0;
+		this->data_ = 0;
+		this->len_ = 0;
+		this->allocLen_ = 0;
 	}
 	static bool isAlignedToWriteSize(uint64_t off){
 		return (off & (WRTSIZE-1)) == 0;
@@ -31,33 +31,34 @@ struct IOBuf : public io_buf, public RefCounted<IOBuf>
 		return alignedOffset() && alignedLength();
 	}
 	bool alignedOffset(void){
-		return isAlignedToWriteSize(offset);
+		return isAlignedToWriteSize(offset_);
 	}
 	bool alignedLength(void){
-		return isAlignedToWriteSize(dataLen);
+		return isAlignedToWriteSize(len_);
 	}
 	bool alloc(uint64_t len)
 	{
-		if (len < allocLen)
+		if (len < allocLen_)
 			return true;
 
-		if (data)
+		if (data_)
 			dealloc();
-		data = (uint8_t*)aligned_alloc(ALIGNMENT,len);
-		if(data)
+		data_ = (uint8_t*)aligned_alloc(ALIGNMENT,len);
+		if(data_)
 		{
-			dataLen = len;
-			allocLen = len;
+			len_ = len;
+			allocLen_ = len;
 		}
-		assert(data);
-		return data != nullptr;
+		assert(data_);
+
+		return data_ != nullptr;
 	}
 	void dealloc()
 	{
-		free(data);
-		data = nullptr;
-		dataLen = 0;
-		allocLen = 0;
+		free(data_);
+		data_ = nullptr;
+		len_ = 0;
+		allocLen_ = 0;
 	}
   private:
   	~IOBuf() {
@@ -77,9 +78,9 @@ struct IOScheduleData
 			buffers_[i] = buffers[i];
 			auto b = buffers_[i];
 			auto v = iov_ + i;
-			v->iov_base = b->data;
-			v->iov_len  = b->dataLen;
-			totalBytes_   += b->dataLen;
+			v->iov_base = b->data_;
+			v->iov_len  = b->len_;
+			totalBytes_   += b->len_;
 		}
 	}
 	~IOScheduleData(){

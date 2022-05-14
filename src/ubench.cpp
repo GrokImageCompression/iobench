@@ -48,7 +48,7 @@ static void run(uint32_t width, uint32_t height,bool direct,
 					for (uint32_t i = 0; i < chunkArray->numBuffers_; ++i){
 						auto ch = chunkArray->stripChunks_[i];
 						auto b = chunkArray->ioBufs_[i];
-						auto ptr = b->data;
+						auto ptr = b->data_;
 						assert(ptr);
 						ptr += ch->writeableOffset_;
 						for (uint64_t j = 0; j < ch->writeableLen_; ++j)
@@ -62,8 +62,8 @@ static void run(uint32_t width, uint32_t height,bool direct,
 					delete chunkArray;
 				} else {
 					auto b = tiffFormat->getPoolBuffer(exec.this_worker_id(), currentStrip);
-					auto ptr = b->data + b->skip;
-					for (uint64_t k = 0; k < 2*(b->dataLen-b->skip); ++k)
+					auto ptr = b->data_ + b->skip_;
+					for (uint64_t k = 0; k < 2*(b->len_-b->skip_); ++k)
 						ptr[k/2] = k;
 					auto bArray = new IOBuf*[1];
 					bArray[0] = b;

@@ -5,12 +5,12 @@
 
 typedef struct _io_buf
 {
-	uint32_t index;
-	uint64_t skip;
-	uint64_t offset;
-	uint8_t* data;
-	uint64_t dataLen;
-	uint64_t allocLen;
+	uint32_t index_;
+	uint64_t skip_;
+	uint64_t offset_;
+	uint8_t* data_;
+	uint64_t len_;
+	uint64_t allocLen_;
 } io_buf;
 
 typedef bool (*io_callback)(io_buf *buffer, void* io_user_data);
