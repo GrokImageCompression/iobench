@@ -39,12 +39,10 @@ static void run(uint32_t width, uint32_t height,bool direct,
 					b[k/2] = k;
 			} else {
 				if (chunked) {
-					auto stripBuf = imageStripper->getStrip(currentStrip);
 					auto chunkArray =
 							tiffFormat->getStripChunkArray(exec.this_worker_id(),
 									currentStrip);
-
-					uint64_t count = 0;
+					uint64_t val = chunkArray->stripChunks_[0]->offset();
 					for (uint32_t i = 0; i < chunkArray->numBuffers_; ++i){
 						auto ch = chunkArray->stripChunks_[i];
 						auto b = chunkArray->ioBufs_[i];
@@ -52,7 +50,7 @@ static void run(uint32_t width, uint32_t height,bool direct,
 						assert(ptr);
 						ptr += ch->writeableOffset_;
 						for (uint64_t j = 0; j < ch->writeableLen_; ++j)
-							ptr[j] = count++;
+							ptr[j] = val++;
 #ifdef DEBUG_VALGRIND
 						if (!valgrind_memcheck_all(b->data_, b->len_,""))
 							printf("Uninitialized memory in strip %d, "
@@ -67,7 +65,7 @@ static void run(uint32_t width, uint32_t height,bool direct,
 #endif
 					}
 					auto buffers = new IOBuf*[chunkArray->numBuffers_];
-					count = 0;
+					uint32_t count = 0;
 					for (uint32_t i = 0; i < chunkArray->numBuffers_; ++i){
 						auto ch = chunkArray->stripChunks_[i];
 						if (ch->acquire())
@@ -84,8 +82,9 @@ static void run(uint32_t width, uint32_t height,bool direct,
 				} else {
 					auto b = tiffFormat->getPoolBuffer(exec.this_worker_id(), currentStrip);
 					auto ptr = b->data_ + b->skip_;
-					for (uint64_t k = 0; k < 2*(b->len_-b->skip_); ++k)
-						ptr[k/2] = k;
+					uint64_t val = b->offset_;
+					for (uint64_t k = 0; k < b->len_; ++k)
+						ptr[k] = val++;
 					auto bArray = new IOBuf*[1];
 					bArray[0] = b;
 					bool ret = tiffFormat->encodePixels(exec.this_worker_id(),bArray,1);
