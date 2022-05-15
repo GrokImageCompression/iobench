@@ -71,10 +71,12 @@ static void run(uint32_t width, uint32_t height,bool direct,
 						if (ch->acquire())
 							buffers[count++] = chunkArray->ioBufs_[i];
 					}
-					bool ret =
-							tiffFormat->encodePixels(exec.this_worker_id(),
-									     buffers,count);
-					assert(ret);
+					if (count) {
+						bool ret =
+								tiffFormat->encodePixels(exec.this_worker_id(),
+											 buffers,count);
+						assert(ret);
+					}
 					delete[] buffers;
 					delete chunkArray;
 				} else {

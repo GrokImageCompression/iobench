@@ -284,23 +284,28 @@ struct Strip  {
 		stripChunks_ = new StripChunk*[numChunks_];
 		uint64_t writeableTotal = 0;
 		if (numChunks_ == 1){
-			auto ioChunk = 	new IOChunk(0,chunkInfo.first_.x1_ ,nullptr);
+			// should be shared if not first strip and there is a seam
+			bool firstSeam       = chunkInfo.hasFirstSeam();
+			IOChunk* ioChunk;
+			if (firstSeam)
+				ioChunk = leftNeighbour_->finalChunk()->ioChunk_;
+			else
+				ioChunk = 	new IOChunk(0,chunkInfo.first_.x1_ ,nullptr);
 			stripChunks_[0] =
 					new StripChunk(ioChunk,
 								chunkInfo.isFirstStrip_ ?
 									chunkInfo_.headerSize_ :
-										chunkInfo.first_.x0_,
+									chunkInfo.first_.x0_ - chunkInfo.last_.x0_,
 								chunkInfo.isFirstStrip_ ?
 									chunkInfo.first_.x1_ - chunkInfo_.headerSize_ :
 										chunkInfo.first_.len());
+			ioChunk->updateLen(chunkInfo.last_.len());
 			writeableTotal = stripChunks_[0]->writeableLen_;
 		}
 		for (uint32_t i = 0; i < numChunks_ && numChunks_>1; ++i ){
 			uint64_t off = (chunkInfo.first_.x1_ - chunkInfo_.writeSize_) +
 								i * chunkInfo_.writeSize_;
 			bool lastChunkOfAll  = chunkInfo.isFinalStrip_ && (i == numChunks_-1);
-			// could also be last chunk of all if strip is second to last and there
-			// is only one chunk in final strip
 			uint64_t len =
 					lastChunkOfAll ? (chunkInfo_.last_.len()) : chunkInfo_.writeSize_;
 			uint64_t writeableOffset = 0;
