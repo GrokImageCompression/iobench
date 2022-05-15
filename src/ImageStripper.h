@@ -284,21 +284,22 @@ struct Strip  {
 		stripChunks_ = new StripChunk*[numChunks_];
 		uint64_t writeableTotal = 0;
 		if (numChunks_ == 1){
-			// should be shared if not first strip and there is a seam
-			bool firstSeam       = chunkInfo.hasFirstSeam();
+			bool firstSeam   = chunkInfo.hasFirstSeam();
 			IOChunk* ioChunk;
 			if (firstSeam)
 				ioChunk = leftNeighbour_->finalChunk()->ioChunk_;
 			else
 				ioChunk = 	new IOChunk(0,chunkInfo.first_.x1_ ,nullptr);
-			stripChunks_[0] =
-					new StripChunk(ioChunk,
-								chunkInfo.isFirstStrip_ ?
-									chunkInfo_.headerSize_ :
-									chunkInfo.first_.x0_ - chunkInfo.last_.x0_,
-								chunkInfo.isFirstStrip_ ?
-									chunkInfo.first_.x1_ - chunkInfo_.headerSize_ :
-										chunkInfo.first_.len());
+			uint64_t writeOffset,writeLen;
+			if (chunkInfo.isFirstStrip_){
+				writeOffset = chunkInfo_.headerSize_;
+				writeLen    = chunkInfo.first_.x1_ - chunkInfo_.headerSize_ ;
+			} else {
+				assert(chunkInfo.last_.x0_ <= chunkInfo.first_.x0_);
+				writeOffset = 	chunkInfo.first_.x0_ - chunkInfo.last_.x0_;
+				writeLen    =	chunkInfo.first_.len();
+			}
+			stripChunks_[0] = new StripChunk(ioChunk,writeOffset,writeLen);
 			ioChunk->updateLen(chunkInfo.last_.len());
 			writeableTotal = stripChunks_[0]->writeableLen_;
 		}
@@ -318,8 +319,10 @@ struct Strip  {
 				assert(leftNeighbour_);
 				off = leftNeighbour_->finalChunk()->offset();
 				assert(chunkInfo_.first_.x0_  > off);
+
 				writeableOffset = chunkInfo_.first_.x0_ - off;
 				writeableLen    = chunkInfo_.first_.len();
+
 				assert(writeableLen && writeableLen < chunkInfo_.writeSize_);
 				assert(writeableOffset && writeableOffset < chunkInfo_.writeSize_);
 			} else if (lastSeam){
@@ -334,22 +337,28 @@ struct Strip  {
 				writeableOffset += chunkInfo_.headerSize_;
 				writeableLen -= chunkInfo_.headerSize_;
 			}
-			assert(!lastSeam || !firstSeam);
 			writeableTotal += writeableLen;
+
+			assert(!lastSeam || !firstSeam);
 			assert(IOBuf::isAlignedToWriteSize(off));
 			assert(lastChunkOfAll || IOBuf::isAlignedToWriteSize(len));
+
 			IOChunk* ioChunk = nullptr;
 			if (firstSeam)
 				ioChunk = leftNeighbour_->finalChunk()->ioChunk_;
 			else
 				ioChunk = new IOChunk(off,len,(sharedLastChunk ? pool : nullptr));
 			assert(!firstSeam || ioChunk->isShared());
+
 			stripChunks_[i] = new StripChunk(ioChunk,
 												writeableOffset,
 												writeableLen);
 		}
 
 		// validation
+		assert(!chunkInfo.isFirstStrip_ || stripChunks_[0]->offset() == 0);
+		assert(logicalLen_ == writeableTotal);
+
 		uint64_t writeableEnd = 0;
 		if (numChunks_ > 1) {
 			writeableEnd =	stripChunks_[numChunks_-1]->offset() +
@@ -360,18 +369,14 @@ struct Strip  {
 							stripChunks_[0]->writeableOffset_ +
 								stripChunks_[0]->writeableLen_;
 		}
-
 		assert(writeableEnd == chunkInfo_.last_.x1_);
-		assert(!chunkInfo.isFirstStrip_ || stripChunks_[0]->offset() == 0);
 
 		uint64_t writeableBegin =
 				stripChunks_[0]->offset() + stripChunks_[0]->writeableOffset_;
-
 		assert(writeableBegin ==
 				chunkInfo_.first_.x0_ +
 					(chunkInfo_.isFirstStrip_ ? chunkInfo_.headerSize_ : 0));
 		assert(writeableEnd - writeableBegin == logicalLen_);
-		assert(logicalLen_ == writeableTotal);
 	}
 	StripChunkArray* getStripChunkArray(IBufferPool *pool, uint8_t *header, uint64_t headerLen){
 		auto buffers = new IOBuf*[numChunks_];
