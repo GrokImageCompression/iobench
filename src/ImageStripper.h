@@ -158,15 +158,14 @@ public:
 	bool acquire(void){
 		 return (++acquireCount_ == acquireTarget_);
 	}
-	IOBuf* transferBuf(void){
-		auto b = buf_;
-		buf_ = nullptr;
-
-		return b;
+	IOBuf* buf(void) const{
+		return buf_;
 	}
 	void updateLen(uint64_t len){
-		if (buf_)
+		if (buf_){
+			len_ = len;
 			buf_->updateLen(len);
+		}
 	}
 	void alloc(IBufferPool* pool){
 		assert(!buf_ || buf_->data_);
@@ -389,7 +388,7 @@ struct Strip  {
 			if (header && i == 0)
 				stripChunk->setHeader(header, headerLen);
 			chunks[i] 	= stripChunk;
-			buffers[i] 	= ioChunk->transferBuf();
+			buffers[i] 	= ioChunk->buf();
 		}
 		for (uint32_t i = 0; i < numChunks_; ++i){
 			assert(buffers[i]->data_);

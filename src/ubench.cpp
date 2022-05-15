@@ -55,13 +55,15 @@ static void run(uint32_t width, uint32_t height,bool direct,
 							ptr[j] = count++;
 #ifdef DEBUG_VALGRIND
 						if (!valgrind_memcheck_all(b->data_, b->len_,""))
-							printf("Uninitialized memory in strip %d,"
-									" buffer %d / %d, "
-									"writeable len %d\n",
+							printf("Uninitialized memory in strip %d, "
+									"buffer %d / %d, "
+									"writeable len %d "
+									"length %d\n",
 									currentStrip,
 									i+1,
 									chunkArray->numBuffers_,
-									ch->writeableLen_);
+									ch->writeableLen_,
+									ch->len());
 #endif
 					}
 					auto buffers = new IOBuf*[chunkArray->numBuffers_];
@@ -69,7 +71,7 @@ static void run(uint32_t width, uint32_t height,bool direct,
 					for (uint32_t i = 0; i < chunkArray->numBuffers_; ++i){
 						auto ch = chunkArray->stripChunks_[i];
 						if (ch->acquire())
-							buffers[count++] = chunkArray->ioBufs_[i];
+							buffers[count++] = chunkArray->ioBufs_[i]->ref();
 					}
 					if (count) {
 						bool ret =
