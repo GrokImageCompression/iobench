@@ -83,7 +83,7 @@ static void run(uint32_t width, uint32_t height,bool direct,
 					auto b = tiffFormat->getPoolBuffer(exec.this_worker_id(), currentStrip);
 					auto ptr = b->data_ + b->skip_;
 					uint64_t val = b->offset_;
-					for (uint64_t k = 0; k < b->len_; ++k)
+					for (uint64_t k = 0; k < b->len_ - b->skip_; ++k)
 						ptr[k] = val++;
 					auto bArray = new IOBuf*[1];
 					bArray[0] = b;
