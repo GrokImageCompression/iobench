@@ -24,6 +24,11 @@ struct IOBuf : public io_buf, public RefCounted<IOBuf>
 		this->len_ = 0;
 		this->allocLen_ = 0;
 	}
+  private:
+  	~IOBuf() {
+  		dealloc();
+  	}
+  public:
 	static bool isAlignedToWriteSize(uint64_t off){
 		return (off & (WRTSIZE-1)) == 0;
 	}
@@ -53,6 +58,10 @@ struct IOBuf : public io_buf, public RefCounted<IOBuf>
 
 		return data_ != nullptr;
 	}
+	void updateLen(uint64_t len){
+		if (data_ && len <= allocLen_)
+			len_ = len;
+	}
 	void dealloc()
 	{
 		free(data_);
@@ -60,10 +69,6 @@ struct IOBuf : public io_buf, public RefCounted<IOBuf>
 		len_ = 0;
 		allocLen_ = 0;
 	}
-  private:
-  	~IOBuf() {
-  		dealloc();
-  	}
 };
 
 struct IOScheduleData

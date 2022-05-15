@@ -61,11 +61,11 @@ struct ChunkInfo{
 		return last_.x1_ - first_.x0_;
 	}
 	uint32_t numChunks(void){
-		bool firstEqualsLast = first_.x1_ == last_.x1_;
-		if (firstEqualsLast)
+		bool firstOverlapsLast = first_.x1_ == last_.x1_;
+		if (firstOverlapsLast)
 			return 1;
 		uint64_t nonSeamBegin = hasFirstSeam() ? first_.x1_ : first_.x0_;
-		uint64_t nonSeamEnd   = hasLastSeam() ? last_.x0_ : last_.x1_;
+		uint64_t nonSeamEnd   = hasLastSeam()  ? last_.x0_  : last_.x1_;
 		assert(nonSeamEnd > nonSeamBegin );
 		assert(IOBuf::isAlignedToWriteSize(nonSeamBegin));
 		assert(isFinalStrip_ || IOBuf::isAlignedToWriteSize(nonSeamEnd));
@@ -104,14 +104,18 @@ struct ChunkInfo{
 		return (stripEnd(logicalOffset,logicalLen)/writeSize_) * writeSize_;
 	}
 	ChunkInfo(const ChunkInfo &rhs){
-		first_ = rhs.first_;
-		last_  = rhs.last_;
-		writeSize_= rhs.writeSize_;
+		first_        = rhs.first_;
+		last_         = rhs.last_;
+		writeSize_    = rhs.writeSize_;
 		isFirstStrip_ = rhs.isFinalStrip_;
 		isFinalStrip_ = rhs.isFinalStrip_;
-		headerSize_ = rhs.headerSize_;
-		pool_ = rhs.pool_;
+		headerSize_   = rhs.headerSize_;
+		pool_         = rhs.pool_;
 	}
+	// first_ and last_ are usually disjoint, except in the case
+	// where there is only one chunk in the final strip.
+	// In that case, first_.x1_ == last_.x1_.
+	// In all cases, last_.x0_ is aligned on writeSize_ boundary
 	BufDim first_;
 	BufDim last_;
 	uint64_t writeSize_;
@@ -159,6 +163,10 @@ public:
 		buf_ = nullptr;
 
 		return b;
+	}
+	void updateLen(uint64_t len){
+		if (buf_)
+			buf_->updateLen(len);
 	}
 	void alloc(IBufferPool* pool){
 		assert(!buf_ || buf_->data_);
@@ -275,7 +283,6 @@ struct Strip  {
 		assert(numChunks_);
 		stripChunks_ = new StripChunk*[numChunks_];
 		uint64_t writeableTotal = 0;
-		bool singleStripSingleChunk = numChunks_ == 1 && chunkInfo.isFirstStrip_;
 		if (numChunks_ == 1){
 			auto ioChunk = 	new IOChunk(0,chunkInfo.first_.x1_ ,nullptr);
 			stripChunks_[0] =
@@ -292,6 +299,8 @@ struct Strip  {
 			uint64_t off = (chunkInfo.first_.x1_ - chunkInfo_.writeSize_) +
 								i * chunkInfo_.writeSize_;
 			bool lastChunkOfAll  = chunkInfo.isFinalStrip_ && (i == numChunks_-1);
+			// could also be last chunk of all if strip is second to last and there
+			// is only one chunk in final strip
 			uint64_t len =
 					lastChunkOfAll ? (chunkInfo_.last_.len()) : chunkInfo_.writeSize_;
 			uint64_t writeableOffset = 0;
@@ -317,7 +326,6 @@ struct Strip  {
 				else
 					sharedLastChunk = true;
 			} else if (chunkInfo_.isFirstStrip_ && i == 0){
-				// first chunk of first strip
 				writeableOffset += chunkInfo_.headerSize_;
 				writeableLen -= chunkInfo_.headerSize_;
 			}
@@ -340,8 +348,7 @@ struct Strip  {
 		uint64_t writeableEnd = 0;
 		if (numChunks_ > 1) {
 			writeableEnd =	stripChunks_[numChunks_-1]->offset() +
-					(singleStripSingleChunk ? chunkInfo_.headerSize_ : 0)
-									+ stripChunks_[numChunks_-1]->writeableLen_;
+									stripChunks_[numChunks_-1]->writeableLen_;
 		}
 		else {
 			writeableEnd = stripChunks_[0]->offset() +
@@ -368,6 +375,7 @@ struct Strip  {
 			auto stripChunk = stripChunks_[i];
 			auto ioChunk 	= stripChunk->ioChunk_;
 			stripChunk->alloc(pool);
+			// set header on first chunk of first strip
 			if (header && i == 0)
 				stripChunk->setHeader(header, headerLen);
 			chunks[i] 	= stripChunk;
