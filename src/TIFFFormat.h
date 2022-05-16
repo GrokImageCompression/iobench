@@ -28,7 +28,7 @@ struct HeaderInfo{
 
 class TIFFFormat {
 public:
-	TIFFFormat(bool asynch);
+	TIFFFormat(bool asynch, bool flushOnClose);
 	virtual ~TIFFFormat();
 	void init(uint32_t width, uint32_t height,
 				uint16_t numcomps, uint32_t nominalStripHeight,

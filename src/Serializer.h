@@ -10,7 +10,7 @@ const int32_t invalid_fd = -1;
 
 struct Serializer : public ISerializeBufWriter
 {
-	Serializer(bool lockedPool);
+	Serializer(bool flushOnClose);
 	~Serializer(void);
 	void setMaxPooledRequests(uint32_t maxRequests);
 	void registerApplicationClient(void);
@@ -39,4 +39,5 @@ struct Serializer : public ISerializeBufWriter
 	IBufferPool *pool_;
 	bool ownsFileDescriptor_;
 	bool simulateWrite_;
+	bool flushOnClose_;
 };

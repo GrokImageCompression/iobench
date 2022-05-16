@@ -16,12 +16,17 @@ static bool applicationReclaimCallback(io_buf *buffer, void* io_user_data)
 	return true;
 }
 
-Serializer::Serializer(bool lockedPool) :
+Serializer::Serializer(bool flushOnClose) :
 	  fd_(invalid_fd),
-	  numSimulatedWrites_(0), maxSimulatedWrites_(0), off_(0),
-	  reclaim_callback_(nullptr), reclaim_user_data_(nullptr),
+	  numSimulatedWrites_(0),
+	  maxSimulatedWrites_(0),
+	  off_(0),
+	  reclaim_callback_(nullptr),
+	  reclaim_user_data_(nullptr),
 	  pool_(new BufferPool()),
-	  ownsFileDescriptor_(false), simulateWrite_(false)
+	  ownsFileDescriptor_(false),
+	  simulateWrite_(false),
+	  flushOnClose_(flushOnClose)
 {
 }
 Serializer::~Serializer(void){
@@ -116,6 +121,10 @@ bool Serializer::close(void)
 		if(fd_ == invalid_fd)
 			return true;
 
+		if (flushOnClose_){
+			int fret = fsync(fd_);
+			//todo: check return value
+		}
 		rc = ::close(fd_);
 		fd_ = invalid_fd;
 	}

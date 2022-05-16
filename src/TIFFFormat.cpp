@@ -54,9 +54,13 @@ static uint64_t TiffSize(thandle_t handle)
 	return 0U;
 }
 
-TIFFFormat::TIFFFormat(bool asynch) : tif_(nullptr), encodeState_(IMAGE_FORMAT_UNENCODED),
-							serializer_(!asynch), imageStripper_(nullptr),
-							concurrency_(0), workerSerializers_(nullptr),
+TIFFFormat::TIFFFormat(bool asynch, bool flushOnClose) :
+							tif_(nullptr),
+							encodeState_(IMAGE_FORMAT_UNENCODED),
+							serializer_(flushOnClose),
+							imageStripper_(nullptr),
+							concurrency_(0),
+							workerSerializers_(nullptr),
 							numPixelWrites_(0)
 {}
 

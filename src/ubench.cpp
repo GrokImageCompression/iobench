@@ -10,7 +10,7 @@ static void run(uint32_t width, uint32_t height,bool direct,
 		uint32_t concurrency, bool doStore, bool doAsynch, bool chunked){
 	ChronoTimer timer;
 	bool storeAsynch = doStore && doAsynch;
-	auto tiffFormat = new TIFFFormat(doAsynch);
+	auto tiffFormat = new TIFFFormat(doAsynch,true);
 	tiffFormat->init(width, height, 1, 32, chunked);
 	auto imageStripper = tiffFormat->getImageStripper();
 	if (doStore){
