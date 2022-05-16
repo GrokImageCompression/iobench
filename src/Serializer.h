@@ -28,9 +28,9 @@ struct Serializer : public ISerializeBufWriter
 	FileUringIO uring;
 	int getMode(std::string mode);
 	int fd_;
-	uint32_t numPooledRequests_;
+	uint32_t numSimulatedWrites_;
 	// used to detect when library-orchestrated encode is complete
-	uint32_t maxPooledRequests_;
+	uint32_t maxSimulatedWrites_;
 	uint64_t off_;
 	io_callback reclaim_callback_;
 	void* reclaim_user_data_;

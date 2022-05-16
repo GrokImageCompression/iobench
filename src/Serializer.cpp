@@ -1,7 +1,5 @@
 #include "Serializer.h"
 
-#define IO_MAX 2147483647U
-
 #include <unistd.h>
 #include <signal.h>
 #include <sys/types.h>
@@ -20,7 +18,7 @@ static bool applicationReclaimCallback(io_buf *buffer, void* io_user_data)
 
 Serializer::Serializer(bool lockedPool) :
 	  fd_(invalid_fd),
-	  numPooledRequests_(0), maxPooledRequests_(0), off_(0),
+	  numSimulatedWrites_(0), maxSimulatedWrites_(0), off_(0),
 	  reclaim_callback_(nullptr), reclaim_user_data_(nullptr),
 	  pool_(new BufferPool()),
 	  ownsFileDescriptor_(false), simulateWrite_(false)
@@ -32,7 +30,7 @@ Serializer::~Serializer(void){
 }
 void Serializer::setMaxPooledRequests(uint32_t maxRequests)
 {
-	maxPooledRequests_ = maxRequests;
+	maxSimulatedWrites_ = maxRequests;
 }
 void Serializer::registerApplicationClient(void)
 {
@@ -172,10 +170,11 @@ uint64_t Serializer::write(uint64_t offset, IOBuf **buffers, uint32_t numBuffers
 }
 uint64_t Serializer::write(uint8_t* buf, uint64_t bytes_total)
 {
+	#define IO_MAX 2147483647U
 	if (simulateWrite_){
 		// offset 0 write is for file header
 		if (off_ != 0) {
-			if(++numPooledRequests_ == maxPooledRequests_)
+			if(++numSimulatedWrites_ == maxSimulatedWrites_)
 				simulateWrite_ = false;
 		}
 		off_ += bytes_total;
