@@ -125,9 +125,10 @@ struct ChunkInfo{
 	IBufferPool *pool_;
 };
 struct IOChunk : public RefCounted<IOChunk> {
-	IOChunk(uint64_t offset,uint64_t len, IBufferPool *pool) :
+	IOChunk(uint64_t offset,uint64_t len, uint64_t allocLen, IBufferPool *pool) :
 		offset_(offset),
 		len_(len),
+		allocLen_(allocLen),
 		buf_(nullptr),
 		acquireCount_(0),
 		acquireTarget_(1)
@@ -162,21 +163,23 @@ public:
 		return buf_;
 	}
 	void updateLen(uint64_t len){
-		if (buf_){
-			len_ = len;
+		assert(len <= allocLen_);
+		len_ = len;
+		if (buf_)
 			buf_->updateLen(len);
-		}
 	}
 	void alloc(IBufferPool* pool){
 		assert(!buf_ || buf_->data_);
 		assert(pool);
 		if (buf_ && buf_->data_)
 			return;
-		buf_ = pool->get(len_);
+		buf_ = pool->get(allocLen_);
+		buf_->len_ = len_;
 		buf_->offset_ = offset_;
 	}
 	uint64_t offset_;
 	uint64_t len_;
+	uint64_t allocLen_;
 private:
 	IOBuf *buf_;
 	std::atomic<uint32_t> acquireCount_;
@@ -199,8 +202,14 @@ struct StripChunk : public RefCounted<StripChunk> {
 		writeableOffset_(writeableOffset),
 		writeableLen_(writeableLen)
 	{
+		// we may need to extend a shared ioChunk_'s length
+		if (ioChunk_->isShared() &&
+				ioChunk_->offset_ + ioChunk_->len_ == writeableOffset)
+			ioChunk_->updateLen(ioChunk_->len_ + writeableLen);
+
 		assert(writeableOffset < len());
 		assert(writeableLen <= len());
+
 	}
 private:
 	~StripChunk(){
@@ -283,12 +292,19 @@ struct Strip  {
 		stripChunks_ = new StripChunk*[numChunks_];
 		uint64_t writeableTotal = 0;
 		if (numChunks_ == 1){
-			bool firstSeam   = chunkInfo.hasFirstSeam();
+			bool lastChunkOfAll  = chunkInfo.isFinalStrip_;
+			bool firstSeam       = chunkInfo.hasFirstSeam();
+			bool lastSeam        = !lastChunkOfAll && chunkInfo.hasLastSeam();
 			IOChunk* ioChunk;
-			if (firstSeam)
+			if (firstSeam){
 				ioChunk = leftNeighbour_->finalChunk()->ioChunk_;
-			else
-				ioChunk = 	new IOChunk(0,chunkInfo.first_.x1_ ,nullptr);
+				ioChunk->share();
+			}
+			else {
+				ioChunk = 	new IOChunk(0,chunkInfo.first_.x1_,
+											chunkInfo.writeSize_,
+											(lastSeam ? pool : nullptr));
+			}
 			uint64_t writeOffset,writeLen;
 			if (chunkInfo.isFirstStrip_){
 				writeOffset = chunkInfo_.headerSize_;
@@ -299,7 +315,8 @@ struct Strip  {
 				writeLen    =	chunkInfo.first_.len();
 			}
 			stripChunks_[0] = new StripChunk(ioChunk,writeOffset,writeLen);
-			ioChunk->updateLen(chunkInfo.last_.len());
+			if (chunkInfo.isFinalStrip_)
+				ioChunk->updateLen(chunkInfo.last_.len());
 			writeableTotal = stripChunks_[0]->writeableLen_;
 		}
 		for (uint32_t i = 0; i < numChunks_ && numChunks_>1; ++i ){
@@ -346,7 +363,8 @@ struct Strip  {
 			if (firstSeam)
 				ioChunk = leftNeighbour_->finalChunk()->ioChunk_;
 			else
-				ioChunk = new IOChunk(off,len,(sharedLastChunk ? pool : nullptr));
+				ioChunk = new IOChunk(off,len,chunkInfo_.writeSize_,
+										(sharedLastChunk ? pool : nullptr));
 			assert(!firstSeam || ioChunk->isShared());
 
 			stripChunks_[i] = new StripChunk(ioChunk,
