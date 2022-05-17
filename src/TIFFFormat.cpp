@@ -3,8 +3,8 @@
 
 static tmsize_t TiffRead(thandle_t handle, void* buf, tmsize_t size)
 {
-	(void)(handle);
-	(void)(buf);
+	(void)handle;
+	(void)buf;
 
 	return size;
 }
@@ -12,7 +12,7 @@ static tmsize_t TiffWrite(thandle_t handle, void* buf, tmsize_t size)
 {
 	auto* serializer_ = (Serializer*)handle;
 	const uint64_t bytes_total = (uint64_t)size;
-	if((tmsize_t)bytes_total != size)
+	if(bytes_total != size)
 	{
 		errno = EINVAL;
 		return (tmsize_t)-1;
@@ -24,12 +24,11 @@ static tmsize_t TiffWrite(thandle_t handle, void* buf, tmsize_t size)
 		return (tmsize_t)-1;
 }
 
-static uint64_t TiffSeek(thandle_t handle, uint64_t off, int32_t whence)
+static toff_t TiffSeek(thandle_t handle, toff_t off, int whence)
 {
 	auto* serializer_ = (Serializer*)handle;
-	_TIFF_off_t off_io = (_TIFF_off_t)off;
 
-	if((uint64_t)off_io != off)
+	if((int64_t)off != off)
 	{
 		errno = EINVAL;
 		return (uint64_t)-1;
@@ -43,9 +42,9 @@ static int TiffClose(thandle_t handle)
 	return ((Serializer*)handle)->close() ? 0 : EINVAL;
 }
 
-static uint64_t TiffSize(thandle_t handle)
+static toff_t TiffSize(thandle_t handle)
 {
-	(void)(handle);
+	(void)handle;
 
 	return 0U;
 }
