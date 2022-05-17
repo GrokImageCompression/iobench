@@ -179,8 +179,8 @@ public:
 	}
 	uint64_t offset_;
 	uint64_t len_;
-	uint64_t allocLen_;
 private:
+	uint64_t allocLen_;
 	IOBuf *buf_;
 	std::atomic<uint32_t> acquireCount_;
 	uint32_t acquireTarget_;
