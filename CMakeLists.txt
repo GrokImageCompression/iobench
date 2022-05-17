@@ -61,6 +61,7 @@ include_directories(
 set(LIBRARY_SRCS
   ${CMAKE_CURRENT_SOURCE_DIR}/src/FileUringIO.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/src/Serializer.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/ImageFormat.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/src/TIFFFormat.cpp
   )
   
