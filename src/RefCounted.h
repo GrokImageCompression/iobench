@@ -3,8 +3,15 @@
 #include <cstdint>
 #include <atomic>
 
-template <typename T> class RefCounted {
-template <typename U> friend class RefManager;
+class IRefCounted {
+friend class RefReaper;
+protected:
+	virtual ~IRefCounted() = default;
+private:
+	virtual uint32_t unref(void)= 0;
+};
+
+template <typename T> class RefCounted : public IRefCounted {
 public:
 	RefCounted(void) : refCount_(1)
 	{}
@@ -16,16 +23,16 @@ public:
 protected:
 	virtual ~RefCounted() = default;
 private:
-	uint32_t unref(void) {
+	uint32_t unref(void) override {
 		assert(refCount_ > 0);
 		return --refCount_;
 	}
 	std::atomic<uint32_t> refCount_;
 };
 
-template <typename T> class RefManager{
+class RefReaper{
 public:
-	static void unref(RefCounted<T> *refCounted){
+	static void unref(IRefCounted *refCounted){
 		if (!refCounted)
 			return;
 		if (refCounted->unref() == 0)

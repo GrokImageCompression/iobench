@@ -140,7 +140,7 @@ struct IOChunk : public RefCounted<IOChunk> {
 	}
 private:
 	~IOChunk() {
-		RefManager<IOBuf>::unref(buf_);
+		RefReaper::unref(buf_);
 	}
 public:
 	IOChunk* share(void){
@@ -213,7 +213,7 @@ struct StripChunk : public RefCounted<StripChunk> {
 	}
 private:
 	~StripChunk(){
-		RefManager<IOChunk>::unref(ioChunk_);
+		RefReaper::unref(ioChunk_);
 	}
 public:
 	void alloc(IBufferPool* pool){
@@ -281,7 +281,7 @@ struct Strip  {
 	~Strip(void){
 		if (stripChunks_){
 			for (uint32_t i = 0; i < numChunks_; ++i)
-				RefManager<StripChunk>::unref(stripChunks_[i]);
+				RefReaper::unref(stripChunks_[i]);
 			delete[] stripChunks_;
 		}
 	}

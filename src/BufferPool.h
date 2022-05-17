@@ -15,7 +15,7 @@ class BufferPool : public IBufferPool
 	BufferPool() = default;
 	virtual ~BufferPool(){
 		for(std::pair<uint8_t*, IOBuf*> p : pool)
-			RefManager<IOBuf>::unref(p.second);
+			RefReaper::unref(p.second);
 	}
 	IOBuf* get(uint64_t len) override{
 		for(auto iter = pool.begin(); iter != pool.end(); ++iter)
