@@ -86,8 +86,8 @@ bool ImageFormat::encodePixels(uint32_t threadId,
 	uint64_t written = ser->write(buffers[0]->offset_, buffers,numBuffers);
 	if (written != toWrite){
 		printf("encodePixels: "
-				"attempted to write %d, "
-				"actually wrote %d, difference %d\n",
+				"attempted to write %ld, "
+				"actually wrote %ld, difference %ld\n",
 				toWrite,written,
 				toWrite - written);
 		return false;
