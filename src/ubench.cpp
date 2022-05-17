@@ -144,7 +144,10 @@ int main(int argc, char** argv)
 			width = widthArg.getValue();
 		if (heightArg.isSet())
 			height = heightArg.getValue();
-		direct = directArg.isSet();
+		if (directArg.isSet()){
+			direct = directArg.isSet();
+			chunked = true;
+		}
 		if (concurrencyArg.isSet()) {
 			concurrency = concurrencyArg.getValue();
 			fullRun = false;

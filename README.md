@@ -44,18 +44,17 @@ Default : `32005`
 Synchronous writes using `pwritev`.
 Default : `false`
 
+`-k, -chunked`
+
+Break each strip into chunks of size 64K, aligned on 512 byte
+boundaries. Default: `false`
+
 `-d, -direct`
 
-Direct writes using `O_DIRECT`. Should be used with
-`-k` argument.
-Default: `false`
+Direct writes using `O_DIRECT`. This flag will automatically
+enable chunk mode. Default: `false`
 
 `-c, -concurrency [number of threads]`
 
 Number of threads to use.
 Default: `maximum concurrency` of system
-
-`-k, -chunked`
-
-Break each strip into chunks of size 64K, aligned on 512 byte
-boundaries. Default: `false`
