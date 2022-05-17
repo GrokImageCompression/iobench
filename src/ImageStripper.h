@@ -11,8 +11,8 @@
 
 /*
  * Each strip is divided into a collection of IOChunks, and
- * each IOChunk contains an IOBuf, which is designed for disk IO.
- * An IOBuf's offset is always aligned, and their length is always equal to WRTSIZE,
+ * each IOChunk contains an IOBuf, which is used for disk IO.
+ * An IOBuf's offset is always aligned, and its length is always equal to WRTSIZE,
  * except possibly the final IOBuf of the final strip. Also, they are corrected
  * for the header bytes which are located right before the beginning of the
  * first strip - the header bytes are included in the first IOBuf of the first
@@ -465,22 +465,6 @@ struct ImageStripper{
 								neighbour);
 			if (pool)
 				strips_[i]->generateChunks(getChunkInfo(i), pool);
-		}
-
-		// validation
-		if (pool && numStrips_ > 1){
-			for (uint32_t i = 0; i < numStrips_-1; ++i){
-				auto curr = strips_[i];
-				auto next = strips_[i+1];
-				auto currFinal = curr->finalChunk();
-				auto nextFirst =  next->firstChunk();
-				if (currFinal->isShared()){
-					//assert(currFinal->writeableLen_ +
-					//		nextFirst->writeableLen_ == WRTSIZE);
-					//assert(currFinal->writeableLen_ ==
-					//			nextFirst->writeableOffset_);
-				}
-			}
 		}
 	}
 	~ImageStripper(void){
