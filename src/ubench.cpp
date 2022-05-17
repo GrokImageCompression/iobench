@@ -3,6 +3,7 @@
 #include "timer.h"
 #include <cstdlib>
 #include "testing.h"
+#define TCLAP_NAMESTARTSTRING "-"
 #include "tclap/CmdLine.h"
 
 static void run(uint32_t width, uint32_t height,bool direct,

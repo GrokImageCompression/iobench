@@ -66,7 +66,7 @@ struct ChunkInfo{
 			return 1;
 		uint64_t nonSeamBegin = hasFirstSeam() ? first_.x1_ : first_.x0_;
 		uint64_t nonSeamEnd   = hasLastSeam()  ? last_.x0_  : last_.x1_;
-		assert(nonSeamEnd > nonSeamBegin );
+		assert(nonSeamEnd >= nonSeamBegin );
 		assert(IOBuf::isAlignedToWriteSize(nonSeamBegin));
 		assert(isFinalStrip_ || IOBuf::isAlignedToWriteSize(nonSeamEnd));
 		uint64_t rc = (nonSeamEnd - nonSeamBegin + writeSize_ - 1) / writeSize_;
@@ -298,7 +298,8 @@ struct Strip  {
 			IOChunk* ioChunk;
 			if (firstSeam){
 				ioChunk = leftNeighbour_->finalChunk()->ioChunk_;
-				ioChunk->share();
+				if (lastSeam)
+					ioChunk->share();
 			}
 			else {
 				ioChunk = 	new IOChunk(0,chunkInfo.first_.x1_,

@@ -79,7 +79,7 @@ StripChunkArray* ImageFormat::getStripChunkArray(uint32_t threadId,uint32_t stri
 bool ImageFormat::encodePixels(uint32_t threadId,
 								IOBuf **buffers,
 								uint32_t numBuffers){
-	Serializer *ser = workerSerializers_[threadId];
+	auto ser = workerSerializers_[threadId];
 	uint64_t toWrite = 0;
 	for (uint32_t i = 0; i < numBuffers; ++i)
 		toWrite += buffers[i]->len_;
