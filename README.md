@@ -1,14 +1,19 @@
 ### Ubench
 
 `ubench` is a benchmark for testing `uring` performance on multithreaded
-writes of large tiff files to disk. The test works by assigning each 
-tiff strip (size 32 lines) to a thread in a thread pool, 
+disk writes of large tiff files. The benchmark works by assigning each
+tiff strip (32 lines per strip) to a thread in a thread pool,
 which does some work on the strip and then writes it out to disk.
 
 While `libtiff` is used to write the header and directory data,
 the actual pixel data is written outside of the
 library, using either `uring` for asynchronous writes
 or `pwritev` for synchronous writes.
+
+### Dependencies
+
+1. C++ compiler supporting at least `C++17`
+2. [liburing](https://github.com/axboe/liburing)
 
 ### Command Line
 
@@ -20,9 +25,8 @@ to maximum concurrency and run three tests for each level :
 1. synchronous write
 1. asynchronous write
 
-\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
 
-Square brackets below are used for clarity only:
+Note: square brackets below are used for clarity only
 
 
 `-w, -width [width]`
