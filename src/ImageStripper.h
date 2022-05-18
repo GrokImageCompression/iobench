@@ -124,7 +124,7 @@ struct ChunkInfo{
 	uint64_t headerSize_;
 	IBufferPool *pool_;
 };
-struct IOChunk : public RefCounted<IOChunk> {
+struct IOChunk : public RefCounted {
 	IOChunk(uint64_t offset,uint64_t len, uint64_t allocLen, IBufferPool *pool) :
 		offset_(offset),
 		len_(len),
@@ -146,8 +146,9 @@ public:
 	IOChunk* share(void){
 		acquireTarget_++;
 		assert(buf_->data_);
+		ref();
 
-		return ref();
+		return this;
 	}
 	bool isShared(void){
 		return acquireTarget_ > 1;
@@ -194,7 +195,7 @@ private:
  * If there is no sharing, then  write offset is zero,
  * and write length equals WRTSIZE.
  */
-struct StripChunk : public RefCounted<StripChunk> {
+struct StripChunk : public RefCounted {
 	StripChunk(IOChunk *ioChunk,
 				uint64_t writeableOffset,
 				uint64_t writeableLen) :

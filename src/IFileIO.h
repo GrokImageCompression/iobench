@@ -13,7 +13,7 @@
 #define WRTSIZE (64*K)
 
 
-struct IOBuf : public io_buf, public RefCounted<IOBuf>
+struct IOBuf : public io_buf, public RefCounted
 {
   public:
 	IOBuf() {

@@ -3,27 +3,18 @@
 #include <cstdint>
 #include <atomic>
 
-class IRefCounted {
+class RefCounted {
 friend class RefReaper;
-protected:
-	virtual ~IRefCounted() = default;
-private:
-	virtual uint32_t unref(void)= 0;
-};
-
-template <typename T> class RefCounted : public IRefCounted {
 public:
 	RefCounted(void) : refCount_(1)
 	{}
-	T* ref(void){
-	   ++refCount_;
-
-	   return (T*)this;
+	uint32_t ref(void){
+	   return ++refCount_;
 	}
 protected:
 	virtual ~RefCounted() = default;
 private:
-	uint32_t unref(void) override {
+	uint32_t unref(void) {
 		assert(refCount_ > 0);
 		return --refCount_;
 	}
@@ -32,7 +23,7 @@ private:
 
 class RefReaper{
 public:
-	static void unref(IRefCounted *refCounted){
+	static void unref(RefCounted *refCounted){
 		if (!refCounted)
 			return;
 		if (refCounted->unref() == 0)

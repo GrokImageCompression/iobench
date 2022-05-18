@@ -69,8 +69,11 @@ static void run(uint32_t width, uint32_t height,bool direct,
 					uint32_t count = 0;
 					for (uint32_t i = 0; i < chunkArray->numBuffers_; ++i){
 						auto ch = chunkArray->stripChunks_[i];
-						if (ch->acquire())
-							buffers[count++] = chunkArray->ioBufs_[i]->ref();
+						if (ch->acquire()) {
+							auto b = chunkArray->ioBufs_[i];
+							b->ref();
+							buffers[count++] = b;
+						}
 					}
 					if (count) {
 						bool ret =
