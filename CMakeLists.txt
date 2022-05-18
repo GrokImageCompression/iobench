@@ -15,7 +15,7 @@ set(CMAKE_MODULE_PATH
 find_package(Threads REQUIRED)
 
 find_package(Valgrind)
-message(STATUS "Looking for liburing")
+message(STATUS "Looking for Valgrind")
 if (Valgrind_FOUND)
 	message(STATUS "Found Valgrind")
     add_definitions(-DHAVE_VALGRIND)
@@ -33,7 +33,7 @@ if (URING)
   if(NOT CMAKE_SYSTEM_NAME MATCHES Linux)
     set(URING OFF CACHE BOOL "Disabled because liburing is only available on Linux" FORCE)
     message(STATUS "liburing was disabled : only available on Linux")
-    set(GROK_HAVE_URING undef)
+    set(UBENCH_HAVE_URING undef)
   else()
     message(STATUS "Looking for liburing")
     find_package(liburing)
@@ -46,7 +46,7 @@ if (URING)
       endif()
     else()
     	message(STATUS "Found liburing") 
-    	set(GROK_HAVE_URING define)     
+    	set(UBENCH_HAVE_URING define)
     endif()
   endif()
 endif()
@@ -65,6 +65,12 @@ set(LIBRARY_SRCS
   ${CMAKE_CURRENT_SOURCE_DIR}/src/TIFFFormat.cpp
   )
   
+configure_file(
+ ${CMAKE_CURRENT_SOURCE_DIR}/src/ubench_config.h.cmake.in
+ ${CMAKE_CURRENT_BINARY_DIR}/src/ubench_config.h
+ @ONLY
+ )
+
 add_executable(ubench ${CMAKE_CURRENT_SOURCE_DIR}/src/ubench.cpp  ${LIBRARY_SRCS} )
 
 target_link_libraries(ubench ${TIFF_LIBNAME} uring ${CMAKE_THREAD_LIBS_INIT} )

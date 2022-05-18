@@ -1,0 +1,1 @@
+#cmakedefine UBENCH_HAVE_URING
