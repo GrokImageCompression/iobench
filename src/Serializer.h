@@ -1,5 +1,6 @@
 #pragma once
 
+#include "ubench_config.h"
 #include "IFileIO.h"
 #include "FileUringIO.h"
 #include "BufferPool.h"
@@ -25,7 +26,9 @@ struct Serializer : public ISerializeBufWriter
 	IBufferPool* getPool(void);
 	void enableSimulateWrite(void);
   private:
+#ifdef UBENCH_HAVE_URING
 	FileUringIO uring;
+#endif
 	int getMode(std::string mode);
 	int fd_;
 	uint32_t numSimulatedWrites_;

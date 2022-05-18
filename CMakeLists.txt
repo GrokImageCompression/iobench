@@ -54,6 +54,7 @@ endif()
 add_subdirectory(thirdparty)
 
 include_directories(
+  ${CMAKE_CURRENT_BINARY_DIR}/src
   ${CMAKE_CURRENT_SOURCE_DIR}/src/
   ${CMAKE_CURRENT_SOURCE_DIR}/src/include
   ${TIFF_INCLUDE_DIRNAME})

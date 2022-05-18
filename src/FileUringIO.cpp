@@ -1,4 +1,7 @@
 #include "FileUringIO.h"
+
+#ifdef UBENCH_HAVE_URING
+
 #include <strings.h>
 #include <sys/time.h>
 #include <sys/resource.h>
@@ -13,7 +16,6 @@
 #include <cstring>
 
 #include "testing.h"
-
 
 FileUringIO::FileUringIO()
 	: fd_(-1), ownsDescriptor(false), requestsSubmitted(0), requestsCompleted(0),
@@ -188,3 +190,5 @@ uint64_t FileUringIO::write(uint64_t offset, IOBuf **buffers, uint32_t numBuffer
 
 	return totalBytes;
 }
+
+#endif

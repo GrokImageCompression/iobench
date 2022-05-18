@@ -1,5 +1,8 @@
 #pragma once
 
+#include "ubench_config.h"
+#ifdef UBENCH_HAVE_URING
+
 #include "IFileIO.h"
 #include <liburing.h>
 #include <liburing/io_uring.h>
@@ -33,3 +36,5 @@ class FileUringIO : public IFileIO
 	io_callback reclaim_callback_;
 	void* reclaim_user_data_;
 };
+
+#endif

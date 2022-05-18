@@ -15,7 +15,8 @@ struct TIFFFormatHeaderClassic {
 
 class TIFFFormat : public ImageFormat {
 public:
-	TIFFFormat(bool asynch, bool flushOnClose);
+	TIFFFormat(void);
+	TIFFFormat(bool flushOnClose);
 	virtual ~TIFFFormat() = default;
 	using ImageFormat::init;
 	using ImageFormat::encodeInit;

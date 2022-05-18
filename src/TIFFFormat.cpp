@@ -49,7 +49,10 @@ static toff_t TiffSize(thandle_t handle)
 	return 0U;
 }
 
-TIFFFormat::TIFFFormat(bool asynch, bool flushOnClose) :
+TIFFFormat::TIFFFormat() : TIFFFormat(false)
+{}
+
+TIFFFormat::TIFFFormat(bool flushOnClose) :
 							ImageFormat(flushOnClose,
 										(uint8_t*)&header_,
 										sizeof(header_)),

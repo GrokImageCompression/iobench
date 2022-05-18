@@ -1,3 +1,4 @@
+#include "ubench_config.h"
 #include <taskflow/taskflow.hpp>
 #include "TIFFFormat.h"
 #include "timer.h"
@@ -8,9 +9,15 @@
 
 static void run(uint32_t width, uint32_t height,bool direct,
 		uint32_t concurrency, bool doStore, bool doAsynch, bool chunked){
+#ifndef UBENCH_HAVE_URING
+	if (doAsynch) {
+		printf("Uring not enabled - forcing synchronous write.\n");
+		doAsynch = false;
+	}
+#endif
 	ChronoTimer timer;
 	bool storeAsynch = doStore && doAsynch;
-	auto tiffFormat = new TIFFFormat(doAsynch,true);
+	auto tiffFormat = new TIFFFormat(true);
 	tiffFormat->init(width, height, 1, 32, chunked);
 	auto imageStripper = tiffFormat->getImageStripper();
 	if (doStore){
