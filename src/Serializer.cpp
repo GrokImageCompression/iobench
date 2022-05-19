@@ -115,6 +115,11 @@ bool Serializer::open(std::string name, std::string mode, bool asynch)
 			printf("Cannot open %s\n", name.c_str());
 		return false;
 	}
+#ifdef __APPLE__
+	if (mode[1] == 'd')
+		fcntl(fd, F_NOCACHE, 1);
+#endif
+
 #ifdef IOBENCH_HAVE_URING
 	if (asynch && !uring.attach(name, mode, fd,0))
 		return false;
