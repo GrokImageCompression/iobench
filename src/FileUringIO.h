@@ -1,7 +1,7 @@
 #pragma once
 
-#include "ubench_config.h"
-#ifdef UBENCH_HAVE_URING
+#include "iobench_config.h"
+#ifdef IOBENCH_HAVE_URING
 
 #include "IFileIO.h"
 #include <liburing.h>

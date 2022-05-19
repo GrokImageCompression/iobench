@@ -1,6 +1,6 @@
 #include "FileUringIO.h"
 
-#ifdef UBENCH_HAVE_URING
+#ifdef IOBENCH_HAVE_URING
 
 #include <strings.h>
 #include <sys/time.h>

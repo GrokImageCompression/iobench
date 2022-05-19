@@ -1,7 +1,8 @@
-### Ubench
+### IOBench
 
-`ubench` is a benchmark for testing `uring` performance on multithreaded
-disk writes of large tiff files. The benchmark works by assigning each
+`iobench` is a benchmark for testing performance on multithreaded
+writes of large tiff files for synchronous and asynchronous
+APIs. The benchmark works by assigning each
 tiff strip (32 lines per strip) to a thread in a thread pool,
 which does some work on the strip and then writes it out to disk.
 
@@ -17,7 +18,7 @@ or `pwritev` for synchronous writes.
 
 ### Command Line
 
-If no command line arguments are used, then `ubench`
+If no command line arguments are used, then `iobench`
 will cycle through all even concurrency levels from 2
 to maximum concurrency and run three tests for each level :
 

@@ -48,7 +48,7 @@ void Serializer::registerClientCallback(io_callback reclaim_callback,
 {
 	reclaim_callback_ = reclaim_callback;
 	reclaim_user_data_ = user_data;
-#ifdef UBENCH_HAVE_URING
+#ifdef IOBENCH_HAVE_URING
 	uring.registerClientCallback(reclaim_callback, user_data);
 #endif
 }
@@ -61,7 +61,7 @@ IBufferPool* Serializer::getPool(void){
 bool Serializer::attach(Serializer *parent){
 	fd_ = parent->fd_;
 
-#ifdef UBENCH_HAVE_URING
+#ifdef IOBENCH_HAVE_URING
 	return uring.attach(&parent->uring);
 #else
 	return true;
@@ -112,7 +112,7 @@ bool Serializer::open(std::string name, std::string mode, bool asynch)
 			printf("Cannot open %s\n", name.c_str());
 		return false;
 	}
-#ifdef UBENCH_HAVE_URING
+#ifdef IOBENCH_HAVE_URING
 	if (asynch && !uring.attach(name, mode, fd,0))
 		return false;
 #endif
@@ -125,7 +125,7 @@ bool Serializer::open(std::string name, std::string mode, bool asynch)
 }
 bool Serializer::close(void)
 {
-#ifdef UBENCH_HAVE_URING
+#ifdef IOBENCH_HAVE_URING
 	uring.close();
 #endif
 	int rc = 0;
@@ -166,7 +166,7 @@ void Serializer::enableSimulateWrite(void){
 uint64_t Serializer::write(uint64_t offset, IOBuf **buffers, uint32_t numBuffers){
 	if (!buffers || !numBuffers)
 		return 0;
-#ifdef UBENCH_HAVE_URING
+#ifdef IOBENCH_HAVE_URING
 	if (uring.active())
 		return uring.write(offset, buffers, numBuffers);
 #endif

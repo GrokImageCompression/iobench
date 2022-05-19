@@ -1,4 +1,4 @@
-#include "ubench_config.h"
+#include "iobench_config.h"
 #include <taskflow/taskflow.hpp>
 #include "TIFFFormat.h"
 #include "timer.h"
@@ -9,7 +9,7 @@
 
 static void run(uint32_t width, uint32_t height,bool direct,
 		uint32_t concurrency, bool doStore, bool doAsynch, bool chunked){
-#ifndef UBENCH_HAVE_URING
+#ifndef IOBENCH_HAVE_URING
 	if (doAsynch) {
 		printf("Uring not enabled - forcing synchronous write.\n");
 		doAsynch = false;

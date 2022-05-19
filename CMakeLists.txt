@@ -1,8 +1,8 @@
 cmake_minimum_required(VERSION 3.17)
 
-project(ubench)
+project(iobench)
 
-set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
@@ -17,7 +17,7 @@ find_package(Threads REQUIRED)
 find_package(Valgrind)
 message(STATUS "Looking for Valgrind")
 if (Valgrind_FOUND)
-	message(STATUS "Found Valgrind")
+    message(STATUS "Found Valgrind")
     add_definitions(-DHAVE_VALGRIND)
     include_directories(${Valgrind_INCLUDE_DIR})
 endif(Valgrind_FOUND)
@@ -33,7 +33,7 @@ if (URING)
   if(NOT CMAKE_SYSTEM_NAME MATCHES Linux)
     set(URING OFF CACHE BOOL "Disabled because liburing is only available on Linux" FORCE)
     message(STATUS "liburing was disabled : only available on Linux")
-    set(UBENCH_HAVE_URING undef)
+    set(IOBENCH_HAVE_URING undef)
   else()
     message(STATUS "Looking for liburing")
     find_package(liburing)
@@ -45,8 +45,8 @@ if (URING)
         set(uring OFF CACHE BOOL "Disabled because liburing was not found (${uring_description})" FORCE)
       endif()
     else()
-    	message(STATUS "Found liburing") 
-    	set(UBENCH_HAVE_URING define)
+        message(STATUS "Found liburing")
+        set(IOBENCH_HAVE_URING define)
     endif()
   endif()
 endif()
@@ -67,11 +67,11 @@ set(LIBRARY_SRCS
   )
   
 configure_file(
- ${CMAKE_CURRENT_SOURCE_DIR}/src/ubench_config.h.cmake.in
- ${CMAKE_CURRENT_BINARY_DIR}/src/ubench_config.h
+ ${CMAKE_CURRENT_SOURCE_DIR}/src/iobench_config.h.cmake.in
+ ${CMAKE_CURRENT_BINARY_DIR}/src/iobench_config.h
  @ONLY
  )
 
-add_executable(ubench ${CMAKE_CURRENT_SOURCE_DIR}/src/ubench.cpp  ${LIBRARY_SRCS} )
+add_executable(iobench ${CMAKE_CURRENT_SOURCE_DIR}/src/iobench.cpp  ${LIBRARY_SRCS} )
 
-target_link_libraries(ubench ${TIFF_LIBNAME} uring ${CMAKE_THREAD_LIBS_INIT} )
+target_link_libraries(iobench ${TIFF_LIBNAME} uring ${CMAKE_THREAD_LIBS_INIT} )
