@@ -1,11 +1,13 @@
+#include <cstdlib>
+
 #include "iobench_config.h"
 #include <taskflow/taskflow.hpp>
-#include "TIFFFormat.h"
-#include "timer.h"
-#include <cstdlib>
-#include "testing.h"
 #define TCLAP_NAMESTARTSTRING "-"
 #include "tclap/CmdLine.h"
+
+#include "TIFFFormat.h"
+#include "timer.h"
+#include "testing.h"
 
 static void run(uint32_t width, uint32_t height,bool direct,
 		uint32_t concurrency, bool doStore, bool doAsynch, bool chunked){

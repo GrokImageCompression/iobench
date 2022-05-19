@@ -1,8 +1,6 @@
 #pragma once
 
 #include <cstdint>
-#include <cassert>
-#include <algorithm>
 
 struct BufDim {
 	BufDim() : BufDim(0,0)

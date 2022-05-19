@@ -1,11 +1,11 @@
 #pragma once
 
 #include <string>
-#include "library.h"
 #include <cstdlib>
 #include <cstring>
-#include <fcntl.h>
+#include <cassert>
 
+#include "library.h"
 #include "RefCounted.h"
 
 #define K 1024
@@ -17,12 +17,12 @@ struct IOBuf : public io_buf, public RefCounted
 {
   public:
 	IOBuf() {
-		this->index_ = 0;
-		this->skip_ = 0;
-		this->offset_ = 0;
-		this->data_ = 0;
-		this->len_ = 0;
-		this->allocLen_ = 0;
+		index_ = 0;
+		skip_ = 0;
+		offset_ = 0;
+		data_ = 0;
+		len_ = 0;
+		allocLen_ = 0;
 	}
   private:
   	~IOBuf() {
@@ -71,11 +71,17 @@ struct IOBuf : public io_buf, public RefCounted
 	}
 };
 
+// mirror of iovec struct
+struct io {
+  void *iov_base;
+  size_t iov_len;
+};
+
 struct IOScheduleData
 {
 	IOScheduleData(uint64_t offset, IOBuf **buffers, uint32_t numBuffers) :
 		offset_(offset) , numBuffers_(numBuffers),buffers_(nullptr),
-		iov_(new iovec[numBuffers_]), totalBytes_(0)
+		iov_(new io[numBuffers_]), totalBytes_(0)
 	{
 		assert(numBuffers);
 		buffers_ = new IOBuf*[numBuffers];
@@ -95,7 +101,7 @@ struct IOScheduleData
 	uint64_t offset_;
 	uint32_t numBuffers_;
 	IOBuf **buffers_;
-	iovec *iov_;
+	io *iov_;
 	uint64_t totalBytes_;
 };
 

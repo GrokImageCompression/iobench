@@ -3,10 +3,10 @@
 #include "iobench_config.h"
 #ifdef IOBENCH_HAVE_URING
 
-#include "IFileIO.h"
 #include <liburing.h>
 #include <liburing/io_uring.h>
-#include <mutex>
+
+#include "IFileIO.h"
 
 class FileUringIO : public IFileIO
 {

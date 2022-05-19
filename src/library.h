@@ -1,7 +1,6 @@
 #pragma once
 
 #include <cstdint>
-#include <cassert>
 
 typedef struct _io_buf
 {

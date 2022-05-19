@@ -2,18 +2,9 @@
 
 #ifdef IOBENCH_HAVE_URING
 
-#include <strings.h>
-#include <sys/time.h>
-#include <sys/resource.h>
-#include <sys/times.h>
-#include <unistd.h>
-#include <signal.h>
-#include <sys/types.h>
-#include <sys/stat.h>
 #include <fcntl.h>
-#include <dirent.h>
-#include <chrono>
-#include <cstring>
+
+#include <cassert>
 
 #include "testing.h"
 
@@ -86,9 +77,9 @@ void FileUringIO::enqueue(io_uring* ring, IOScheduleData* data, bool readop, int
 	auto sqe = io_uring_get_sqe(ring);
 	assert(sqe);
 	if(readop)
-		io_uring_prep_readv(sqe, fd, data->iov_, data->numBuffers_, data->offset_);
+		io_uring_prep_readv(sqe, fd, (const iovec*)data->iov_, data->numBuffers_, data->offset_);
 	else
-		io_uring_prep_writev(sqe, fd, data->iov_, data->numBuffers_, data->offset_);
+		io_uring_prep_writev(sqe, fd, (const iovec*)data->iov_, data->numBuffers_, data->offset_);
 	io_uring_sqe_set_data(sqe, data);
 	int ret = io_uring_submit(ring);
 	assert(ret == 1);

@@ -1,13 +1,12 @@
-#include "Serializer.h"
-
-#include <unistd.h>
-#include <signal.h>
-#include <sys/types.h>
-#include <sys/stat.h>
+#ifdef _WIN32
+#else
 #include <fcntl.h>
-#include <sys/uio.h>
+#endif
 
 #include <cstring>
+#include <cassert>
+
+#include "Serializer.h"
 
 static bool applicationReclaimCallback(io_buf *buffer, void* io_user_data)
 {
@@ -177,7 +176,7 @@ uint64_t Serializer::write(uint64_t offset, IOBuf **buffers, uint32_t numBuffers
 	for(; bytesWritten < io->totalBytes_; bytesWritten += (uint64_t)writtenInCall)
 	{
 		uint64_t bytesRemaining = (uint64_t)(io->totalBytes_ - bytesWritten);
-		writtenInCall = pwritev(fd_, io->iov_, numBuffers, offset);
+		writtenInCall = pwritev(fd_, (const iovec*)io->iov_, numBuffers, offset);
 		if(writtenInCall <= 0)
 			break;
 	}

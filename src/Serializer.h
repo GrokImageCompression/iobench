@@ -1,11 +1,11 @@
 #pragma once
 
+#include <cstdint>
+
 #include "iobench_config.h"
 #include "IFileIO.h"
 #include "FileUringIO.h"
 #include "BufferPool.h"
-
-#include <cstdint>
 
 const int32_t invalid_fd = -1;
 

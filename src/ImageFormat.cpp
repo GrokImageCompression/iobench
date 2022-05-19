@@ -1,4 +1,4 @@
-#include <ImageFormat.h>
+#include "ImageFormat.h"
 
 ImageFormat::ImageFormat(bool flushOnClose, uint8_t *header, size_t headerLength) :
 							header_(header),

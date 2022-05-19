@@ -1,9 +1,10 @@
 #pragma
 
+#include <string>
+
 #include "ImageStripper.h"
 #include "Serializer.h"
 #include "BufferPool.h"
-#include <string>
 
 const uint32_t IMAGE_FORMAT_UNENCODED = 1;
 const uint32_t IMAGE_FORMAT_ENCODED_HEADER = 2;
