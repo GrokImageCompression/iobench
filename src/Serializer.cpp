@@ -1,6 +1,8 @@
 #ifdef _WIN32
 #else
 #include <fcntl.h>
+#include <unistd.h>
+#include <sys/uio.h>
 #endif
 
 #include <cstring>
@@ -79,8 +81,10 @@ int Serializer::getMode(std::string mode)
 			break;
 		case 'w':
 			m = O_WRONLY | O_CREAT | O_TRUNC;
+#ifdef __linux__
 			if (mode[1] == 'd')
 				m |= O_DIRECT;
+#endif
 			break;
 		case 'a':
 			m = O_WRONLY | O_CREAT;
@@ -191,7 +195,6 @@ uint64_t Serializer::write(uint64_t offset, IOBuf **buffers, uint32_t numBuffers
 }
 uint64_t Serializer::write(uint8_t* buf, uint64_t bytes_total)
 {
-	#define IO_MAX 2147483647U
 	if (simulateWrite_){
 		// offset 0 write is for file header
 		if (off_ != 0) {
@@ -207,8 +210,6 @@ uint64_t Serializer::write(uint8_t* buf, uint64_t bytes_total)
 	{
 		const char* buf_offset = (char*)buf + bytes_written;
 		uint64_t io_size = (uint64_t)(bytes_total - bytes_written);
-		if(io_size > IO_MAX)
-			io_size = IO_MAX;
 		count = ::write(fd_, buf_offset, io_size);
 		if(count <= 0)
 			break;

@@ -157,8 +157,12 @@ int main(int argc, char** argv)
 		if (heightArg.isSet())
 			height = heightArg.getValue();
 		if (directArg.isSet()){
+#ifdef __linux__
 			direct = directArg.isSet();
 			chunked = true;
+#else
+		std::cout << "Direct IO not supported" << std::endl;
+#endif
 		}
 		if (concurrencyArg.isSet()) {
 			concurrency = concurrencyArg.getValue();

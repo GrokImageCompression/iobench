@@ -20,6 +20,8 @@ if (Valgrind_FOUND)
     message(STATUS "Found Valgrind")
     add_definitions(-DHAVE_VALGRIND)
     include_directories(${Valgrind_INCLUDE_DIR})
+else(Valgrind_FOUND)
+    message(STATUS "Valgrind not found")
 endif(Valgrind_FOUND)
 
 include (Findliburing)
@@ -74,4 +76,7 @@ configure_file(
 
 add_executable(iobench ${CMAKE_CURRENT_SOURCE_DIR}/src/iobench.cpp  ${LIBRARY_SRCS} )
 
-target_link_libraries(iobench ${TIFF_LIBNAME} uring ${CMAKE_THREAD_LIBS_INIT} )
+target_link_libraries(iobench ${TIFF_LIBNAME} ${CMAKE_THREAD_LIBS_INIT} )
+if (LIBURING_FOUND)
+	target_link_libraries(iobench uring)
+endif(LIBURING_FOUND)
