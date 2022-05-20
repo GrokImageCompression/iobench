@@ -13,7 +13,7 @@
 
 #define K 1024
 #define ALIGNMENT (512)
-#define WRTSIZE (64*K)
+#define WRTSIZE (32*K)
 
 
 struct IOBuf : public io_buf, public RefCounted
