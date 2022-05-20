@@ -9,6 +9,8 @@
 #include "RefCounted.h"
 #include "util.h"
 
+namespace iobench {
+
 /*
  * Each strip is divided into a collection of IOChunks, and
  * each IOChunk contains an IOBuf, which is used for disk IO.
@@ -507,3 +509,5 @@ private:
 	uint32_t finalStrip_;
 	Strip **strips_;
 };
+
+}

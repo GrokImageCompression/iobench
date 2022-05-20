@@ -8,13 +8,30 @@
 #include <malloc.h>
 #endif
 
-#include "library.h"
 #include "RefCounted.h"
+
+namespace iobench {
 
 #define K 1024
 #define ALIGNMENT (512)
 #define WRTSIZE (32*K)
 
+const int32_t invalid_fd = -1;
+
+typedef struct _io_buf
+{
+	uint32_t index_;
+	uint64_t skip_;
+	uint64_t offset_;
+	uint8_t* data_;
+	uint64_t len_;
+	uint64_t allocLen_;
+} io_buf;
+
+typedef bool (*io_callback)(io_buf *buffer, void* io_user_data);
+typedef void (*io_register_client_callback)(io_callback reclaim_callback,
+													   void* io_user_data,
+													   void* reclaim_user_data);
 
 struct IOBuf : public io_buf, public RefCounted
 {
@@ -44,6 +61,13 @@ struct IOBuf : public io_buf, public RefCounted
 	bool alignedLength(void){
 		return isAlignedToWriteSize(len_);
 	}
+	static uint8_t* alignedAlloc(size_t alignment, size_t length){
+#ifdef _WIN32
+		return (uint8_t*)_aligned_malloc(length,alignment);
+#else
+		return (uint8_t*)std::aligned_alloc(alignment,length);
+#endif
+	}
 	bool alloc(uint64_t len)
 	{
 		if (len < allocLen_)
@@ -51,11 +75,7 @@ struct IOBuf : public io_buf, public RefCounted
 
 		if (data_)
 			dealloc();
-#ifdef _WIN32
-		data_ = (uint8_t*)_aligned_malloc(len,ALIGNMENT);
-#else
-		data_ = (uint8_t*)std::aligned_alloc(ALIGNMENT,len);
-#endif
+		data_ = alignedAlloc(ALIGNMENT,len);
 		if(data_)
 		{
 			len_ = len;
@@ -66,6 +86,7 @@ struct IOBuf : public io_buf, public RefCounted
 		return data_ != nullptr;
 	}
 	void updateLen(uint64_t len){
+		assert(len <= allocLen_);
 		if (data_ && len <= allocLen_)
 			len_ = len;
 	}
@@ -112,12 +133,6 @@ struct IOScheduleData
 	uint64_t totalBytes_;
 };
 
-class ISerializer{
-public:
-	virtual ~ISerializer() = default;
-	virtual uint64_t write(uint64_t offset, IOBuf **buffers, uint32_t numBuffers) = 0;
-};
-
 class IFileIO
 {
   public:
@@ -125,3 +140,5 @@ class IFileIO
 	virtual bool close(void) = 0;
 	virtual uint64_t write(uint64_t offset, IOBuf **buffers, uint32_t numBuffers) = 0;
 };
+
+}

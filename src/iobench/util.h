@@ -2,6 +2,8 @@
 
 #include <cstdint>
 
+namespace iobench {
+
 struct BufDim {
 	BufDim() : BufDim(0,0)
 	{}
@@ -34,3 +36,5 @@ struct BufDim {
 	uint64_t x0_;
 	uint64_t x1_;
 };
+
+}

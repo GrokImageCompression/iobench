@@ -1,5 +1,7 @@
 #include "ImageFormat.h"
 
+namespace iobench {
+
 ImageFormat::ImageFormat(bool flushOnClose, uint8_t *header, size_t headerLength) :
 							header_(header),
 							headerLength_(headerLength),
@@ -74,6 +76,26 @@ StripChunkArray* ImageFormat::getStripChunkArray(uint32_t threadId,uint32_t stri
 								strip == 0 ? header_ : nullptr,
 								strip == 0 ? headerLength_ : 0);
 }
+bool ImageFormat::encodePixels(uint32_t threadId,StripChunkArray * chunkArray){
+	auto buffers = new IOBuf*[chunkArray->numBuffers_];
+	uint32_t count = 0;
+	for (uint32_t i = 0; i < chunkArray->numBuffers_; ++i){
+		auto ch = chunkArray->stripChunks_[i];
+		if (ch->acquire()) {
+			auto b = chunkArray->ioBufs_[i];
+			b->ref();
+			buffers[count++] = b;
+		}
+	}
+	bool ret = true;
+	if (count) {
+		ret =	encodePixels(threadId, buffers,count);
+		assert(ret);
+	}
+	delete[] buffers;
+
+	return ret;
+}
 bool ImageFormat::encodePixels(uint32_t threadId,
 								IOBuf **buffers,
 								uint32_t numBuffers){
@@ -103,4 +125,6 @@ bool ImageFormat::close(void){
 		workerSerializers_[i]->close();
 
 	return true;
+}
+
 }

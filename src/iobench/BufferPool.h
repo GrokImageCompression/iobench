@@ -8,6 +8,7 @@
 #include "IFileIO.h"
 #include "IBufferPool.h"
 
+namespace iobench {
 
 class BufferPool : public IBufferPool
 {
@@ -42,3 +43,5 @@ class BufferPool : public IBufferPool
   private:
 	std::map<uint8_t*, IOBuf*> pool;
 };
+
+}

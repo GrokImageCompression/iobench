@@ -1,34 +1,36 @@
-#include "FileUringIO.h"
+#include "config.h"
 
 #ifdef IOBENCH_HAVE_URING
 
 #include <fcntl.h>
-
 #include <cassert>
 
+#include "FileIOUring.h"
 #include "testing.h"
 
-FileUringIO::FileUringIO()
+namespace iobench {
+
+FileIOUring::FileIOUring()
 	: fd_(-1), ownsDescriptor(false), requestsSubmitted(0), requestsCompleted(0),
 	  reclaim_callback_(nullptr), reclaim_user_data_(nullptr)
 {
 	memset(&ring, 0, sizeof(ring));
 }
 
-FileUringIO::~FileUringIO()
+FileIOUring::~FileIOUring()
 {
 	close();
 }
-bool FileUringIO::active(void){
+bool FileIOUring::active(void) const{
 	return ring.ring_fd != 0;
 }
-void FileUringIO::registerReclaimCallback(io_callback reclaim_callback,
+void FileIOUring::registerReclaimCallback(io_callback reclaim_callback,
 												  void* user_data)
 {
 	reclaim_callback_ = reclaim_callback;
 	reclaim_user_data_ = user_data;
 }
-bool FileUringIO::attach(std::string fileName, std::string mode, int fd, int shared_ring_fd)
+bool FileIOUring::attach(std::string fileName, std::string mode, int fd, int shared_ring_fd)
 {
 	fileName_ = fileName;
 	mode_ = mode;
@@ -39,13 +41,13 @@ bool FileUringIO::attach(std::string fileName, std::string mode, int fd, int sha
 	return (doRead ? true : initQueue(shared_ring_fd));
 }
 
-bool FileUringIO::attach(FileUringIO *parent){
+bool FileIOUring::attach(const FileIOUring *parent){
 	if (!parent->active())
 		return true;
 	return attach(parent->fileName_, parent->mode_, parent->fd_,parent->ring.ring_fd);
 }
 
-bool FileUringIO::initQueue(int shared_ring_fd)
+bool FileIOUring::initQueue(int shared_ring_fd)
 {
 	if (shared_ring_fd){
 		struct io_uring_params p;
@@ -72,7 +74,7 @@ bool FileUringIO::initQueue(int shared_ring_fd)
 	return true;
 }
 
-void FileUringIO::enqueue(io_uring* ring, IOScheduleData* data, bool readop, int fd)
+void FileIOUring::enqueue(io_uring* ring, IOScheduleData* data, bool readop, int fd)
 {
 	auto sqe = io_uring_get_sqe(ring);
 	assert(sqe);
@@ -100,7 +102,7 @@ void FileUringIO::enqueue(io_uring* ring, IOScheduleData* data, bool readop, int
 	}
 }
 
-IOScheduleData* FileUringIO::retrieveCompletion(bool peek, bool& success)
+IOScheduleData* FileIOUring::retrieveCompletion(bool peek, bool& success)
 {
 	io_uring_cqe* cqe;
 	int ret;
@@ -138,7 +140,7 @@ IOScheduleData* FileUringIO::retrieveCompletion(bool peek, bool& success)
 	return data;
 }
 
-bool FileUringIO::close(void)
+bool FileIOUring::close(void)
 {
 	if(fd_ == -1)
 		return true;
@@ -171,7 +173,7 @@ bool FileUringIO::close(void)
 	return rc;
 }
 
-uint64_t FileUringIO::write(uint64_t offset, IOBuf **buffers, uint32_t numBuffers)
+uint64_t FileIOUring::write(uint64_t offset, IOBuf **buffers, uint32_t numBuffers)
 {
 	auto data = new IOScheduleData(offset,buffers,numBuffers);
 	uint64_t totalBytes = 0;
@@ -180,6 +182,8 @@ uint64_t FileUringIO::write(uint64_t offset, IOBuf **buffers, uint32_t numBuffer
 	enqueue(&ring, data, false, fd_);
 
 	return totalBytes;
+}
+
 }
 
 #endif

@@ -6,6 +6,8 @@
 #include "Serializer.h"
 #include "BufferPool.h"
 
+namespace iobench {
+
 const uint32_t IMAGE_FORMAT_UNENCODED = 1;
 const uint32_t IMAGE_FORMAT_ENCODED_HEADER = 2;
 const uint32_t IMAGE_FORMAT_ENCODED_PIXELS = 4;
@@ -30,6 +32,7 @@ public:
 	virtual bool encodePixels(uint32_t threadId,
 								IOBuf **buffers,
 								uint32_t numBuffers);
+	virtual bool encodePixels(uint32_t threadId,StripChunkArray * chunkArray);
 	IOBuf* getPoolBuffer(uint32_t threadId,uint32_t strip);
 	StripChunkArray* getStripChunkArray(uint32_t threadId,uint32_t strip);
 	ImageStripper* getImageStripper(void);
@@ -46,3 +49,5 @@ protected:
 	Serializer **workerSerializers_;
 	std::atomic<uint32_t> numPixelWrites_;
 };
+
+}

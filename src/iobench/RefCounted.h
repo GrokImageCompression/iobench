@@ -3,6 +3,8 @@
 #include <cstdint>
 #include <atomic>
 
+namespace iobench {
+
 class RefCounted {
 friend class RefReaper;
 public:
@@ -31,3 +33,4 @@ public:
 	}
 };
 
+}

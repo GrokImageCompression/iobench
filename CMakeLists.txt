@@ -7,6 +7,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 find_package(Threads REQUIRED)
+find_package(Boost 1.70.0)
 
 set(CMAKE_MODULE_PATH
     ${CMAKE_SOURCE_DIR}/cmake
@@ -57,15 +58,17 @@ add_subdirectory(thirdparty)
 
 include_directories(
   ${CMAKE_CURRENT_BINARY_DIR}/src
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/
   ${CMAKE_CURRENT_SOURCE_DIR}/src/include
   ${TIFF_INCLUDE_DIRNAME})
   
 set(LIBRARY_SRCS
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/FileUringIO.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/Serializer.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/ImageFormat.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/TIFFFormat.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/iobench/FileIO.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/iobench/FileIOUnix.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/iobench/FileIOWin32.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/iobench/FileIOUring.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/iobench/Serializer.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/iobench/ImageFormat.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/iobench/TIFFFormat.cpp
   )
   
 configure_file(

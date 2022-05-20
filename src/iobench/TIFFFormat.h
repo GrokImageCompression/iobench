@@ -1,7 +1,10 @@
 #pragma once
 
-#include "ImageFormat.h"
 #include <tiffio.h>
+
+#include "ImageFormat.h"
+
+namespace iobench {
 
 struct TIFFFormatHeaderClassic {
 	TIFFFormatHeaderClassic() : tiff_magic(0x4949),
@@ -30,3 +33,5 @@ private:
 	TIFF* tif_;
 	TIFFFormatHeaderClassic header_;
 };
+
+}

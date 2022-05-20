@@ -4,59 +4,30 @@
 #include <unistd.h>
 #include <sys/uio.h>
 #endif
-
 #include <cstring>
 #include <cassert>
 
-#include "Serializer.h"
+#include "FileIOUnix.h"
 
-static bool applicationReclaimCallback(io_buf *buffer, void* io_user_data)
-{
-	auto pool = (IBufferPool*)io_user_data;
-	if(pool)
-		pool->put((IOBuf*)buffer);
+namespace iobench {
 
-	return true;
-}
-
-Serializer::Serializer(bool flushOnClose) :
+FileIOUnix::FileIOUnix(bool flushOnClose) :FileIO(flushOnClose),
 	  fd_(invalid_fd),
-	  numSimulatedWrites_(0),
-	  maxSimulatedWrites_(0),
-	  off_(0),
-	  reclaim_callback_(nullptr),
-	  reclaim_user_data_(nullptr),
-	  pool_(new BufferPool()),
-	  ownsFileDescriptor_(false),
-	  simulateWrite_(false),
-	  flushOnClose_(flushOnClose)
+	  ownsFileDescriptor_(false)
 {
-	registerReclaimCallback(applicationReclaimCallback, pool_);
 }
-Serializer::~Serializer(void){
+FileIOUnix::~FileIOUnix(void){
 	close();
-	delete pool_;
 }
-void Serializer::setMaxPooledRequests(uint32_t maxRequests)
-{
-	maxSimulatedWrites_ = maxRequests;
-}
-void Serializer::registerReclaimCallback(io_callback reclaim_callback,
+void FileIOUnix::registerReclaimCallback(io_callback reclaim_callback,
 												 void* user_data)
 {
-	reclaim_callback_ = reclaim_callback;
-	reclaim_user_data_ = user_data;
+	FileIO::registerReclaimCallback(reclaim_callback, user_data);
 #ifdef IOBENCH_HAVE_URING
 	uring.registerReclaimCallback(reclaim_callback, user_data);
 #endif
 }
-IOBuf* Serializer::getPoolBuffer(uint64_t len){
-	return pool_->get(len);
-}
-IBufferPool* Serializer::getPool(void){
-	return pool_;
-}
-bool Serializer::attach(Serializer *parent){
+bool FileIOUnix::attach(FileIOUnix *parent){
 	fd_ = parent->fd_;
 
 #ifdef IOBENCH_HAVE_URING
@@ -65,7 +36,7 @@ bool Serializer::attach(Serializer *parent){
 	return true;
 #endif
 }
-int Serializer::getMode(std::string mode)
+int FileIOUnix::getMode(std::string mode)
 {
 	int m = -1;
 #ifdef _WIN32
@@ -97,7 +68,7 @@ int Serializer::getMode(std::string mode)
 	return m;
 }
 
-bool Serializer::open(std::string name, std::string mode, bool asynch)
+bool FileIOUnix::open(std::string name, std::string mode, bool asynch)
 {
 	if (!close())
 		return false;
@@ -133,7 +104,7 @@ bool Serializer::open(std::string name, std::string mode, bool asynch)
 
 	return true;
 }
-bool Serializer::close(void)
+bool FileIOUnix::close(void)
 {
 #ifdef _WIN32
 	return true;
@@ -159,7 +130,7 @@ bool Serializer::close(void)
 	return rc == 0;
 #endif
 }
-uint64_t Serializer::seek(int64_t off, int32_t whence)
+uint64_t FileIOUnix::seek(int64_t off, int32_t whence)
 {
 	if (simulateWrite_)
 		return off_;
@@ -180,10 +151,7 @@ uint64_t Serializer::seek(int64_t off, int32_t whence)
 	return (uint64_t)rc;
 #endif
 }
-void Serializer::enableSimulateWrite(void){
-	simulateWrite_ = true;
-}
-uint64_t Serializer::write(uint64_t offset, IOBuf **buffers, uint32_t numBuffers){
+uint64_t FileIOUnix::write(uint64_t offset, IOBuf **buffers, uint32_t numBuffers){
 	if (!buffers || !numBuffers)
 		return 0;
 	uint64_t bytesWritten = 0;
@@ -215,7 +183,7 @@ uint64_t Serializer::write(uint64_t offset, IOBuf **buffers, uint32_t numBuffers
 	}
 	return bytesWritten;
 }
-uint64_t Serializer::write(uint8_t* buf, uint64_t bytes_total)
+uint64_t FileIOUnix::write(uint8_t* buf, uint64_t bytes_total)
 {
 	if (simulateWrite_){
 		// offset 0 write is for file header
@@ -242,4 +210,6 @@ uint64_t Serializer::write(uint8_t* buf, uint64_t bytes_total)
 #endif
 
 	return bytes_written;
+}
+
 }

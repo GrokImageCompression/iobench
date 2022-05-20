@@ -1,6 +1,8 @@
 #include "TIFFFormat.h"
 #include "tiffiop.h"
 
+namespace iobench {
+
 static tmsize_t TiffRead(thandle_t handle, void* buf, tmsize_t size)
 {
 	(void)handle;
@@ -115,4 +117,6 @@ bool TIFFFormat::encodeFinish(void)
 	encodeState_ |= IMAGE_FORMAT_ENCODED_PIXELS;
 
 	return true;
+}
+
 }

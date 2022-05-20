@@ -3,6 +3,8 @@
 #include <chrono>
 #include <string>
 
+namespace iobench {
+
 
 class ChronoTimer {
 public:
@@ -19,3 +21,5 @@ public:
 private:
 	std::chrono::high_resolution_clock::time_point startTime;
 };
+
+}

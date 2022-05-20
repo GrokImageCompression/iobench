@@ -5,9 +5,11 @@
 #define TCLAP_NAMESTARTSTRING "-"
 #include "tclap/CmdLine.h"
 
-#include "TIFFFormat.h"
-#include "timer.h"
-#include "testing.h"
+#include "iobench/TIFFFormat.h"
+#include "iobench/timer.h"
+#include "iobench/testing.h"
+
+namespace iobench {
 
 static void run(uint32_t width, uint32_t height,bool direct,
 		uint32_t concurrency, bool doStore, bool doAsynch, bool chunked){
@@ -44,7 +46,10 @@ static void run(uint32_t width, uint32_t height,bool direct,
 			if (!doStore) {
 				uint64_t len =  strip->logicalLen_;
 #ifdef _WIN32
-
+				uint8_t *b = IOBuf::alignedAlloc(ALIGNMENT,len);
+				for (uint64_t k = 0; k < len; ++k)
+					b[k] = k%256;
+				free(b);
 #else
 				uint8_t b[len] __attribute__((__aligned__(ALIGNMENT)));
 				for (uint64_t k = 0; k < len; ++k)
@@ -78,23 +83,8 @@ static void run(uint32_t width, uint32_t height,bool direct,
 									ch->len());
 #endif
 					}
-					auto buffers = new IOBuf*[chunkArray->numBuffers_];
-					uint32_t count = 0;
-					for (uint32_t i = 0; i < chunkArray->numBuffers_; ++i){
-						auto ch = chunkArray->stripChunks_[i];
-						if (ch->acquire()) {
-							auto b = chunkArray->ioBufs_[i];
-							b->ref();
-							buffers[count++] = b;
-						}
-					}
-					if (count) {
-						bool ret =
-								tiffFormat->encodePixels(exec.this_worker_id(),
-											 buffers,count);
-						assert(ret);
-					}
-					delete[] buffers;
+					bool ret = tiffFormat->encodePixels(exec.this_worker_id(), chunkArray);
+					assert(ret);
 					delete chunkArray;
 				} else {
 					auto b = tiffFormat->getPoolBuffer(exec.this_worker_id(), currentStrip);
@@ -102,11 +92,8 @@ static void run(uint32_t width, uint32_t height,bool direct,
 					uint64_t val = b->offset_ + b->skip_;
 					for (uint64_t k = 0; k < b->len_ - b->skip_; ++k)
 						ptr[k] = (val++)%256;
-					auto bArray = new IOBuf*[1];
-					bArray[0] = b;
-					bool ret = tiffFormat->encodePixels(exec.this_worker_id(),bArray,1);
+					bool ret = tiffFormat->encodePixels(exec.this_worker_id(),&b,1);
 					assert(ret);
-					delete[] bArray;
 				}
 			}
 		});
@@ -127,6 +114,8 @@ static void run(uint32_t width, uint32_t height,bool direct,uint8_t concurrency,
 	   run(width,height,direct,concurrency,true,false,chunked);
 	   run(width,height,direct,concurrency,true,true,chunked);
 	   printf("\\\\\\\\\\\\\\\\\\\\\\\\\\\n");
+}
+
 }
 
 int main(int argc, char** argv)
@@ -185,13 +174,13 @@ int main(int argc, char** argv)
 	if (fullRun) {
 		for (uint8_t concurrency = 2;
 				concurrency <= std::thread::hardware_concurrency(); concurrency+=2){
-		   run(width,height,direct,concurrency,chunked);
+		   iobench::run(width,height,direct,concurrency,chunked);
 	   }
 	} else {
 		if (concurrency > 0)
-			run(width,height,direct, concurrency, true, useUring,chunked);
+			iobench::run(width,height,direct, concurrency, true, useUring,chunked);
 		else
-			run(width,height,direct,std::thread::hardware_concurrency(),true,useUring,chunked);
+			iobench::run(width,height,direct,std::thread::hardware_concurrency(),true,useUring,chunked);
 	}
 
    return 0;

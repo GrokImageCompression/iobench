@@ -2,6 +2,8 @@
 
 #include "IFileIO.h"
 
+namespace iobench {
+
 class IBufferPool
 {
   public:
@@ -9,3 +11,5 @@ class IBufferPool
 	virtual IOBuf* get(uint64_t len) = 0;
 	virtual void put(IOBuf *b) = 0;
 };
+
+}
