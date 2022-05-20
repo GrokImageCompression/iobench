@@ -31,6 +31,7 @@ Serializer::Serializer(bool flushOnClose) :
 	  simulateWrite_(false),
 	  flushOnClose_(flushOnClose)
 {
+	registerReclaimCallback(applicationReclaimCallback, pool_);
 }
 Serializer::~Serializer(void){
 	close();
@@ -40,17 +41,13 @@ void Serializer::setMaxPooledRequests(uint32_t maxRequests)
 {
 	maxSimulatedWrites_ = maxRequests;
 }
-void Serializer::registerApplicationClient(void)
-{
-	registerClientCallback(applicationReclaimCallback, pool_);
-}
-void Serializer::registerClientCallback(io_callback reclaim_callback,
+void Serializer::registerReclaimCallback(io_callback reclaim_callback,
 												 void* user_data)
 {
 	reclaim_callback_ = reclaim_callback;
 	reclaim_user_data_ = user_data;
 #ifdef IOBENCH_HAVE_URING
-	uring.registerClientCallback(reclaim_callback, user_data);
+	uring.registerReclaimCallback(reclaim_callback, user_data);
 #endif
 }
 IOBuf* Serializer::getPoolBuffer(uint64_t len){

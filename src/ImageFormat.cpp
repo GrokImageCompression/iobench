@@ -38,12 +38,10 @@ bool ImageFormat::encodeInit(std::string filename,
 	mode_ = direct ? "wd" : "w";
 	if(!serializer_.open(filename_, mode_,asynch))
 		return false;
-	serializer_.registerApplicationClient();
 	// create one serializer per thread and attach to parent serializer
 	workerSerializers_ = new Serializer*[concurrency];
 	for (uint32_t i = 0; i < concurrency_; ++i){
 		workerSerializers_[i] = new Serializer(false);
-		workerSerializers_[i]->registerApplicationClient();
 		workerSerializers_[i]->attach(&serializer_);
 	}
 

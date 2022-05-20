@@ -17,7 +17,7 @@ class FileUringIO : public IFileIO
 	uint64_t write(uint64_t offset, IOBuf **buffers, uint32_t numBuffers) override;
 
 	// uring-specific
-	void registerClientCallback(io_callback reclaim_callback, void* user_data);
+	void registerReclaimCallback(io_callback reclaim_callback, void* user_data);
 	bool attach(std::string fileName, std::string mode, int fd, int shared_ring_fd);
 	bool attach(FileUringIO *parent);
 	bool active(void);

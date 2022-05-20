@@ -14,8 +14,7 @@ struct Serializer : public ISerializer
 	Serializer(bool flushOnClose);
 	~Serializer(void);
 	void setMaxPooledRequests(uint32_t maxRequests);
-	void registerApplicationClient(void);
-	void registerClientCallback(io_callback reclaim_callback, void* user_data);
+	void registerReclaimCallback(io_callback reclaim_callback, void* user_data);
 	bool attach(Serializer *parent);
 	bool open(std::string name, std::string mode, bool asynch);
 	bool close(void);

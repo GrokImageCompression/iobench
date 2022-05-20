@@ -22,7 +22,7 @@ FileUringIO::~FileUringIO()
 bool FileUringIO::active(void){
 	return ring.ring_fd != 0;
 }
-void FileUringIO::registerClientCallback(io_callback reclaim_callback,
+void FileUringIO::registerReclaimCallback(io_callback reclaim_callback,
 												  void* user_data)
 {
 	reclaim_callback_ = reclaim_callback;
