@@ -4,6 +4,9 @@
 #include <cstdlib>
 #include <cstring>
 #include <cassert>
+#ifdef _WIN32
+#include <malloc.h>
+#endif
 
 #include "library.h"
 #include "RefCounted.h"
@@ -48,7 +51,11 @@ struct IOBuf : public io_buf, public RefCounted
 
 		if (data_)
 			dealloc();
-		data_ = (uint8_t*)aligned_alloc(ALIGNMENT,len);
+#ifdef _WIN32
+		data_ = (uint8_t*)_aligned_malloc(len,ALIGNMENT);
+#else
+		data_ = (uint8_t*)std::aligned_alloc(ALIGNMENT,len);
+#endif
 		if(data_)
 		{
 			len_ = len;

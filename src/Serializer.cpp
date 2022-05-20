@@ -139,7 +139,7 @@ bool Serializer::open(std::string name, std::string mode, bool asynch)
 bool Serializer::close(void)
 {
 #ifdef _WIN32
-
+	return true;
 #else
 #ifdef IOBENCH_HAVE_URING
 	uring.close();
@@ -189,6 +189,11 @@ void Serializer::enableSimulateWrite(void){
 uint64_t Serializer::write(uint64_t offset, IOBuf **buffers, uint32_t numBuffers){
 	if (!buffers || !numBuffers)
 		return 0;
+	uint64_t bytesWritten = 0;
+#ifdef _WIN32
+
+#else
+
 #ifdef IOBENCH_HAVE_URING
 	if (uring.active())
 		return uring.write(offset, buffers, numBuffers);
@@ -196,7 +201,6 @@ uint64_t Serializer::write(uint64_t offset, IOBuf **buffers, uint32_t numBuffers
 
 	auto io = new IOScheduleData(offset,buffers,numBuffers);
 	ssize_t writtenInCall = 0;
-	uint64_t bytesWritten = 0;
 	for(; bytesWritten < io->totalBytes_; bytesWritten += (uint64_t)writtenInCall)
 	{
 		uint64_t bytesRemaining = (uint64_t)(io->totalBytes_ - bytesWritten);
@@ -205,6 +209,7 @@ uint64_t Serializer::write(uint64_t offset, IOBuf **buffers, uint32_t numBuffers
 			break;
 	}
 	delete io;
+#endif
 
 	for (uint32_t i = 0; i < numBuffers; ++i){
 		auto b = buffers[i];
