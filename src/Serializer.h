@@ -9,7 +9,7 @@
 
 const int32_t invalid_fd = -1;
 
-struct Serializer : public ISerializeBufWriter
+struct Serializer : public ISerializer
 {
 	Serializer(bool flushOnClose);
 	~Serializer(void);

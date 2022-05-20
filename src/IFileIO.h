@@ -105,9 +105,9 @@ struct IOScheduleData
 	uint64_t totalBytes_;
 };
 
-class ISerializeBufWriter{
+class ISerializer{
 public:
-	virtual ~ISerializeBufWriter() = default;
+	virtual ~ISerializer() = default;
 	virtual uint64_t write(uint64_t offset, IOBuf **buffers, uint32_t numBuffers) = 0;
 };
 

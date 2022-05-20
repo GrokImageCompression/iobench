@@ -71,7 +71,9 @@ bool Serializer::attach(Serializer *parent){
 int Serializer::getMode(std::string mode)
 {
 	int m = -1;
+#ifdef _WIN32
 
+#else
 	switch(mode[0])
 	{
 		case 'r':
@@ -93,6 +95,7 @@ int Serializer::getMode(std::string mode)
 			printf("Bad mode %s\n", mode.c_str());
 			break;
 	}
+#endif
 
 	return m;
 }
@@ -101,6 +104,9 @@ bool Serializer::open(std::string name, std::string mode, bool asynch)
 {
 	if (!close())
 		return false;
+#ifdef _WIN32
+
+#else
 	bool doRead = mode[0] == 'r';
 	int fd = 0;
 	int m = getMode(mode);
@@ -118,9 +124,7 @@ bool Serializer::open(std::string name, std::string mode, bool asynch)
 #ifdef __APPLE__
 	if (mode[1] == 'd')
 		fcntl(fd, F_NOCACHE, 1);
-#endif
-
-#ifdef IOBENCH_HAVE_URING
+#elif defined(IOBENCH_HAVE_URING)
 	if (asynch && !uring.attach(name, mode, fd,0))
 		return false;
 #endif
@@ -128,11 +132,15 @@ bool Serializer::open(std::string name, std::string mode, bool asynch)
 	filename_ = name;
 	mode_ = mode;
 	ownsFileDescriptor_ = true;
+#endif
 
 	return true;
 }
 bool Serializer::close(void)
 {
+#ifdef _WIN32
+
+#else
 #ifdef IOBENCH_HAVE_URING
 	uring.close();
 #endif
@@ -143,6 +151,7 @@ bool Serializer::close(void)
 
 		if (flushOnClose_){
 			int fret = fsync(fd_);
+			assert(!fret);
 			//todo: check return value
 		}
 		rc = ::close(fd_);
@@ -151,11 +160,16 @@ bool Serializer::close(void)
 	ownsFileDescriptor_ = false;
 
 	return rc == 0;
+#endif
 }
 uint64_t Serializer::seek(int64_t off, int32_t whence)
 {
 	if (simulateWrite_)
 		return off_;
+#ifdef _WIN32
+
+
+#else
 	off_t rc = lseek(fd_, off, whence);
 	if(rc == -1)
 	{
@@ -167,6 +181,7 @@ uint64_t Serializer::seek(int64_t off, int32_t whence)
 	}
 
 	return (uint64_t)rc;
+#endif
 }
 void Serializer::enableSimulateWrite(void){
 	simulateWrite_ = true;
@@ -209,8 +224,11 @@ uint64_t Serializer::write(uint8_t* buf, uint64_t bytes_total)
 		off_ += bytes_total;
 		return bytes_total;
 	}
-	ssize_t count = 0;
 	uint64_t bytes_written = 0;
+#ifdef _WIN32
+
+#else
+	ssize_t count = 0;
 	for(; bytes_written < bytes_total; bytes_written += (uint64_t)count)
 	{
 		const char* buf_offset = (char*)buf + bytes_written;
@@ -219,6 +237,7 @@ uint64_t Serializer::write(uint8_t* buf, uint64_t bytes_total)
 		if(count <= 0)
 			break;
 	}
+#endif
 
 	return bytes_written;
 }

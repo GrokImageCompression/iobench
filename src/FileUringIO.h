@@ -13,12 +13,13 @@ class FileUringIO : public IFileIO
   public:
 	FileUringIO();
 	virtual ~FileUringIO() override;
+	bool close(void) override;
+	uint64_t write(uint64_t offset, IOBuf **buffers, uint32_t numBuffers) override;
+
+	// uring-specific
 	void registerClientCallback(io_callback reclaim_callback, void* user_data);
 	bool attach(std::string fileName, std::string mode, int fd, int shared_ring_fd);
 	bool attach(FileUringIO *parent);
-	bool close(void) override;
-	uint64_t write(uint64_t offset, IOBuf **buffers, uint32_t numBuffers) override;
-	IOScheduleData* retrieveCompletion(bool peek, bool& success);
 	bool active(void);
 
   private:
@@ -31,6 +32,7 @@ class FileUringIO : public IFileIO
 	size_t requestsCompleted;
 	void enqueue(io_uring* ring, IOScheduleData* data, bool readop, int fd);
 	bool initQueue(int shared_ring_fd);
+	IOScheduleData* retrieveCompletion(bool peek, bool& success);
 
 	const uint32_t QD = 1024;
 	io_callback reclaim_callback_;
