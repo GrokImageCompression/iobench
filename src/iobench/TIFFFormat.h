@@ -1,6 +1,7 @@
 #pragma once
 
 #include <tiffio.h>
+#include <functional>
 
 #include "ImageFormat.h"
 
@@ -24,6 +25,7 @@ public:
 	using ImageFormat::init;
 	using ImageFormat::encodeInit;
 	using ImageFormat::encodePixels;
+	void setHeaderWriter(std::function<bool(TIFF* tif)> writer);
 	bool encodeFinish(void);
 	bool close(void) override;
 
@@ -32,6 +34,7 @@ private:
 	bool encodeHeader(void);
 	TIFF* tif_;
 	TIFFFormatHeaderClassic header_;
+	std::function<bool(TIFF* tif)> headerWriter_;
 };
 
 }

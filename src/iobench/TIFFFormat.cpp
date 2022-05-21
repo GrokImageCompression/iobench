@@ -76,17 +76,23 @@ bool TIFFFormat::encodeHeader(void){
 	if(isHeaderEncoded())
 		return true;
 
-	TIFFSetField(tif_, TIFFTAG_IMAGEWIDTH, imageStripper_->width_);
-	TIFFSetField(tif_, TIFFTAG_IMAGELENGTH, imageStripper_->height_);
-	TIFFSetField(tif_, TIFFTAG_SAMPLESPERPIXEL, imageStripper_->numcomps_);
-	TIFFSetField(tif_, TIFFTAG_BITSPERSAMPLE, 8);
-	TIFFSetField(tif_, TIFFTAG_PHOTOMETRIC, imageStripper_->numcomps_ == 3 ? PHOTOMETRIC_RGB : PHOTOMETRIC_MINISBLACK);
-	TIFFSetField(tif_, TIFFTAG_PLANARCONFIG, PLANARCONFIG_CONTIG);
-	TIFFSetField(tif_, TIFFTAG_ROWSPERSTRIP, imageStripper_->nominalStripHeight_);
-
+	if (headerWriter_) {
+		return headerWriter_(tif_);
+	} else {
+		TIFFSetField(tif_, TIFFTAG_IMAGEWIDTH, imageStripper_->width_);
+		TIFFSetField(tif_, TIFFTAG_IMAGELENGTH, imageStripper_->height_);
+		TIFFSetField(tif_, TIFFTAG_SAMPLESPERPIXEL, imageStripper_->numcomps_);
+		TIFFSetField(tif_, TIFFTAG_BITSPERSAMPLE, 8);
+		TIFFSetField(tif_, TIFFTAG_PHOTOMETRIC, imageStripper_->numcomps_ == 3 ? PHOTOMETRIC_RGB : PHOTOMETRIC_MINISBLACK);
+		TIFFSetField(tif_, TIFFTAG_PLANARCONFIG, PLANARCONFIG_CONTIG);
+		TIFFSetField(tif_, TIFFTAG_ROWSPERSTRIP, imageStripper_->nominalStripHeight_);
+	}
 	encodeState_ = IMAGE_FORMAT_ENCODED_HEADER;
 
 	return true;
+}
+void TIFFFormat::setHeaderWriter(std::function<bool(TIFF* tif)> writer){
+	headerWriter_ = writer;
 }
 bool TIFFFormat::encodeFinish(void)
 {
