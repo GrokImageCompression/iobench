@@ -13,7 +13,7 @@ namespace iobench {
 class FileIOUring : public IFileIO
 {
   public:
-	FileIOUring();
+	FileIOUring(uint32_t threadId);
 	virtual ~FileIOUring() override;
 	bool close(void) override;
 	uint64_t write(uint64_t offset, IOBuf **buffers, uint32_t numBuffers) override;
@@ -39,6 +39,7 @@ class FileIOUring : public IFileIO
 	const uint32_t QD = 1024;
 	io_callback reclaim_callback_;
 	void* reclaim_user_data_;
+	uint32_t threadId_;
 };
 
 }

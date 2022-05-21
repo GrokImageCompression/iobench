@@ -22,7 +22,7 @@ static void run(uint32_t width, uint32_t height,bool direct,
 	ChronoTimer timer;
 	bool storeAsynch = doStore && doAsynch;
 	auto tiffFormat = new TIFFFormat(true);
-	tiffFormat->init(width, height, 1, 32, chunked);
+	tiffFormat->init(width, height, 1,width, 32, chunked);
 	auto imageStripper = tiffFormat->getImageStripper();
 	if (doStore){
 		std::string filename = "dump.tif";

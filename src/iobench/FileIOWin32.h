@@ -9,7 +9,7 @@ namespace iobench {
 class FileIOWin32 : public FileIO
 {
 public:
-	FileIOWin32(bool flushOnClose);
+	FileIOWin32(uint32_t threadId, bool flushOnClose);
 	~FileIOWin32(void);
 	bool open(std::string name, std::string mode, bool asynch);
 	bool close(void);

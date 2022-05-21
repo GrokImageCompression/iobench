@@ -28,7 +28,7 @@ typedef struct _io_buf
 	uint64_t allocLen_;
 } io_buf;
 
-typedef bool (*io_callback)(io_buf *buffer, void* io_user_data);
+typedef bool (*io_callback)(uint32_t threadId, io_buf *buffer, void* io_user_data);
 typedef void (*io_register_client_callback)(io_callback reclaim_callback,
 													   void* io_user_data,
 													   void* reclaim_user_data);

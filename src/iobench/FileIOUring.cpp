@@ -10,9 +10,10 @@
 
 namespace iobench {
 
-FileIOUring::FileIOUring()
+FileIOUring::FileIOUring(uint32_t threadId)
 	: fd_(-1), ownsDescriptor(false), requestsSubmitted(0), requestsCompleted(0),
-	  reclaim_callback_(nullptr), reclaim_user_data_(nullptr)
+	  reclaim_callback_(nullptr), reclaim_user_data_(nullptr),
+	  threadId_(threadId)
 {
 	memset(&ring, 0, sizeof(ring));
 }
@@ -96,7 +97,7 @@ void FileIOUring::enqueue(io_uring* ring, IOScheduleData* data, bool readop, int
 			break;
 		for (uint32_t i = 0; i < data->numBuffers_; ++i){
 			auto b = data->buffers_[i];
-			reclaim_callback_(b, reclaim_user_data_);
+			reclaim_callback_(threadId_, b, reclaim_user_data_);
 		}
 		delete data;
 	}

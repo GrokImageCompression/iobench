@@ -11,7 +11,7 @@ namespace iobench {
 class FileIOUnix : public FileIO
 {
 public:
-	FileIOUnix(bool flushOnClose);
+	FileIOUnix(uint32_t threadId, bool flushOnClose);
 	~FileIOUnix(void);
 	void registerReclaimCallback(io_callback reclaim_callback, void* user_data) override;
 	bool attach(FileIOUnix* parent);

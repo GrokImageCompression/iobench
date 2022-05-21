@@ -6,7 +6,7 @@
 
 namespace iobench {
 
-FileIOWin32::FileIOWin32(bool flushOnClose) :FileIO(flushOnClose)
+FileIOWin32::FileIOWin32(uint32_t threadId, bool flushOnClose) : FileIO(threadId, flushOnClose)
 {
 }
 FileIOWin32::~FileIOWin32(void){
@@ -37,7 +37,7 @@ uint64_t FileIOWin32::write(uint64_t offset, IOBuf **buffers, uint32_t numBuffer
 	for (uint32_t i = 0; i < numBuffers; ++i){
 		auto b = buffers[i];
 		assert(reclaim_callback_);
-		reclaim_callback_(b, reclaim_user_data_);
+		reclaim_callback_(threadId_, b, reclaim_user_data_);
 	}
 	return bytesWritten;
 }

@@ -2,8 +2,11 @@
 
 namespace iobench {
 
-static bool applicationReclaimCallback(io_buf *buffer, void* io_user_data)
+static bool applicationReclaimCallback(uint32_t threadId,
+										io_buf *buffer,
+										void* io_user_data)
 {
+	(void)threadId;
 	auto pool = (IBufferPool*)io_user_data;
 	if(pool)
 		pool->put((IOBuf*)buffer);
@@ -11,9 +14,10 @@ static bool applicationReclaimCallback(io_buf *buffer, void* io_user_data)
 	return true;
 }
 
-Serializer::Serializer(bool flushOnClose) :
+Serializer::Serializer(uint32_t threadId, bool flushOnClose) :
 	  pool_(new BufferPool()),
-	  fileIO_(flushOnClose)
+	  fileIO_(threadId, flushOnClose),
+	  threadId_(threadId)
 {
 	registerReclaimCallback(applicationReclaimCallback, pool_);
 }

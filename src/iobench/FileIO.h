@@ -10,7 +10,7 @@ namespace iobench {
 
 class FileIO : public IFileIO {
 public:
-	FileIO(bool flushOnClose);
+	FileIO(uint32_t threadId, bool flushOnClose);
 	virtual ~FileIO() = default;
 	void enableSimulateWrite(void);
 	void setMaxPooledRequests(uint32_t maxRequests);
@@ -25,6 +25,7 @@ protected:
 	std::string mode_;
 	bool simulateWrite_;
 	bool flushOnClose_;
+	uint32_t threadId_;
 };
 
 }

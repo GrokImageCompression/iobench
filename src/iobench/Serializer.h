@@ -11,7 +11,7 @@ namespace iobench {
 class Serializer
 {
 public:
-	Serializer(bool flushOnClose);
+	Serializer(uint32_t threadId, bool flushOnClose);
 	~Serializer(void);
 	void setMaxPooledRequests(uint32_t maxRequests);
 	void registerReclaimCallback(io_callback reclaim_callback, void* user_data);
@@ -27,6 +27,7 @@ public:
 private:
 	IBufferPool *pool_;
 	FileIOUnix fileIO_;
+	uint32_t threadId_;
 };
 
 }

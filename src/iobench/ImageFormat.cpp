@@ -6,7 +6,7 @@ ImageFormat::ImageFormat(bool flushOnClose, uint8_t *header, size_t headerLength
 							header_(header),
 							headerLength_(headerLength),
 							encodeState_(IMAGE_FORMAT_UNENCODED),
-							serializer_(flushOnClose),
+							serializer_(-1,flushOnClose),
 							imageStripper_(nullptr),
 							concurrency_(0),
 							workerSerializers_(nullptr),
@@ -22,9 +22,11 @@ ImageFormat::~ImageFormat() {
 	delete imageStripper_;
 }
 void ImageFormat::init(uint32_t width, uint32_t height,
-						uint16_t numcomps, uint32_t nominalStripHeight,
+						uint16_t numcomps, uint64_t packedByteWidth,
+						uint32_t nominalStripHeight,
 						bool chunked){
-	imageStripper_ = new ImageStripper(width, height,1,32,
+	imageStripper_ = new ImageStripper(width, height,numcomps,
+						packedByteWidth,32,
 						headerLength_,
 						WRTSIZE, chunked ? serializer_.getPool(): nullptr);
 }
@@ -43,7 +45,7 @@ bool ImageFormat::encodeInit(std::string filename,
 	// create one serializer per thread and attach to parent serializer
 	workerSerializers_ = new Serializer*[concurrency];
 	for (uint32_t i = 0; i < concurrency_; ++i){
-		workerSerializers_[i] = new Serializer(false);
+		workerSerializers_[i] = new Serializer(i,false);
 		workerSerializers_[i]->attach(&serializer_);
 	}
 

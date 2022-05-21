@@ -11,7 +11,11 @@
 
 namespace iobench {
 
-FileIOUnix::FileIOUnix(bool flushOnClose) :FileIO(flushOnClose),
+FileIOUnix::FileIOUnix(uint32_t threadId, bool flushOnClose) :
+	  FileIO(threadId, flushOnClose),
+#ifdef IOBENCH_HAVE_URING
+	  uring(threadId),
+#endif
 	  fd_(invalid_fd),
 	  ownsFileDescriptor_(false)
 {
@@ -179,7 +183,7 @@ uint64_t FileIOUnix::write(uint64_t offset, IOBuf **buffers, uint32_t numBuffers
 	for (uint32_t i = 0; i < numBuffers; ++i){
 		auto b = buffers[i];
 		assert(reclaim_callback_);
-		reclaim_callback_(b, reclaim_user_data_);
+		reclaim_callback_(threadId_,b, reclaim_user_data_);
 	}
 	return bytesWritten;
 }
