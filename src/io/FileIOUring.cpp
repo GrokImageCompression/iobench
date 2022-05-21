@@ -6,7 +6,6 @@
 #include <cassert>
 
 #include "FileIOUring.h"
-#include "testing.h"
 
 namespace iobench {
 
