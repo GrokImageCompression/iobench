@@ -9,9 +9,11 @@
 #include "iobench/timer.h"
 #include "iobench/testing.h"
 
+const uint8_t numStrips = 32;
+
 namespace iobench {
 
-static void run(uint32_t width, uint32_t height,bool direct,
+static void run(uint32_t width, uint32_t height, uint8_t numComps, bool direct,
 		uint32_t concurrency, bool doStore, bool doAsynch, bool chunked){
 #ifndef IOBENCH_HAVE_URING
 	if (doAsynch) {
@@ -22,7 +24,7 @@ static void run(uint32_t width, uint32_t height,bool direct,
 	ChronoTimer timer;
 	bool storeAsynch = doStore && doAsynch;
 	auto tiffFormat = new TIFFFormat(true);
-	tiffFormat->init(width, height, 1,width, 32, chunked);
+	tiffFormat->init(width, height, numComps,width * numComps, numStrips, chunked);
 	auto imageStripper = tiffFormat->getImageStripper();
 	if (doStore){
 		std::string filename = "dump.tif";
@@ -109,10 +111,11 @@ static void run(uint32_t width, uint32_t height,bool direct,
 	delete tiffFormat;
 	timer.finish(storeAsynch ? "flush" : "");
 }
-static void run(uint32_t width, uint32_t height,bool direct,uint8_t concurrency, bool chunked){
-	   run(width,height,direct,concurrency,false,false,chunked);
-	   run(width,height,direct,concurrency,true,false,chunked);
-	   run(width,height,direct,concurrency,true,true,chunked);
+static void run(uint32_t width, uint32_t height,uint8_t numComps,
+		bool direct,uint8_t concurrency, bool chunked){
+	   run(width,height,numComps,direct,concurrency,false,false,chunked);
+	   run(width,height,numComps,direct,concurrency,true,false,chunked);
+	   run(width,height,numComps,direct,concurrency,true,true,chunked);
 	   printf("\\\\\\\\\\\\\\\\\\\\\\\\\\\n");
 }
 
@@ -122,6 +125,7 @@ int main(int argc, char** argv)
 {
 	uint32_t width = 88000;
 	uint32_t height = 32005;
+	uint32_t numComps = 1;
 	uint32_t concurrency = 0;
 	bool useUring = true;
 	bool fullRun = true;
@@ -137,6 +141,9 @@ int main(int argc, char** argv)
 		TCLAP::ValueArg<uint32_t> heightArg("e", "height",
 												  "image height",
 												  false, 0, "unsigned integer", cmd);
+		TCLAP::ValueArg<uint32_t> numComponentsArg("n", "numcomps",
+												  "number of components",
+												  false, 0, "unsigned integer", cmd);
 		TCLAP::SwitchArg synchArg("s", "synchronous", "synchronous writes", cmd);
 		TCLAP::SwitchArg directArg("d", "direct", "use O_DIRECT", cmd);
 		TCLAP::ValueArg<uint32_t> concurrencyArg("c", "concurrency",
@@ -149,6 +156,8 @@ int main(int argc, char** argv)
 			width = widthArg.getValue();
 		if (heightArg.isSet())
 			height = heightArg.getValue();
+		if (numComponentsArg.isSet())
+			numComps = numComponentsArg.getValue();
 		if (directArg.isSet()){
 #ifdef __linux__
 			direct = directArg.isSet();
@@ -174,13 +183,13 @@ int main(int argc, char** argv)
 	if (fullRun) {
 		for (uint8_t concurrency = 2;
 				concurrency <= std::thread::hardware_concurrency(); concurrency+=2){
-		   iobench::run(width,height,direct,concurrency,chunked);
+		   iobench::run(width,height,numComps,direct,concurrency,chunked);
 	   }
 	} else {
 		if (concurrency > 0)
-			iobench::run(width,height,direct, concurrency, true, useUring,chunked);
+			iobench::run(width,height,numComps,direct, concurrency, true, useUring,chunked);
 		else
-			iobench::run(width,height,direct,std::thread::hardware_concurrency(),true,useUring,chunked);
+			iobench::run(width,height,numComps,direct,std::thread::hardware_concurrency(),true,useUring,chunked);
 	}
 
    return 0;
