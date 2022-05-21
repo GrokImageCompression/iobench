@@ -1,7 +1,19 @@
 #include <cstdlib>
 
 #include "iobench_config.h"
+
+#ifndef _MSC_VER
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wsign-conversion"
+#ifdef __clang__
+#pragma GCC diagnostic ignored "-Wimplicit-int-float-conversion"
+#endif
+#endif
 #include <taskflow/taskflow.hpp>
+#ifndef _MSC_VER
+#pragma GCC diagnostic pop
+#endif
+
 #define TCLAP_NAMESTARTSTRING "-"
 #include "tclap/CmdLine.h"
 
@@ -13,7 +25,7 @@ const uint8_t numStrips = 32;
 
 namespace iobench {
 
-static void run(uint32_t width, uint32_t height, uint8_t numComps, bool direct,
+static void run(uint32_t width, uint32_t height, uint16_t numComps, bool direct,
 		uint32_t concurrency, bool doStore, bool doAsynch, bool chunked){
 #ifndef IOBENCH_HAVE_URING
 	if (doAsynch) {
@@ -54,13 +66,14 @@ static void run(uint32_t width, uint32_t height, uint8_t numComps, bool direct,
 				free(b);
 #else
 				uint8_t b[len] __attribute__((__aligned__(ALIGNMENT)));
+				(void)b;
 				for (uint64_t k = 0; k < len; ++k)
 					b[k] = k%256;
 #endif
 			} else {
 				if (chunked) {
 					auto chunkArray =
-							tiffFormat->getStripChunkArray(exec.this_worker_id(),
+							tiffFormat->getStripChunkArray((uint32_t)exec.this_worker_id(),
 									currentStrip);
 					uint64_t val = chunkArray->stripChunks_[0]->offset();
 					val += chunkArray->stripChunks_[0]->writeableOffset_;
@@ -85,16 +98,16 @@ static void run(uint32_t width, uint32_t height, uint8_t numComps, bool direct,
 									ch->len());
 #endif
 					}
-					bool ret = tiffFormat->encodePixels(exec.this_worker_id(), chunkArray);
+					bool ret = tiffFormat->encodePixels((uint32_t)exec.this_worker_id(), chunkArray);
 					assert(ret);
 					delete chunkArray;
 				} else {
-					auto b = tiffFormat->getPoolBuffer(exec.this_worker_id(), currentStrip);
+					auto b = tiffFormat->getPoolBuffer((uint32_t)exec.this_worker_id(), currentStrip);
 					auto ptr = b->data_ + b->skip_;
 					uint64_t val = b->offset_ + b->skip_;
 					for (uint64_t k = 0; k < b->len_ - b->skip_; ++k)
 						ptr[k] = (val++)%256;
-					bool ret = tiffFormat->encodePixels(exec.this_worker_id(),&b,1);
+					bool ret = tiffFormat->encodePixels((uint32_t)exec.this_worker_id(),&b,1);
 					assert(ret);
 				}
 			}
@@ -111,7 +124,7 @@ static void run(uint32_t width, uint32_t height, uint8_t numComps, bool direct,
 	delete tiffFormat;
 	timer.finish(storeAsynch ? "flush" : "");
 }
-static void run(uint32_t width, uint32_t height,uint8_t numComps,
+static void run(uint32_t width, uint32_t height,uint16_t numComps,
 		bool direct,uint8_t concurrency, bool chunked){
 	   run(width,height,numComps,direct,concurrency,false,false,chunked);
 	   run(width,height,numComps,direct,concurrency,true,false,chunked);
@@ -125,7 +138,7 @@ int main(int argc, char** argv)
 {
 	uint32_t width = 88000;
 	uint32_t height = 32005;
-	uint32_t numComps = 1;
+	uint16_t numComps = 1;
 	uint32_t concurrency = 0;
 	bool useUring = true;
 	bool fullRun = true;
@@ -157,7 +170,7 @@ int main(int argc, char** argv)
 		if (heightArg.isSet())
 			height = heightArg.getValue();
 		if (numComponentsArg.isSet())
-			numComps = numComponentsArg.getValue();
+			numComps = (uint16_t)numComponentsArg.getValue();
 		if (directArg.isSet()){
 #ifdef __linux__
 			direct = directArg.isSet();
@@ -182,14 +195,15 @@ int main(int argc, char** argv)
 	}
 	if (fullRun) {
 		for (uint8_t concurrency = 2;
-				concurrency <= std::thread::hardware_concurrency(); concurrency+=2){
+				concurrency <= (uint32_t)std::thread::hardware_concurrency(); concurrency+=2){
 		   iobench::run(width,height,numComps,direct,concurrency,chunked);
 	   }
 	} else {
 		if (concurrency > 0)
 			iobench::run(width,height,numComps,direct, concurrency, true, useUring,chunked);
 		else
-			iobench::run(width,height,numComps,direct,std::thread::hardware_concurrency(),true,useUring,chunked);
+			iobench::run(width,height,numComps,direct,
+					(uint32_t)std::thread::hardware_concurrency(),true,useUring,chunked);
 	}
 
    return 0;

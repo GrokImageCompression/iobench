@@ -1,12 +1,14 @@
 #include "ImageFormat.h"
 
+#include <climits>
+
 namespace iobench {
 
 ImageFormat::ImageFormat(bool flushOnClose, uint8_t *header, size_t headerLength) :
 							header_(header),
 							headerLength_(headerLength),
 							encodeState_(IMAGE_FORMAT_UNENCODED),
-							serializer_(-1,flushOnClose),
+							serializer_(UINT_MAX,flushOnClose),
 							imageStripper_(nullptr),
 							concurrency_(0),
 							workerSerializers_(nullptr),
@@ -26,7 +28,7 @@ void ImageFormat::init(uint32_t width, uint32_t height,
 						uint32_t nominalStripHeight,
 						bool chunked){
 	imageStripper_ = new ImageStripper(width, height,numcomps,
-						packedByteWidth,32,
+						packedByteWidth,nominalStripHeight,
 						headerLength_,
 						WRTSIZE, chunked ? serializer_.getPool(): nullptr);
 }
@@ -38,7 +40,6 @@ bool ImageFormat::encodeInit(std::string filename,
 	concurrency_ = concurrency;
 	auto maxRequests = imageStripper_->numStrips();
 	serializer_.setMaxPooledRequests(maxRequests);
-	bool rc;
 	mode_ = direct ? "wd" : "w";
 	if(!serializer_.open(filename_, mode_,asynch))
 		return false;

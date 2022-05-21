@@ -61,6 +61,11 @@ include_directories(
   ${CMAKE_CURRENT_SOURCE_DIR}/src/include
   ${TIFF_INCLUDE_DIRNAME})
   
+# Compiler specific flags:
+if (CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
+  set(IOBENCH_COMPILE_OPTIONS ${IOBENCH_COMPILE_OPTIONS} -Wall -Wextra -Wconversion -Wsign-conversion -Wunused-parameter)
+endif()
+
 set(LIBRARY_SRCS
   ${CMAKE_CURRENT_SOURCE_DIR}/src/io/FileIO.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/src/io/FileIOUnix.cpp
@@ -83,3 +88,6 @@ target_link_libraries(iobench ${TIFF_LIBNAME} ${CMAKE_THREAD_LIBS_INIT} )
 if (LIBURING_FOUND)
 	target_link_libraries(iobench uring)
 endif(LIBURING_FOUND)
+
+
+ target_compile_options(iobench PRIVATE ${IOBENCH_COMPILE_OPTIONS})

@@ -15,6 +15,9 @@ FileIOWin32::~FileIOWin32(void){
 
 bool FileIOWin32::open(std::string name, std::string mode, bool asynch)
 {
+	(void)name;
+	(void)mode;
+	(void)asynch;
 	if (!close())
 		return false;
 	return true;
@@ -25,12 +28,15 @@ bool FileIOWin32::close(void)
 }
 uint64_t FileIOWin32::seek(int64_t off, int32_t whence)
 {
+	(void)off;
+	(void)whence;
 	if (simulateWrite_)
 		return off_;
 
 	return 0;
 }
 uint64_t FileIOWin32::write(uint64_t offset, IOBuf **buffers, uint32_t numBuffers){
+	(void)offset;
 	if (!buffers || !numBuffers)
 		return 0;
 	uint64_t bytesWritten = 0;
@@ -43,6 +49,7 @@ uint64_t FileIOWin32::write(uint64_t offset, IOBuf **buffers, uint32_t numBuffer
 }
 uint64_t FileIOWin32::write(uint8_t* buf, uint64_t bytes_total)
 {
+	(void)buf;
 	if (simulateWrite_){
 		// offset 0 write is for file header
 		if (off_ != 0) {

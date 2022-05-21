@@ -36,9 +36,9 @@ struct ChunkInfo{
 			 uint64_t logicalLenPrev,
 			 uint64_t headerSize,
 			 uint64_t writeSize) 	:
-						writeSize_(writeSize),
 						isFirstStrip_(isFirstStrip),
 						isFinalStrip_(isFinalStrip),
+						writeSize_(writeSize),
 						headerSize_(headerSize),
 						pool_(nullptr)
 	{
@@ -59,10 +59,18 @@ struct ChunkInfo{
 		assert(last_.valid());
 		assert(firstOverlapsLast || (first_.x1_ <= last_.x0_));
 	}
+	ChunkInfo(const ChunkInfo &rhs) : first_(rhs.first_),
+										last_(rhs.last_),
+										isFirstStrip_(rhs.isFirstStrip_),
+										isFinalStrip_(rhs.isFinalStrip_),
+										writeSize_(rhs.writeSize_),
+										headerSize_(rhs.headerSize_),
+										pool_(nullptr)
+	{}
 	uint64_t len(){
 		return last_.x1_ - first_.x0_;
 	}
-	uint32_t numChunks(void){
+	uint64_t numChunks(void){
 		bool firstOverlapsLast = first_.x1_ == last_.x1_;
 		if (firstOverlapsLast)
 			return 1;
@@ -105,14 +113,16 @@ struct ChunkInfo{
 	uint64_t lastBegin(uint64_t logicalOffset,uint64_t logicalLen){
 		return (stripEnd(logicalOffset,logicalLen)/writeSize_) * writeSize_;
 	}
-	ChunkInfo(const ChunkInfo &rhs){
+	ChunkInfo operator=(const ChunkInfo& rhs){
 		first_        = rhs.first_;
 		last_         = rhs.last_;
-		writeSize_    = rhs.writeSize_;
-		isFirstStrip_ = rhs.isFinalStrip_;
+		isFirstStrip_ = rhs.isFirstStrip_;
 		isFinalStrip_ = rhs.isFinalStrip_;
+		writeSize_    = rhs.writeSize_;
 		headerSize_   = rhs.headerSize_;
 		pool_         = rhs.pool_;
+
+		return *this;
 	}
 	// first_ and last_ are usually disjoint, except in the case
 	// where there is only one chunk in the final strip.
@@ -120,9 +130,9 @@ struct ChunkInfo{
 	// In all cases, last_.x0_ is aligned on writeSize_ boundary
 	BufDim first_;
 	BufDim last_;
-	uint64_t writeSize_;
 	bool isFirstStrip_;
 	bool isFinalStrip_;
+	uint64_t writeSize_;
 	uint64_t headerSize_;
 	IBufferPool *pool_;
 };
@@ -201,9 +211,9 @@ struct StripChunk : public RefCounted {
 	StripChunk(IOChunk *ioChunk,
 				uint64_t writeableOffset,
 				uint64_t writeableLen) :
-		ioChunk_(ioChunk),
 		writeableOffset_(writeableOffset),
-		writeableLen_(writeableLen)
+		writeableLen_(writeableLen),
+		ioChunk_(ioChunk)
 	{
 		// we may need to extend a shared ioChunk_'s length
 		if (ioChunk_->isShared() &&
@@ -250,13 +260,13 @@ public:
  *
  */
 struct StripChunkArray{
-	StripChunkArray(StripChunk** chunks, IOBuf **buffers,uint32_t numBuffers, IBufferPool *pool)
+	StripChunkArray(StripChunk** chunks, IOBuf **buffers,uint64_t numBuffers, IBufferPool *pool)
 		: ioBufs_(buffers),
 		  stripChunks_(chunks),
 		  numBuffers_(numBuffers),
 		  pool_(pool)
 	{
-		for (uint32_t i = 0; i < numBuffers_; ++i)
+		for (uint64_t i = 0; i < numBuffers_; ++i)
 			assert(ioBufs_[i]->data_);
 	}
 	~StripChunkArray(void){
@@ -265,7 +275,7 @@ struct StripChunkArray{
 	}
 	IOBuf ** ioBufs_;
 	StripChunk ** stripChunks_;
-	uint32_t numBuffers_;
+	uint64_t numBuffers_;
 	IBufferPool *pool_;
 };
 
@@ -428,7 +438,7 @@ struct Strip  {
 	uint64_t logicalOffset_;
 	uint64_t logicalLen_;
 	StripChunk** stripChunks_;
-	uint32_t numChunks_;
+	uint64_t numChunks_;
 	Strip *leftNeighbour_;
 	ChunkInfo chunkInfo_;
 };
@@ -502,9 +512,9 @@ private:
 	uint32_t stripHeight(uint32_t strip) const{
 		return (strip < numStrips_-1) ? nominalStripHeight_ : finalStripHeight_;
 	}
+	uint32_t numStrips_;
 	uint64_t packedByteWidth_;
 	uint32_t finalStripHeight_;
-	uint32_t numStrips_;
 	uint64_t headerSize_;
 	uint64_t writeSize_;
 	uint32_t finalStrip_;
