@@ -20,7 +20,7 @@ class FileIOUring : public IFileIO
 
 	// uring-specific
 	void registerReclaimCallback(io_callback reclaim_callback, void* user_data);
-	bool attach(std::string fileName, std::string mode, int fd, int shared_ring_fd);
+	bool attach(std::string fileName, std::string mode, int fd, uint32_t shared_ring_fd);
 	bool attach(const FileIOUring *parent);
 	bool active(void) const;
 
@@ -33,7 +33,7 @@ class FileIOUring : public IFileIO
 	size_t requestsSubmitted;
 	size_t requestsCompleted;
 	void enqueue(io_uring* ring, IOScheduleData* data, bool readop, int fd);
-	bool initQueue(int shared_ring_fd);
+	bool initQueue(uint32_t shared_ring_fd);
 	IOScheduleData* retrieveCompletion(bool peek, bool& success);
 
 	const uint32_t QD = 1024;

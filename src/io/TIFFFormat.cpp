@@ -1,6 +1,8 @@
 #include "TIFFFormat.h"
 #include "tiffiop.h"
 
+#include <climits>
+
 namespace iobench {
 
 static tmsize_t TiffRead(thandle_t handle, void* buf, tmsize_t size)
@@ -14,12 +16,6 @@ static tmsize_t TiffWrite(thandle_t handle, void* buf, tmsize_t size)
 {
 	auto* serializer_ = (Serializer*)handle;
 	const uint64_t bytes_total = (uint64_t)size;
-	if(bytes_total != size)
-	{
-		errno = EINVAL;
-		return (tmsize_t)-1;
-	}
-
 	if(serializer_->write((uint8_t*)buf, bytes_total) == bytes_total)
 		return size;
 	else
@@ -30,7 +26,7 @@ static toff_t TiffSeek(thandle_t handle, toff_t off, int whence)
 {
 	auto* serializer_ = (Serializer*)handle;
 
-	if((int64_t)off != off)
+	if (off > LLONG_MAX)
 	{
 		errno = EINVAL;
 		return (uint64_t)-1;

@@ -54,6 +54,7 @@ struct ChunkInfo{
 		// clamp first_ end to physical strip length
 		first_.x1_ = std::min(first_.x1_,last_.x1_);
 		bool firstOverlapsLast = first_.x1_ == last_.x1_;
+		(void)firstOverlapsLast;
 		assert(firstOverlapsLast || (last_.x0_ - first_.x1_) % writeSize_ == 0);
 		assert(first_.valid());
 		assert(last_.valid());
@@ -391,6 +392,7 @@ struct Strip  {
 		assert(logicalLen_ == writeableTotal);
 
 		uint64_t writeableEnd = 0;
+		(void)writeableEnd;
 		if (numChunks_ > 1) {
 			writeableEnd =	stripChunks_[numChunks_-1]->offset() +
 									stripChunks_[numChunks_-1]->writeableLen_;
@@ -404,6 +406,7 @@ struct Strip  {
 
 		uint64_t writeableBegin =
 				stripChunks_[0]->offset() + stripChunks_[0]->writeableOffset_;
+		(void)writeableBegin;
 		assert(writeableBegin ==
 				chunkInfo_.first_.x0_ +
 					(chunkInfo_.isFirstStrip_ ? chunkInfo_.headerSize_ : 0));

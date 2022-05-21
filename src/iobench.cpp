@@ -99,6 +99,7 @@ static void run(uint32_t width, uint32_t height, uint16_t numComps, bool direct,
 #endif
 					}
 					bool ret = tiffFormat->encodePixels((uint32_t)exec.this_worker_id(), chunkArray);
+					(void)ret;
 					assert(ret);
 					delete chunkArray;
 				} else {
@@ -109,6 +110,7 @@ static void run(uint32_t width, uint32_t height, uint16_t numComps, bool direct,
 						ptr[k] = (val++)%256;
 					bool ret = tiffFormat->encodePixels((uint32_t)exec.this_worker_id(),&b,1);
 					assert(ret);
+					(void)ret;
 				}
 			}
 		});

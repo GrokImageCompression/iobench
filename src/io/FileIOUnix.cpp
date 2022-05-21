@@ -74,12 +74,12 @@ int FileIOUnix::getMode(std::string mode)
 
 bool FileIOUnix::open(std::string name, std::string mode, bool asynch)
 {
+	(void)asynch;
 	if (!close())
 		return false;
 #ifdef _WIN32
 
 #else
-	bool doRead = mode[0] == 'r';
 	int fd = 0;
 	int m = getMode(mode);
 	if(m == -1)
@@ -123,6 +123,7 @@ bool FileIOUnix::close(void)
 
 		if (flushOnClose_){
 			int fret = fsync(fd_);
+			(void)fret;
 			assert(!fret);
 			//todo: check return value
 		}
@@ -172,8 +173,7 @@ uint64_t FileIOUnix::write(uint64_t offset, IOBuf **buffers, uint32_t numBuffers
 	ssize_t writtenInCall = 0;
 	for(; bytesWritten < io->totalBytes_; bytesWritten += (uint64_t)writtenInCall)
 	{
-		uint64_t bytesRemaining = (uint64_t)(io->totalBytes_ - bytesWritten);
-		writtenInCall = pwritev(fd_, (const iovec*)io->iov_, numBuffers, offset);
+		writtenInCall = pwritev(fd_, (const iovec*)io->iov_, (int32_t)numBuffers, (int64_t)offset);
 		if(writtenInCall <= 0)
 			break;
 	}

@@ -31,7 +31,7 @@ void FileIOUring::registerReclaimCallback(io_callback reclaim_callback,
 	reclaim_callback_ = reclaim_callback;
 	reclaim_user_data_ = user_data;
 }
-bool FileIOUring::attach(std::string fileName, std::string mode, int fd, int shared_ring_fd)
+bool FileIOUring::attach(std::string fileName, std::string mode, int fd, uint32_t shared_ring_fd)
 {
 	fileName_ = fileName;
 	mode_ = mode;
@@ -45,10 +45,10 @@ bool FileIOUring::attach(std::string fileName, std::string mode, int fd, int sha
 bool FileIOUring::attach(const FileIOUring *parent){
 	if (!parent->active())
 		return true;
-	return attach(parent->fileName_, parent->mode_, parent->fd_,parent->ring.ring_fd);
+	return attach(parent->fileName_, parent->mode_, parent->fd_,(uint32_t)parent->ring.ring_fd);
 }
 
-bool FileIOUring::initQueue(int shared_ring_fd)
+bool FileIOUring::initQueue(uint32_t shared_ring_fd)
 {
 	if (shared_ring_fd){
 		struct io_uring_params p;
