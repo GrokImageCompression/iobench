@@ -5,9 +5,9 @@
 #define TCLAP_NAMESTARTSTRING "-"
 #include "tclap/CmdLine.h"
 
-#include "iobench/TIFFFormat.h"
-#include "iobench/timer.h"
-#include "iobench/testing.h"
+#include "io/TIFFFormat.h"
+#include "io/timer.h"
+#include "io/testing.h"
 
 const uint8_t numStrips = 32;
 

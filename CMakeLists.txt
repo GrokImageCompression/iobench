@@ -62,13 +62,13 @@ include_directories(
   ${TIFF_INCLUDE_DIRNAME})
   
 set(LIBRARY_SRCS
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/iobench/FileIO.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/iobench/FileIOUnix.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/iobench/FileIOWin32.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/iobench/FileIOUring.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/iobench/Serializer.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/iobench/ImageFormat.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/iobench/TIFFFormat.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/io/FileIO.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/io/FileIOUnix.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/io/FileIOWin32.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/io/FileIOUring.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/io/Serializer.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/io/ImageFormat.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/io/TIFFFormat.cpp
   )
   
 configure_file(
