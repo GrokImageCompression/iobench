@@ -40,6 +40,16 @@ ImageFormat::~ImageFormat() {
 	}
 	delete imageStripper_;
 }
+void ImageFormat::registerReclaimCallback(io_callback reclaim_callback, void* user_data){
+	serializer_.registerReclaimCallback(reclaim_callback,user_data);
+	if (workerSerializers_){
+		for (uint32_t i = 0; i < concurrency_; ++i)
+			workerSerializers_[i]->registerReclaimCallback(reclaim_callback,user_data);
+	}
+}
+void ImageFormat::setEncodeFinisher(std::function<bool(void)> finisher){
+	encodeFinisher_ = finisher;
+}
 void ImageFormat::init(uint32_t width, uint32_t height,
 						uint16_t numcomps, uint64_t packedByteWidth,
 						uint32_t nominalStripHeight,
