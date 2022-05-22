@@ -35,8 +35,8 @@
 #include "tclap/CmdLine.h"
 
 #include "io/TIFFFormat.h"
-#include "io/timer.h"
-#include "io/testing.h"
+#include "timer.h"
+#include "testing.h"
 
 const uint8_t numStrips = 32;
 
