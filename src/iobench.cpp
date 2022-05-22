@@ -77,7 +77,7 @@ static void run(uint32_t width, uint32_t height, uint16_t numComps, bool direct,
 			if (!doStore) {
 				uint64_t len =  strip->logicalLen_;
 #ifdef _WIN32
-				uint8_t *b = IOBuf::alignedAlloc(ALIGNMENT,len);
+				uint8_t *b = io::IOBuf::alignedAlloc(ALIGNMENT,len);
 				for (uint64_t k = 0; k < len; ++k)
 					b[k] = k%256;
 				free(b);
