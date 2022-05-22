@@ -139,7 +139,6 @@ static void run(uint32_t width, uint32_t height, uint16_t numComps, bool direct,
 		timer.finish("scheduling");
 		timer.start();
 	}
-	tiffFormat->encodeFinish();
 	delete tiffFormat;
 	timer.finish(storeAsynch ? "flush" : "");
 }
