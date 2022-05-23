@@ -61,8 +61,8 @@ static void run(uint32_t width, uint32_t height, uint16_t numComps, bool direct,
 	   tiffFormat->encodeInit(filename,direct,concurrency,doAsynch);
 	}
 
-	printf("Run with concurrency = %d, store to disk = %d, use uring = %d\n",
-			concurrency,doStore,doAsynch);
+	printf("Run with concurrency = %d, store to disk = %d, direct = %d, use uring = %d\n",
+			concurrency,doStore,direct,doAsynch);
 	tf::Executor exec(concurrency);
 	tf::Taskflow taskflow;
 	tf::Task* encodeStrips = new tf::Task[imageStripper->numStrips()];
@@ -135,18 +135,15 @@ static void run(uint32_t width, uint32_t height, uint16_t numComps, bool direct,
 	timer.start();
 	exec.run(taskflow).wait();
 	delete[] encodeStrips;
-	if (storeAsynch){
-		timer.finish("scheduling");
-		timer.start();
-	}
 	delete tiffFormat;
-	timer.finish(storeAsynch ? "flush" : "");
+	timer.finish("");
 }
-static void run(uint32_t width, uint32_t height,uint16_t numComps,
-		bool direct,uint8_t concurrency, bool chunked){
-	   run(width,height,numComps,direct,concurrency,false,false,chunked);
-	   run(width,height,numComps,direct,concurrency,true,false,chunked);
-	   run(width,height,numComps,direct,concurrency,true,true,chunked);
+static void run(uint32_t width, uint32_t height,uint16_t numComps,uint8_t concurrency){
+	   run(width,height,numComps,false,concurrency,false,false,false);
+	   run(width,height,numComps,false,concurrency,true,false,false);
+	   run(width,height,numComps,false,concurrency,true,true,false);
+	   run(width,height,numComps,true,concurrency,true,false,true);
+	   run(width,height,numComps,true,concurrency,true,true,true);
 	   printf("\\\\\\\\\\\\\\\\\\\\\\\\\\\n");
 }
 
@@ -214,7 +211,7 @@ int main(int argc, char** argv)
 	if (fullRun) {
 		for (uint8_t concurrency = 2;
 				concurrency <= (uint32_t)std::thread::hardware_concurrency(); concurrency+=2){
-		   iobench::run(width,height,numComps,direct,concurrency,chunked);
+		   iobench::run(width,height,numComps,concurrency);
 	   }
 	} else {
 		if (concurrency > 0)
