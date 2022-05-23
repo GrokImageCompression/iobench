@@ -51,7 +51,6 @@ static void run(uint32_t width, uint32_t height, uint16_t numComps, bool direct,
 	}
 #endif
 	ChronoTimer timer;
-	bool storeAsynch = doStore && doAsynch;
 	auto tiffFormat = new io::TIFFFormat(true);
 	tiffFormat->init(width, height, numComps,width * numComps, numStrips, chunked);
 	auto imageStripper = tiffFormat->getImageStripper();
