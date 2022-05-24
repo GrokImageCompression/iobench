@@ -143,7 +143,7 @@ static void run(uint32_t width, uint32_t height,uint16_t numComps,uint8_t concur
 	   run(width,height,numComps,false,concurrency,true,true,false);
 	   run(width,height,numComps,true,concurrency,true,false,true);
 	   run(width,height,numComps,true,concurrency,true,true,true);
-	   printf("\\\\\\\\\\\\\\\\\\\\\\\\\\\n");
+	   printf("\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\n");
 }
 
 }

@@ -126,7 +126,7 @@ bool TIFFFormat::encodeFinish(void)
 	//2. simulate strip writes
 	for(uint32_t j = 0; j < imageStripper_->numStrips(); ++j){
 		tmsize_t written =
-			TIFFWriteEncodedStrip(tif_, j, nullptr, (tmsize_t)imageStripper_->getStrip(j)->logicalLen_);
+			TIFFWriteEncodedStrip(tif_, (uint32_t)j, nullptr, (tmsize_t)imageStripper_->getStrip(j)->logicalLen_);
 		if (written == -1){
 			printf("Error writing strip\n");
 			return false;
