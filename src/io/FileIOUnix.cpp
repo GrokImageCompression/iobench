@@ -15,12 +15,11 @@
  */
 
 
-#ifdef _WIN32
-#else
+#ifndef _WIN32
+
 #include <fcntl.h>
 #include <unistd.h>
 #include <sys/uio.h>
-#endif
 #include <cstring>
 #include <cassert>
 
@@ -60,9 +59,6 @@ bool FileIOUnix::attach(FileIOUnix *parent){
 int FileIOUnix::getMode(std::string mode)
 {
 	int m = -1;
-#ifdef _WIN32
-
-#else
 	switch(mode[0])
 	{
 		case 'r':
@@ -84,7 +80,6 @@ int FileIOUnix::getMode(std::string mode)
 			printf("Bad mode %s\n", mode.c_str());
 			break;
 	}
-#endif
 
 	return m;
 }
@@ -94,9 +89,6 @@ bool FileIOUnix::open(std::string name, std::string mode, bool asynch)
 	(void)asynch;
 	if (!close())
 		return false;
-#ifdef _WIN32
-
-#else
 	int fd = 0;
 	int m = getMode(mode);
 	if(m == -1)
@@ -121,15 +113,11 @@ bool FileIOUnix::open(std::string name, std::string mode, bool asynch)
 	filename_ = name;
 	mode_ = mode;
 	ownsFileDescriptor_ = true;
-#endif
 
 	return true;
 }
 bool FileIOUnix::close(void)
 {
-#ifdef _WIN32
-	return true;
-#else
 #ifdef IOBENCH_HAVE_URING
 	uring.close();
 #endif
@@ -150,7 +138,6 @@ bool FileIOUnix::close(void)
 	ownsFileDescriptor_ = false;
 
 	return rc == 0;
-#endif
 }
 bool FileIOUnix::reopenAsSynch(void){
 	if (mode_.length() >= 2 && mode_[1] == 'd'){
@@ -170,10 +157,6 @@ uint64_t FileIOUnix::seek(int64_t off, int32_t whence)
 {
 	if (simulateWrite_)
 		return off_;
-#ifdef _WIN32
-
-
-#else
 	off_t rc = lseek(fd_, off, whence);
 	if(rc == -1)
 	{
@@ -185,16 +168,11 @@ uint64_t FileIOUnix::seek(int64_t off, int32_t whence)
 	}
 
 	return (uint64_t)rc;
-#endif
 }
 uint64_t FileIOUnix::write(uint64_t offset, IOBuf **buffers, uint32_t numBuffers){
 	if (!buffers || !numBuffers)
 		return 0;
 	uint64_t bytesWritten = 0;
-#ifdef _WIN32
-
-#else
-
 #ifdef IOBENCH_HAVE_URING
 	if (uring.active())
 		return uring.write(offset, buffers, numBuffers);
@@ -209,8 +187,6 @@ uint64_t FileIOUnix::write(uint64_t offset, IOBuf **buffers, uint32_t numBuffers
 			break;
 	}
 	delete io;
-#endif
-
 	for (uint32_t i = 0; i < numBuffers; ++i){
 		auto b = buffers[i];
 		assert(reclaim_callback_);
@@ -230,9 +206,6 @@ uint64_t FileIOUnix::write(uint8_t* buf, uint64_t bytes_total)
 		return bytes_total;
 	}
 	uint64_t bytes_written = 0;
-#ifdef _WIN32
-
-#else
 	ssize_t count = 0;
 	for(; bytes_written < bytes_total; bytes_written += (uint64_t)count)
 	{
@@ -242,9 +215,10 @@ uint64_t FileIOUnix::write(uint8_t* buf, uint64_t bytes_total)
 		if(count <= 0)
 			break;
 	}
-#endif
 
 	return bytes_written;
 }
 
 }
+
+#endif

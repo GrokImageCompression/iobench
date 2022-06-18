@@ -24,6 +24,9 @@
 #include "FileIOUring.h"
 #include "BufferPool.h"
 
+
+#ifndef _WIN32
+
 namespace io {
 
 class FileIOUnix : public FileIO
@@ -48,4 +51,7 @@ private:
 	bool ownsFileDescriptor_;
 };
 
+
 }
+
+#endif
