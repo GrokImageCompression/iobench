@@ -69,7 +69,6 @@ endif()
 set(LIBRARY_SRCS
   ${CMAKE_CURRENT_SOURCE_DIR}/src/io/FileIO.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/src/io/FileIOUnix.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/io/FileIOWin32.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/src/io/FileIOUring.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/src/io/Serializer.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/src/io/ImageFormat.cpp

@@ -10,7 +10,7 @@ jobs:
   build:
     strategy:
        matrix:
-         os: [ubuntu-latest, macos-latest, windows-latest]
+         os: [ubuntu-latest, macos-latest]
     runs-on: ${{ matrix.os }}
 
     steps:
@@ -31,12 +31,6 @@ jobs:
       if: startsWith(matrix.os, 'macos')
       run: |
         brew install boost
-
-    - name: windows-dependencies
-      if: startsWith(matrix.os, 'windows')
-      run: |
-        choco install boost-msvc-14.1
-
 
     - name: dependencies
       run: |

@@ -22,13 +22,8 @@
 
 #include "config.h"
 #include "BufferPool.h"
-
 #include "FileIOUring.h"
-#ifdef _WIN32
-#include "FileIOWin32.h"
-#else
 #include "FileIOUnix.h"
-#endif
 
 namespace io {
 
@@ -51,11 +46,7 @@ public:
 	void enableSimulateWrite(void);
 private:
 	IBufferPool *pool_;
-#ifdef _WIN32
-	FileIOWin32 fileIO_;
-#else
 	FileIOUnix fileIO_;
-#endif
 	uint32_t threadId_;
 };
 
