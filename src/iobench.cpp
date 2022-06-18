@@ -42,7 +42,7 @@ const uint8_t numStrips = 32;
 
 namespace iobench {
 
-static void run(uint32_t width, uint32_t height, uint16_t numComps, bool direct,
+static void run(std::string filename, uint32_t width, uint32_t height, uint16_t numComps, bool direct,
 		uint32_t concurrency, bool doStore, bool doAsynch, bool chunked){
 #ifndef IOBENCH_HAVE_URING
 	if (doAsynch) {
@@ -55,7 +55,6 @@ static void run(uint32_t width, uint32_t height, uint16_t numComps, bool direct,
 	tiffFormat->init(width, height, numComps,width * numComps, numStrips, chunked);
 	auto imageStripper = tiffFormat->getImageStripper();
 	if (doStore){
-		std::string filename = "dump.tif";
 		remove(filename.c_str());
 	   tiffFormat->encodeInit(filename,direct,concurrency,doAsynch);
 	}
@@ -137,12 +136,12 @@ static void run(uint32_t width, uint32_t height, uint16_t numComps, bool direct,
 	delete tiffFormat;
 	timer.finish("");
 }
-static void run(uint32_t width, uint32_t height,uint16_t numComps,uint8_t concurrency){
-	   run(width,height,numComps,false,concurrency,false,false,false);
-	   run(width,height,numComps,false,concurrency,true,false,false);
-	   run(width,height,numComps,false,concurrency,true,true,false);
-	   run(width,height,numComps,true,concurrency,true,false,true);
-	   run(width,height,numComps,true,concurrency,true,true,true);
+static void run(std::string filename, uint32_t width, uint32_t height,uint16_t numComps,uint8_t concurrency){
+	   run(filename,width,height,numComps,false,concurrency,false,false,false);
+	   run(filename,width,height,numComps,false,concurrency,true,false,false);
+	   run(filename,width,height,numComps,false,concurrency,true,true,false);
+	   run(filename,width,height,numComps,true,concurrency,true,false,true);
+	   run(filename,width,height,numComps,true,concurrency,true,true,true);
 	   printf("\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\n");
 }
 
@@ -158,9 +157,14 @@ int main(int argc, char** argv)
 	bool fullRun = true;
 	bool direct = false;
 	bool chunked = false;
+	std::string filename = "io_out.tif";
 	try
 	{
 		TCLAP::CmdLine cmd("uring test bench command line", ' ', "1.0");
+
+		TCLAP::ValueArg<std::string> fileArg("f", "file",
+												  "output file",
+												  false, "io_out.tif", "string", cmd);
 
 		TCLAP::ValueArg<uint32_t> widthArg("w", "width",
 												  "image width",
@@ -179,6 +183,8 @@ int main(int argc, char** argv)
 		TCLAP::SwitchArg chunkedArg("k", "chunked", "break strips into chunks", cmd);
 		cmd.parse(argc, argv);
 
+		if (fileArg.isSet())
+			filename = fileArg.getValue();
 		if (widthArg.isSet())
 			width = widthArg.getValue();
 		if (heightArg.isSet())
@@ -210,13 +216,13 @@ int main(int argc, char** argv)
 	if (fullRun) {
 		for (uint8_t concurrency = 2;
 				concurrency <= (uint32_t)std::thread::hardware_concurrency(); concurrency+=2){
-		   iobench::run(width,height,numComps,concurrency);
+		   iobench::run(filename,width,height,numComps,concurrency);
 	   }
 	} else {
 		if (concurrency > 0)
-			iobench::run(width,height,numComps,direct, concurrency, true, useUring,chunked);
+			iobench::run(filename,width,height,numComps,direct, concurrency, true, useUring,chunked);
 		else
-			iobench::run(width,height,numComps,direct,
+			iobench::run(filename,width,height,numComps,direct,
 					(uint32_t)std::thread::hardware_concurrency(),true,useUring,chunked);
 	}
 
