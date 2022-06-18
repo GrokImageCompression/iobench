@@ -46,6 +46,7 @@ public:
 						uint64_t packedRowBytes,
 						uint32_t nominalStripHeight,
 						bool chunked);
+	bool reopenAsSynch(void);
 	virtual bool encodeInit(std::string filename,
 							bool direct,
 							uint32_t concurrency,
@@ -59,6 +60,7 @@ public:
 	StripChunkArray* getStripChunkArray(uint32_t threadId,uint32_t strip);
 	ImageStripper* getImageStripper(void);
 protected:
+	bool closeThreadSerializers(void);
 	bool isHeaderEncoded(void);
 	uint8_t *header_;
 	size_t headerLength_;

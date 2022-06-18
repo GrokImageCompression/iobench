@@ -84,6 +84,9 @@ bool ImageFormat::encodeInit(std::string filename,
 
 	return true;
 }
+bool ImageFormat::reopenAsSynch(void){
+	return serializer_.reopenAsSynch();
+}
 ImageStripper* ImageFormat::getImageStripper(void){
 	return imageStripper_;
 }
@@ -160,12 +163,18 @@ bool ImageFormat::isHeaderEncoded(void)
 {
 	return ((encodeState_ & IMAGE_FORMAT_ENCODED_HEADER) == IMAGE_FORMAT_ENCODED_HEADER);
 }
-bool ImageFormat::close(void){
+bool ImageFormat::closeThreadSerializers(void){
 	// close all thread serializers
 	for (uint32_t i = 0; i < concurrency_; ++i)
 		workerSerializers_[i]->close();
 
 	return true;
+}
+bool ImageFormat::close(void){
+	bool rc = closeThreadSerializers();
+	rc &= serializer_.close();
+
+	return rc;
 }
 
 }

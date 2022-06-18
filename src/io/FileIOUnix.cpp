@@ -152,6 +152,20 @@ bool FileIOUnix::close(void)
 	return rc == 0;
 #endif
 }
+bool FileIOUnix::reopenAsSynch(void){
+	if (mode_.length() >= 2 && mode_[1] == 'd'){
+		auto off = lseek(fd_, 0, SEEK_END);
+		if (!close())
+			return false;
+
+		if(!open(filename_, "a",false))
+			return false;
+
+		lseek(fd_, off, SEEK_SET);
+	}
+
+	return true;
+}
 uint64_t FileIOUnix::seek(int64_t off, int32_t whence)
 {
 	if (simulateWrite_)

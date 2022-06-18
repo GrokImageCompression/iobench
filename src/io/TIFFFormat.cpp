@@ -75,13 +75,19 @@ TIFFFormat::TIFFFormat(bool flushOnClose) :
 {}
 
 bool TIFFFormat::close(void){
-	if (!ImageFormat::close())
+	// wait for asynch writes to complete
+	if (!closeThreadSerializers())
 		return false;
 
+	// close TIFF
 	if(tif_) {
 		TIFFClose(tif_);
 		tif_ = nullptr;
 	}
+
+	if (!ImageFormat::close())
+		return false;
+
 
 	return true;
 }
@@ -111,6 +117,9 @@ bool TIFFFormat::encodeFinish(void)
 {
 	if(filename_.empty() || (encodeState_ & IMAGE_FORMAT_ENCODED_PIXELS))
 		return true;
+
+	if (!reopenAsSynch())
+		return false;
 
 	serializer_.enableSimulateWrite();
 	// 1. open tiff and encode header
