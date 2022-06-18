@@ -118,7 +118,7 @@ bool TIFFFormat::encodeFinish(void)
 	if(filename_.empty() || (encodeState_ & IMAGE_FORMAT_ENCODED_PIXELS))
 		return true;
 
-	if (!reopenAsSynch())
+	if (!reopenAsBuffered())
 		return false;
 
 	serializer_.enableSimulateWrite();

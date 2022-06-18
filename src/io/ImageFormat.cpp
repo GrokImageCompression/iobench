@@ -84,8 +84,8 @@ bool ImageFormat::encodeInit(std::string filename,
 
 	return true;
 }
-bool ImageFormat::reopenAsSynch(void){
-	return serializer_.reopenAsSynch();
+bool ImageFormat::reopenAsBuffered(void){
+	return serializer_.reopenAsBuffered();
 }
 ImageStripper* ImageFormat::getImageStripper(void){
 	return imageStripper_;

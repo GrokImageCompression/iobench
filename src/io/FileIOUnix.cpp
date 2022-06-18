@@ -139,7 +139,7 @@ bool FileIOUnix::close(void)
 
 	return rc == 0;
 }
-bool FileIOUnix::reopenAsSynch(void){
+bool FileIOUnix::reopenAsBuffered(void){
 	if (mode_.length() >= 2 && mode_[1] == 'd'){
 		auto off = lseek(fd_, 0, SEEK_END);
 		if (!close())

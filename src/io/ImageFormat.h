@@ -46,7 +46,7 @@ public:
 						uint64_t packedRowBytes,
 						uint32_t nominalStripHeight,
 						bool chunked);
-	bool reopenAsSynch(void);
+	bool reopenAsBuffered(void);
 	virtual bool encodeInit(std::string filename,
 							bool direct,
 							uint32_t concurrency,
