@@ -25,6 +25,7 @@
 #include <cassert>
 
 #include "FileIOUring.h"
+#include "FileIO.h"
 
 namespace io {
 
@@ -194,7 +195,7 @@ bool FileIOUring::close(void)
 
 uint64_t FileIOUring::write(uint64_t offset, IOBuf **buffers, uint32_t numBuffers)
 {
-	auto data = new IOScheduleData(offset,buffers,numBuffers);
+	auto data = new IOScheduleData(offset,buffers,numBuffers,FileIO::isDirect(mode_));
 	uint64_t totalBytes = 0;
 	for (uint32_t i = 0; i < numBuffers; ++i)
 		totalBytes += buffers[i]->len_;

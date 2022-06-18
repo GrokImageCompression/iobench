@@ -178,7 +178,7 @@ uint64_t FileIOUnix::write(uint64_t offset, IOBuf **buffers, uint32_t numBuffers
 		return uring.write(offset, buffers, numBuffers);
 #endif
 
-	auto io = new IOScheduleData(offset,buffers,numBuffers);
+	auto io = new IOScheduleData(offset,buffers,numBuffers,FileIO::isDirect(mode_));
 	ssize_t writtenInCall = 0;
 	for(; bytesWritten < io->totalBytes_; bytesWritten += (uint64_t)writtenInCall)
 	{

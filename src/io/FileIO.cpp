@@ -45,4 +45,8 @@ void FileIO::enableSimulateWrite(void){
 	simulateWrite_ = true;
 }
 
+bool FileIO::isDirect(std::string mode){
+	return (mode.length() > 1 && mode[1] == 'd');
+}
+
 }
