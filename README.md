@@ -20,12 +20,13 @@ or `pwritev` for synchronous writes.
 
 If no command line arguments are used, then `iobench`
 will cycle through all even concurrency levels from 2
-to maximum concurrency and run three tests for each level :
+to maximum concurrency and run five tests for each level :
 
 1. no write
 1. synchronous write
 1. asynchronous write
-
+1. synchronous direct write (using O_DIRECT)
+1. asynchronous direct write (using O_DIRECT)
 
 Note: square brackets below are used for clarity only
 
@@ -59,3 +60,8 @@ enable chunk mode. Default: `false`
 
 Number of threads to use.
 Default: `maximum concurrency` of system
+
+`-f, -file [file name]`
+
+Output file name
+Default: `io_out.tif`
