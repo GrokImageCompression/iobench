@@ -48,7 +48,7 @@ Default : `false`
 
 `-k, -chunked`
 
-Break each strip into chunks of size 64K, aligned on 512 byte
+Break each strip into chunks of size 32K, aligned on 512 byte
 boundaries. Default: `false`
 
 `-d, -direct`
