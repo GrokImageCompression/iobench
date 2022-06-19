@@ -33,6 +33,7 @@ public:
 	void setMaxSimulatedWrites(uint64_t maxRequests);
 	virtual void registerReclaimCallback(io_callback reclaim_callback, void* user_data);
 	static bool isDirect(std::string mode);
+	static uint64_t bytesToWrite(IOBuf **buffers, uint32_t numBuffers, std::string mode);
 protected:
 	uint64_t numSimulatedWrites_;
 	uint64_t maxSimulatedWrites_;

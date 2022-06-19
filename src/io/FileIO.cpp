@@ -49,4 +49,13 @@ bool FileIO::isDirect(std::string mode){
 	return (mode.length() > 1 && mode[1] == 'd');
 }
 
+uint64_t FileIO::bytesToWrite(IOBuf **buffers, uint32_t numBuffers, std::string mode){
+	bool direct = isDirect(mode);
+	uint64_t toWrite = 0;
+	for (uint32_t i = 0; i < numBuffers; ++i)
+		toWrite +=  direct ? buffers[i]->allocLen_ : buffers[i]->len_;
+
+	return toWrite;
+}
+
 }

@@ -196,12 +196,10 @@ bool FileIOUring::close(void)
 uint64_t FileIOUring::write(uint64_t offset, IOBuf **buffers, uint32_t numBuffers)
 {
 	auto data = new IOScheduleData(offset,buffers,numBuffers,FileIO::isDirect(mode_));
-	uint64_t totalBytes = 0;
-	for (uint32_t i = 0; i < numBuffers; ++i)
-		totalBytes += buffers[i]->len_;
+	uint64_t toWrite = FileIO::bytesToWrite(buffers, numBuffers, mode_);
 	enqueue(&ring, data, false, fd_);
 
-	return totalBytes;
+	return toWrite;
 }
 
 }

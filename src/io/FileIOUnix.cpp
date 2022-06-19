@@ -49,6 +49,7 @@ void FileIOUnix::registerReclaimCallback(io_callback reclaim_callback,
 }
 bool FileIOUnix::attach(FileIOUnix *parent){
 	fd_ = parent->fd_;
+	mode_ = parent->mode_;
 
 #ifdef IOBENCH_HAVE_URING
 	return uring.attach(&parent->uring);
@@ -192,6 +193,7 @@ uint64_t FileIOUnix::write(uint64_t offset, IOBuf **buffers, uint32_t numBuffers
 		assert(reclaim_callback_);
 		reclaim_callback_(threadId_,b, reclaim_user_data_);
 	}
+
 	return bytesWritten;
 }
 uint64_t FileIOUnix::write(uint8_t* buf, uint64_t bytes_total)

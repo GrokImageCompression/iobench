@@ -139,9 +139,7 @@ bool ImageFormat::encodePixels(uint32_t threadId,
 								uint32_t numBuffers){
 	assert(numBuffers);
 	auto ser = workerSerializers_[threadId];
-	uint64_t toWrite = 0;
-	for (uint32_t i = 0; i < numBuffers; ++i)
-		toWrite += buffers[i]->len_;
+	uint64_t toWrite = FileIO::bytesToWrite(buffers, numBuffers, mode_);
 	uint64_t written = ser->write(buffers[0]->offset_, buffers,numBuffers);
 	if (written != toWrite){
 		printf("encodePixels: "
